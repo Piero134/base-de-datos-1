@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Ingresos por hotel{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ingresos por hotel</h1>
+  <p class="subtitle">Ingresos por hospedaje (reservas confirmadas) más servicios consumidos.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Hotel</th><th>Reservas confirmadas</th><th>Ingresos hospedaje</th><th>Ingresos servicios</th><th>Ingreso total</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.hotel }}</td>
+    <td>{{ f.reservas_confirmadas }}</td>
+    <td class="money">S/ {{ f.ingresos_hospedaje }}</td>
+    <td class="money">S/ {{ f.ingresos_servicios }}</td>
+    <td class="money"><strong>S/ {{ f.ingreso_total }}</strong></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay reservas confirmadas para calcular ingresos.</p>
+{% endif %}
+{% endblock %}

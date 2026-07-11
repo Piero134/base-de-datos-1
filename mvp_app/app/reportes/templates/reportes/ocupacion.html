@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Ocupación{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ocupación — {{ session.get('nombre_hotel') }}</h1>
+  <p class="subtitle">Estado agregado de habitaciones por tipo.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Hotel</th><th>Tipo</th><th>Total</th><th>Disponibles</th><th>Reservadas</th><th>Ocupadas</th><th>En limpieza</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.hotel }}</td><td>{{ f.tipo }}</td><td>{{ f.total_habitaciones }}</td>
+    <td>{{ f.disponibles }}</td><td>{{ f.reservadas }}</td><td>{{ f.ocupadas }}</td><td>{{ f.en_limpieza }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay habitaciones registradas todavía.</p>
+{% endif %}
+
+<h2>Resumen por estado de habitación</h2>
+{# invoca sp_resumen_ocupacion_hotel #}
+{% if resumen %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Estado</th><th>Cantidad</th></tr></thead>
+  <tbody>
+  {% for r in resumen %}
+  <tr><td><span class="badge {{ r.estado|badge_class }}">{{ r.estado }}</span></td><td>{{ r.cantidad }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Este hotel no tiene habitaciones registradas.</p>
+{% endif %}
+{% endblock %}

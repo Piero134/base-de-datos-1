@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Planes tarifarios{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Planes tarifarios</h1>
+  <p class="subtitle">{{ filas|length }} plan{{ 'es' if filas|length != 1 }} registrado{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombre</th><th>Inicio</th><th>Fin</th><th>Público</th><th>Activo</th><th>Descripción</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.nombre }}</td><td>{{ f.fecha_inicio }}</td><td>{{ f.fecha_fin }}</td>
+    <td><span class="badge {{ 'badge-info' if f.es_publico else 'badge-neutral' }}">{{ 'Sí' if f.es_publico else 'Corporativo' }}</span></td>
+    <td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td>
+    <td>{{ f.descripcion or '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay planes tarifarios registrados.</p>
+{% endif %}
+
+<h2>Nuevo plan tarifario</h2>
+<form class="card" method="post">
+  <label for="pt_nombre">Nombre</label>
+  <input type="text" name="nombre" id="pt_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+  <label for="pt_descripcion">Descripción <span class="optional">(opcional)</span></label>
+  <textarea name="descripcion" id="pt_descripcion">{{ seleccion.descripcion if seleccion else '' }}</textarea>
+  <label for="pt_fecha_inicio">Fecha inicio</label>
+  <input type="date" name="fecha_inicio" id="pt_fecha_inicio" required value="{{ seleccion.fecha_inicio if seleccion else '' }}">
+  <label for="pt_fecha_fin">Fecha fin</label>
+  <input type="date" name="fecha_fin" id="pt_fecha_fin" required value="{{ seleccion.fecha_fin if seleccion else '' }}">
+  <label>
+    <input type="checkbox" name="es_publico" id="pt_es_publico" style="width:auto;display:inline"
+      {% if not seleccion or seleccion.es_publico %}checked{% endif %}>
+    Público (se autodetecta por fecha; desmarcar para plan corporativo/negociado)
+  </label>
+  <button type="submit">Crear plan</button>
+</form>
+{% endblock %}

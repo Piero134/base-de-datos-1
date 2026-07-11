@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Daños pendientes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Daños pendientes de cobro</h1>
+  <p class="subtitle">{{ filas|length }} daño{{ 's' if filas|length != 1 }} pendiente{{ 's' if filas|length != 1 }} de facturar.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ID</th><th>Hotel</th><th>Habitación</th><th>Descripción</th><th>Costo</th><th>Fecha reporte</th><th>Estado</th><th></th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>#{{ f.id_danio }}</td>
+    <td>{{ f.hotel }}</td>
+    <td>{{ f.habitacion }}</td>
+    <td>{{ f.descripcion }}</td>
+    <td class="money">S/ {{ f.costo }}</td>
+    <td>{{ f.fecha_reporte }}</td>
+    <td><span class="badge {{ f.estado|badge_class }}">{{ f.estado }}</span></td>
+    <td class="actions">
+      {% if f.id_alojamiento %}<a href="{{ url_for('estadia.ver', id_alojamiento=f.id_alojamiento) }}">Ver alojamiento</a>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay daños pendientes de cobro.</p>
+{% endif %}
+{% endblock %}

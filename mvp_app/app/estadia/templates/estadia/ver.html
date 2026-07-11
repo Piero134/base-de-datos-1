@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Alojamiento #{{ aloj.id_alojamiento }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{{ url_for('estadia.activos') }}">Estadía</a> &rsaquo; <span class="current">Alojamiento #{{ aloj.id_alojamiento }}</span></div>
+  <h1>{{ aloj.hotel }} — habitación {{ aloj.habitacion }}</h1>
+  <p class="subtitle">
+    <a href="#seccion-huespedes">Huéspedes</a> ·
+    <a href="#seccion-consumos">Consumos</a> ·
+    <a href="#seccion-danios">Daños</a> ·
+    <a href="#seccion-salida">Salida / check-out</a>
+  </p>
+</div>
+
+<div class="card card--readonly" id="seccion-salida">
+  <p><strong>Tipo:</strong> {{ aloj.tipo }} (capacidad base {{ aloj.capacidad_base }})</p>
+  <p><strong>Estado:</strong> <span class="badge {{ aloj.estado|badge_class }}">{{ aloj.estado }}</span></p>
+  <p><strong>Check-in real:</strong> {{ aloj.fecha_checkin_real }}</p>
+  <p><strong>Check-out real:</strong> {{ aloj.fecha_checkout_real or '—' }}</p>
+  {% if aloj.estado == 'ACTIVO' %}
+  <p><strong>Resumen antes de check-out:</strong> consumos S/ {{ '%.2f'|format(total_consumos) }}
+     + daños pendientes S/ {{ '%.2f'|format(total_danios) }} (se cobran juntos al generar la cuenta por cobrar).</p>
+  <form method="post" action="{{ url_for('estadia.checkout', id_alojamiento=aloj.id_alojamiento) }}"
+        data-confirm="¿Confirmar el check-out completo? Se cerrará la salida de cualquier huésped pendiente. Consumos: S/ {{ '%.2f'|format(total_consumos) }} — Daños pendientes: S/ {{ '%.2f'|format(total_danios) }}.">
+    {# invoca sp_realizar_checkout #}
+    <button type="submit" class="btn-danger">Realizar check-out completo</button>
+  </form>
+  {% endif %}
+</div>
+
+<h2 id="seccion-huespedes">Huéspedes</h2>
+{% if huespedes %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Huésped</th><th>Titular</th><th>Registro</th><th>Salida</th><th></th></tr></thead>
+  <tbody>
+  {% for h in huespedes %}
+  <tr>
+    <td>{{ h.huesped }}</td>
+    <td><span class="badge {{ 'badge-good' if h.es_titular else 'badge-neutral' }}">{{ 'Sí' if h.es_titular else 'No' }}</span></td>
+    <td>{{ h.fecha_registro }}</td>
+    <td>{{ h.fecha_salida_real or '—' }}</td>
+    <td class="actions">
+      <a href="{{ url_for('estadia.historial', id_huesped=h.id_huesped) }}">Ver historial</a>
+      {% if not h.fecha_salida_real and aloj.estado == 'ACTIVO' %}
+      <form method="post" action="{{ url_for('estadia.salida_huesped', id_alojamiento=aloj.id_alojamiento) }}"
+            data-confirm="¿Registrar la salida de {{ h.huesped }}?">
+        <input type="hidden" name="id_huesped" value="{{ h.id_huesped }}">
+        <button type="submit" class="btn-secondary">Registrar salida</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay huéspedes registrados en este alojamiento.</p>
+{% endif %}
+
+{% if aloj.estado == 'ACTIVO' %}
+<details class="card">
+  <summary>Agregar huésped existente al alojamiento</summary>
+  <div class="details-body">
+  <form method="post" action="{{ url_for('estadia.agregar_huesped', id_alojamiento=aloj.id_alojamiento) }}">
+    <label for="av_id_huesped">Huésped existente</label>
+    <select name="id_huesped" id="av_id_huesped" required data-searchable="Buscar huésped…">
+      {% for h in huespedes_disponibles %}
+        <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos or '' }}{{ ' (genérico)' if h.es_generico else '' }}</option>
+      {% endfor %}
+    </select>
+    <label><input type="checkbox" name="es_titular" style="width:auto;display:inline"> Es titular</label>
+    {# invoca sp_agregar_huesped_alojamiento #}
+    <button type="submit">Agregar huésped</button>
+  </form>
+  </div>
+</details>
+
+<details class="card" {% if seleccion_huesped %}open{% endif %}>
+  <summary>¿Huésped nuevo?</summary>
+  <div class="details-body">
+  <form method="post" action="{{ url_for('estadia.huesped_nuevo') }}">
+    <input type="hidden" name="id_alojamiento" value="{{ aloj.id_alojamiento }}">
+    <label>
+      <input type="checkbox" name="es_generico" id="nh_es_generico" style="width:auto;display:inline"
+        {% if seleccion_huesped and seleccion_huesped.es_generico %}checked{% endif %}
+        onchange="document.getElementById('nh_campos_reales').style.display = this.checked ? 'none' : 'block';">
+      Huésped genérico (nombre pendiente, se completa después)
+    </label>
+    <div id="nh_campos_reales" {% if seleccion_huesped and seleccion_huesped.es_generico %}style="display:none"{% endif %}>
+      {% if datos_cliente_natural %}
+      <button type="button" class="btn-secondary" id="btnUsarDatosCliente"
+        data-nombres="{{ datos_cliente_natural.nombres }}"
+        data-apellidos="{{ datos_cliente_natural.apellidos }}"
+        data-id-tipo-documento="{{ datos_cliente_natural.id_tipo_documento }}"
+        data-numero-documento="{{ datos_cliente_natural.numero_documento }}"
+        data-fecha-nacimiento="{{ datos_cliente_natural.fecha_nacimiento }}"
+        data-genero="{{ datos_cliente_natural.genero }}"
+        data-nacionalidad="{{ datos_cliente_natural.nacionalidad }}">
+        Usar los datos de {{ datos_cliente_natural.nombres }} {{ datos_cliente_natural.apellidos }} (cliente)
+      </button>
+      {% endif %}
+      <label for="nh_nombres">Nombres</label>
+      <input type="text" name="nombres" id="nh_nombres" required value="{{ seleccion_huesped.nombres if seleccion_huesped else '' }}">
+      <label for="nh_apellidos">Apellidos</label>
+      <input type="text" name="apellidos" id="nh_apellidos" required value="{{ seleccion_huesped.apellidos if seleccion_huesped else '' }}">
+      <label for="nh_id_tipo_documento">Tipo de documento</label>
+      <select name="id_tipo_documento" id="nh_id_tipo_documento" required>
+        {% for td in tipos_documento %}
+          <option value="{{ td.id_tipo_documento }}" {% if seleccion_huesped and seleccion_huesped.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
+        {% endfor %}
+      </select>
+      <label for="nh_numero_documento">Número de documento</label>
+      <input type="text" name="numero_documento" id="nh_numero_documento" required placeholder="12345678" value="{{ seleccion_huesped.numero_documento if seleccion_huesped else '' }}">
+      <label for="nh_fecha_nacimiento">Fecha de nacimiento</label>
+      <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento" value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
+      <label for="nh_genero">Género</label>
+      <select name="genero" id="nh_genero">
+        <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>M</option>
+        <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>F</option>
+        <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>OTRO</option>
+      </select>
+      <label for="nh_nacionalidad">Nacionalidad</label>
+      <input type="text" name="nacionalidad" id="nh_nacionalidad" placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
+    </div>
+    <button type="submit" class="btn-secondary">Crear huésped</button>
+  </form>
+  </div>
+</details>
+{% endif %}
+
+<h2 id="seccion-consumos">Consumos de servicio</h2>
+{% if consumos %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Categoría</th><th>Servicio</th><th>Cantidad</th><th>Precio unit.</th><th>Subtotal</th><th>Fecha</th></tr></thead>
+  <tbody>
+  {% for c in consumos %}
+  <tr>
+    <td>{{ c.categoria }}</td><td>{{ c.servicio }}</td><td>{{ c.cantidad }}</td>
+    <td class="money">S/ {{ c.precio_unitario }}</td><td class="money">S/ {{ c.subtotal }}</td><td>{{ c.fecha_consumo }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no se registraron consumos en este alojamiento.</p>
+{% endif %}
+{% if aloj.estado == 'ACTIVO' %}
+<form class="card" method="post" action="{{ url_for('estadia.registrar_consumo', id_alojamiento=aloj.id_alojamiento) }}">
+  <label for="cons_id_servicio">Servicio</label>
+  <select name="id_servicio" id="cons_id_servicio" required data-searchable="Buscar servicio…">
+    {% for s in servicios %}
+      <option value="{{ s.id_servicio }}" {% if seleccion_consumo and seleccion_consumo.id_servicio|string == s.id_servicio|string %}selected{% endif %}>{{ s.categoria }} — {{ s.nombre }} (S/ {{ s.precio_unitario }})</option>
+    {% endfor %}
+  </select>
+  <label for="cons_cantidad">Cantidad</label>
+  <input type="number" name="cantidad" id="cons_cantidad" min="1" value="{{ seleccion_consumo.cantidad if seleccion_consumo else 1 }}" required>
+  {# invoca sp_registrar_consumo #}
+  <button type="submit">Registrar consumo</button>
+</form>
+{% endif %}
+
+<h2 id="seccion-danios">Daños</h2>
+{% if danios %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Descripción</th><th>Costo</th><th>Fecha</th><th>Estado</th></tr></thead>
+  <tbody>
+  {% for d in danios %}
+  <tr><td>{{ d.descripcion }}</td><td class="money">S/ {{ d.costo }}</td><td>{{ d.fecha_reporte }}</td><td><span class="badge {{ d.estado|badge_class }}">{{ d.estado }}</span></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay daños registrados en este alojamiento.</p>
+{% endif %}
+{% if aloj.estado == 'ACTIVO' %}
+<form class="card" method="post" action="{{ url_for('estadia.registrar_danio', id_alojamiento=aloj.id_alojamiento) }}">
+  <label for="dan_descripcion">Descripción del daño</label>
+  <textarea name="descripcion" id="dan_descripcion" required>{{ seleccion_danio.descripcion if seleccion_danio else '' }}</textarea>
+  <label for="dan_costo">Costo</label>
+  <input type="number" step="0.01" min="0" name="costo" id="dan_costo" required value="{{ seleccion_danio.costo if seleccion_danio else '' }}">
+  {# invoca sp_registrar_danio #}
+  <button type="submit">Registrar daño</button>
+</form>
+{% endif %}
+
+<p><a href="{{ url_for('estadia.activos') }}">Volver a alojamientos activos</a></p>
+
+<script>
+  (function () {
+    var boton = document.getElementById('btnUsarDatosCliente');
+    if (!boton) { return; }
+    boton.addEventListener('click', function () {
+      document.getElementById('nh_es_generico').checked = false;
+      document.getElementById('nh_campos_reales').style.display = 'block';
+      document.getElementById('nh_nombres').value = boton.dataset.nombres || '';
+      document.getElementById('nh_apellidos').value = boton.dataset.apellidos || '';
+      document.getElementById('nh_id_tipo_documento').value = boton.dataset.idTipoDocumento || '';
+      document.getElementById('nh_numero_documento').value = boton.dataset.numeroDocumento || '';
+      document.getElementById('nh_fecha_nacimiento').value = boton.dataset.fechaNacimiento || '';
+      document.getElementById('nh_genero').value = boton.dataset.genero || '';
+      document.getElementById('nh_nacionalidad').value = boton.dataset.nacionalidad || '';
+    });
+  })();
+</script>
+{% endblock %}

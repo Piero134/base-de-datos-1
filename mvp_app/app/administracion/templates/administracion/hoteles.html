@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Hoteles{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Hoteles</h1>
+  <p class="subtitle">{{ filas|length }} hotel{{ 'es' if filas|length != 1 }} registrado{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombre</th><th>Dirección</th><th>Teléfono</th><th>Email</th><th>Activo</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.nombre }}</td><td>{{ f.direccion }}</td><td>{{ f.telefono or '—' }}</td>
+    <td>{{ f.email or '—' }}</td><td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay hoteles registrados.</p>
+{% endif %}
+
+<h2>Nuevo hotel</h2>
+<form class="card" method="post">
+  <label for="h_nombre">Nombre</label>
+  <input type="text" name="nombre" id="h_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+  <label for="h_direccion">Dirección</label>
+  <input type="text" name="direccion" id="h_direccion" required value="{{ seleccion.direccion if seleccion else '' }}">
+  <label for="h_telefono">Teléfono <span class="optional">(opcional)</span></label>
+  <input type="text" name="telefono" id="h_telefono" placeholder="01-4251000" value="{{ seleccion.telefono if seleccion else '' }}">
+  <label for="h_email">Email <span class="optional">(opcional)</span></label>
+  <input type="email" name="email" id="h_email" value="{{ seleccion.email if seleccion else '' }}">
+  <label for="h_id_ubigeo">Ubigeo</label>
+  <select name="id_ubigeo" id="h_id_ubigeo" required data-searchable="Buscar departamento / provincia / distrito…">
+    {% for u in ubigeos %}
+      <option value="{{ u.id_ubigeo }}" {% if seleccion and seleccion.id_ubigeo|string == u.id_ubigeo|string %}selected{% endif %}>{{ u.departamento }} / {{ u.provincia }} / {{ u.distrito }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Crear hotel</button>
+</form>
+{% endblock %}

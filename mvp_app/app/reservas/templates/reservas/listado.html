@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Reservas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Reservas</h1>
+  <p class="subtitle">{{ reservas|length }} reserva{{ 's' if reservas|length != 1 }} {{ 'pendiente(s) de pago' if solo_pendientes else 'en total' }}.</p>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('reservas.nuevo') }}">+ Nueva reserva</a>
+  <a href="{{ url_for('reservas.listado') }}" class="btn-secondary{{ ' is-current' if not solo_pendientes }}">Todas</a>
+  <a href="{{ url_for('reservas.listado', pagado=0) }}" class="btn-secondary{{ ' is-current' if solo_pendientes }}">Pendientes de pago</a>
+  <a href="{{ url_for('reservas.corporativas') }}" class="btn-secondary">Reservas corporativas</a>
+</div>
+
+{% if reservas %}
+<div class="table-scroll">
+<table>
+  <thead>
+  <tr>
+    <th>ID</th><th>Reservante</th><th>Hotel</th><th>Estado</th><th>Canal</th>
+    <th>Check-in</th><th>Check-out</th><th>Noches</th><th>Monto total</th><th>Pagado</th><th></th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for r in reservas %}
+  <tr>
+    <td>#{{ r.id_reserva }}</td>
+    <td>{{ r.nombre_reservante }}</td>
+    <td>{{ r.hotel }}</td>
+    <td><span class="badge {{ r.estado|badge_class }}">{{ r.estado }}</span></td>
+    <td>{{ r.canal }}</td>
+    <td>{{ r.fecha_checkin }}</td>
+    <td>{{ r.fecha_checkout }}</td>
+    <td>{{ r.noches }}</td>
+    <td class="money">S/ {{ r.monto_total }}</td>
+    <td><span class="badge {{ 'badge-good' if r.pagado else 'badge-warning' }}">{{ 'Sí' if r.pagado else 'No' }}</span></td>
+    <td class="actions"><a href="{{ url_for('reservas.detalle', id_reserva=r.id_reserva) }}">Ver</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">
+  {% if solo_pendientes %}No hay reservas pendientes de pago.{% else %}Todavía no hay reservas registradas.{% endif %}
+</p>
+{% endif %}
+{% endblock %}

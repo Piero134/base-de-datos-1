@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Check-in{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{{ url_for('estadia.activos') }}">Estadía</a> &rsaquo; <span class="current">Check-in</span></div>
+  <h1>Reservas confirmadas listas para check-in</h1>
+</div>
+{% if reservas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ID</th><th>Reservante</th><th>Hotel</th><th>Check-in</th><th>Check-out</th><th></th></tr></thead>
+  <tbody>
+  {% for r in reservas %}
+  <tr>
+    <td>#{{ r.id_reserva }}</td>
+    <td>{{ r.nombre_reservante }}</td>
+    <td>{{ r.hotel }}</td>
+    <td>{{ r.fecha_checkin }}</td>
+    <td>{{ r.fecha_checkout }}</td>
+    <td class="actions"><a href="{{ url_for('estadia.checkin_reserva', id_reserva=r.id_reserva) }}">Hacer check-in</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay reservas confirmadas esperando check-in.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Alojamientos activos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Huéspedes hospedados actualmente</h1>
+  <p class="subtitle">{{ filas|length }} huésped{{ 'es' if filas|length != 1 }} presente{{ 's' if filas|length != 1 }} en este momento.</p>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('estadia.checkin_listado') }}">+ Realizar check-in</a>
+  <a href="{{ url_for('estadia.checkouts_pendientes') }}" class="btn-secondary">Check-outs pendientes</a>
+  <a href="{{ url_for('estadia.danios_pendientes') }}" class="btn-secondary">Daños pendientes</a>
+  <a href="{{ url_for('estadia.historial') }}" class="btn-secondary">Historial de estadías</a>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Alojamiento</th><th>Hotel</th><th>Habitación</th><th>Tipo</th><th>Huésped</th><th>Titular</th><th>Check-in real</th><th>Cliente pagador</th><th></th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>#{{ f.id_alojamiento }}</td>
+    <td>{{ f.hotel }}</td>
+    <td>{{ f.habitacion }} (piso {{ f.piso }})</td>
+    <td>{{ f.tipo }}</td>
+    <td>{{ f.huesped }}{{ ' (genérico)' if f.es_generico else '' }}</td>
+    <td><span class="badge {{ 'badge-good' if f.es_titular == 'SÍ' else 'badge-neutral' }}">{{ f.es_titular }}</span></td>
+    <td>{{ f.fecha_checkin_real }}</td>
+    <td>{{ f.cliente_pagador }}</td>
+    <td class="actions"><a href="{{ url_for('estadia.ver', id_alojamiento=f.id_alojamiento) }}">Ver</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay huéspedes hospedados en este momento.</p>
+{% endif %}
+{% endblock %}

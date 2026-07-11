@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Ranking de clientes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ranking de clientes</h1>
+  <p class="subtitle">Clientes ordenados por monto total gastado en hospedaje.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Ranking</th><th>Cliente</th><th>Tipo</th><th>Total reservas</th><th>Monto gastado</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>#{{ f.ranking }}</td>
+    <td>{{ f.nombre_reservante }}</td>
+    <td>{{ f.tipo_persona }}</td>
+    <td>{{ f.total_reservas }}</td>
+    <td class="money">S/ {{ f.monto_total_gastado }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay clientes con reservas confirmadas o finalizadas.</p>
+{% endif %}
+{% endblock %}

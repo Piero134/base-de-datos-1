@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Historial de estadías{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Historial de estadías</h1>
+  <p class="subtitle">Estadías activas e históricas, por huésped.</p>
+</div>
+<form method="get" class="card">
+  <label for="hist_id_huesped">Filtrar por ID de huésped <span class="optional">(opcional)</span></label>
+  <input type="number" name="id_huesped" id="hist_id_huesped" value="{{ id_huesped or '' }}">
+  <button type="submit">Filtrar</button>
+</form>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Huésped</th><th>Hotel</th><th>Habitación</th><th>Tipo</th><th>Check-in real</th><th>Salida huésped</th><th>Checkout habitación</th><th>Noches</th><th>Estado</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.huesped }}</td>
+    <td>{{ f.hotel }}</td>
+    <td>{{ f.habitacion }}</td>
+    <td>{{ f.tipo }}</td>
+    <td>{{ f.fecha_checkin_real }}</td>
+    <td>{{ f.fecha_salida_huesped or '—' }}</td>
+    <td>{{ f.fecha_checkout_habitacion or '—' }}</td>
+    <td>{{ f.noches }}</td>
+    <td><span class="badge {{ f.estado|badge_class }}">{{ f.estado }}</span></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">
+  {% if id_huesped %}No hay estadías registradas para el huésped #{{ id_huesped }}.{% else %}No hay estadías registradas todavía.{% endif %}
+</p>
+{% endif %}
+{% endblock %}

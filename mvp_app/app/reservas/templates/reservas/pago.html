@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Confirmar pago{% endblock %}
+{% block content %}
+<div class="page-header">
+  {{ crumbs.breadcrumb(pasos) }}
+  <h1>Confirmar pago</h1>
+</div>
+<div class="card card--readonly">
+  <p><strong>Reservante:</strong> {{ reserva.nombre_reservante }}</p>
+  <p><strong>Monto total:</strong> S/ {{ reserva.monto_total }}</p>
+  <p><strong>Estado actual:</strong> <span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span>
+     — <strong>Pagado:</strong> <span class="badge {{ 'badge-good' if reserva.pagado else 'badge-warning' }}">{{ 'Sí' if reserva.pagado else 'No' }}</span></p>
+
+  {% if reserva.pagado %}
+  <p class="alert alert-success">✓ Pago confirmado{% if reserva.fecha_pago %} el {{ reserva.fecha_pago }}{% endif %}.</p>
+  {% else %}
+  <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"
+        data-confirm="¿Confirmar el pago de S/ {{ reserva.monto_total }} para la reserva #{{ reserva.id_reserva }}?">
+    {# invoca sp_confirmar_pago #}
+    <button type="submit">Confirmar pago</button>
+  </form>
+  {% endif %}
+</div>
+<p class="actions">
+  <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a detalle →</a>
+</p>
+{% endblock %}

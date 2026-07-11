@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Cuenta #{{ cuenta.id_cuenta }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{{ url_for('caja.cuentas') }}">Cuentas por cobrar</a> &rsaquo; <span class="current">Cuenta #{{ cuenta.id_cuenta }}</span></div>
+  <h1>Cuenta por cobrar #{{ cuenta.id_cuenta }}</h1>
+</div>
+<div class="card card--readonly">
+  <p><strong>Alojamiento:</strong> #{{ cuenta.id_alojamiento }}</p>
+  <p><strong>Estado:</strong> <span class="badge {{ cuenta.estado_cuenta|badge_class }}">{{ cuenta.estado_cuenta }}</span></p>
+  <p><strong>Subtotal:</strong> S/ {{ cuenta.subtotal }} — <strong>IGV (18%):</strong> S/ {{ cuenta.impuestos }} — <strong>Total:</strong> S/ {{ cuenta.total }}</p>
+  <p><strong>Ya pagado:</strong> S/ {{ cuenta.ya_pagado }} — <strong>Saldo pendiente:</strong> S/ {{ cuenta.saldo_pendiente }}</p>
+</div>
+
+<h2>Detalle</h2>
+{% if detalle %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Concepto</th><th>Cantidad</th><th>Precio unit.</th><th>Subtotal</th></tr></thead>
+  <tbody>
+  {% for d in detalle %}
+  <tr><td>{{ d.concepto }}</td><td>{{ d.cantidad }}</td><td class="money">S/ {{ d.precio_unitario }}</td><td class="money">S/ {{ d.subtotal }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Esta cuenta no tiene líneas de detalle.</p>
+{% endif %}
+
+<h2>Pagos registrados</h2>
+{% if pagos %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Monto</th><th>Método</th><th>Fecha</th></tr></thead>
+  <tbody>
+  {% for p in pagos %}
+  <tr><td class="money">S/ {{ p.monto }}</td><td>{{ p.metodo_pago }}</td><td>{{ p.fecha_pago }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no se registraron pagos para esta cuenta.</p>
+{% endif %}
+
+{% if cuenta.estado_cuenta != 'PAGADA' %}
+<h2>Registrar pago</h2>
+<form class="card" method="post" action="{{ url_for('caja.registrar_pago', id_cuenta=cuenta.id_cuenta) }}"
+      data-confirm="¿Registrar este pago de forma definitiva?">
+  <label for="pago_monto">Monto <span class="optional">(saldo pendiente: S/ {{ cuenta.saldo_pendiente }})</span></label>
+  <input type="number" step="0.01" min="0.01" max="{{ cuenta.saldo_pendiente }}" name="monto" id="pago_monto" required value="{{ seleccion.monto if seleccion else '' }}">
+  <label for="pago_metodo_pago">Método de pago</label>
+  <select name="metodo_pago" id="pago_metodo_pago" required>
+    {% for m in metodos %}
+      <option value="{{ m }}" {% if seleccion and seleccion.metodo_pago == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+  {# invoca sp_registrar_pago_cuenta #}
+  <button type="submit">Registrar pago</button>
+</form>
+{% endif %}
+
+<p><a href="{{ url_for('caja.cuentas') }}">Volver al listado de cuentas</a></p>
+{% endblock %}

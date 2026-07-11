@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Pre-asignación corporativa{% endblock %}
+{% block content %}
+<div class="page-header">
+  {{ crumbs.breadcrumb(pasos) }}
+  <h1>Pre-asignación de huéspedes</h1>
+  <p class="subtitle">{{ reserva.nombre_reservante }} (empresa) — indica qué empleado ocupará cada línea de la reserva. Los huéspedes genéricos se completan más adelante, durante el check-in.</p>
+</div>
+
+<h2>Pre-asignaciones existentes</h2>
+{% if preasignados %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Línea</th><th>Huésped</th><th>Titular</th></tr></thead>
+  <tbody>
+  {% for p in preasignados %}
+  <tr><td>#{{ p.id_detalle_reserva }}</td><td>{{ p.huesped }}</td><td>{{ 'Sí' if p.es_titular else 'No' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay huéspedes pre-asignados en esta reserva.</p>
+{% endif %}
+
+<h2>Nueva pre-asignación</h2>
+<form class="card" method="post" action="{{ url_for('reservas.preasignar_post', id_reserva=reserva.id_reserva) }}">
+  <label for="pre_id_detalle_reserva">Línea de reserva</label>
+  <select name="id_detalle_reserva" id="pre_id_detalle_reserva" required>
+    {% for l in lineas %}
+      <option value="{{ l.id_detalle_reserva }}" {% if seleccion and seleccion.id_detalle_reserva|string == l.id_detalle_reserva|string %}selected{% endif %}>#{{ l.id_detalle_reserva }} — {{ l.tipo_habitacion }} (x{{ l.cantidad_habitaciones }})</option>
+    {% endfor %}
+  </select>
+
+  <label for="pre_id_huesped">Huésped (empleado de la empresa)</label>
+  <select name="id_huesped" id="pre_id_huesped" required data-searchable="Buscar huésped…">
+    {% for h in huespedes %}
+      <option value="{{ h.id_huesped }}" {% if seleccion and seleccion.id_huesped|string == h.id_huesped|string %}selected{% endif %}>{{ h.nombres }} {{ h.apellidos or '' }}{{ ' (genérico)' if h.es_generico else '' }}</option>
+    {% endfor %}
+  </select>
+
+  <label><input type="checkbox" name="es_titular" style="width:auto;display:inline" {% if seleccion and seleccion.es_titular %}checked{% endif %}> Es titular de la habitación</label>
+
+  <button type="submit">Pre-asignar</button>
+</form>
+
+<details class="card" {% if seleccion_huesped %}open{% endif %}>
+  <summary>¿Huésped nuevo?</summary>
+  <div class="details-body">
+  <form method="post" action="{{ url_for('reservas.huesped_nuevo') }}">
+    <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
+    <label>
+      <input type="checkbox" name="es_generico" id="h_es_generico" style="width:auto;display:inline"
+        {% if seleccion_huesped and seleccion_huesped.es_generico %}checked{% endif %}
+        onchange="document.getElementById('h_campos_reales').style.display = this.checked ? 'none' : 'block';">
+      Huésped genérico (nombre pendiente, se completa después)
+    </label>
+
+    <div id="h_campos_reales" {% if seleccion_huesped and seleccion_huesped.es_generico %}style="display:none"{% endif %}>
+      <label for="h_nombres">Nombres</label>
+      <input type="text" name="nombres" id="h_nombres" required value="{{ seleccion_huesped.nombres if seleccion_huesped else '' }}">
+      <label for="h_apellidos">Apellidos</label>
+      <input type="text" name="apellidos" id="h_apellidos" required value="{{ seleccion_huesped.apellidos if seleccion_huesped else '' }}">
+      <label for="h_id_tipo_documento">Tipo de documento</label>
+      <select name="id_tipo_documento" id="h_id_tipo_documento" required>
+        {% for td in tipos_documento %}
+          <option value="{{ td.id_tipo_documento }}" {% if seleccion_huesped and seleccion_huesped.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
+        {% endfor %}
+      </select>
+      <label for="h_numero_documento">Número de documento</label>
+      <input type="text" name="numero_documento" id="h_numero_documento" required placeholder="12345678" value="{{ seleccion_huesped.numero_documento if seleccion_huesped else '' }}">
+      <label for="h_fecha_nacimiento">Fecha de nacimiento</label>
+      <input type="date" name="fecha_nacimiento" id="h_fecha_nacimiento" value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
+      <label for="h_genero">Género</label>
+      <select name="genero" id="h_genero">
+        <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>M</option>
+        <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>F</option>
+        <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>OTRO</option>
+      </select>
+      <label for="h_nacionalidad">Nacionalidad</label>
+      <input type="text" name="nacionalidad" id="h_nacionalidad" placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
+      <label for="h_telefono">Teléfono <span class="optional">(opcional)</span></label>
+      <input type="text" name="telefono" id="h_telefono" placeholder="987654321" value="{{ seleccion_huesped.telefono if seleccion_huesped else '' }}">
+      <label for="h_email">Email <span class="optional">(opcional)</span></label>
+      <input type="email" name="email" id="h_email" value="{{ seleccion_huesped.email if seleccion_huesped else '' }}">
+    </div>
+
+    <button type="submit" class="btn-secondary">Crear huésped</button>
+  </form>
+  </div>
+</details>
+
+<p class="actions">
+  <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Volver al detalle</a> |
+  <a href="{{ url_for('reservas.corporativas') }}">Ver todas las reservas corporativas</a>
+</p>
+{% endblock %}

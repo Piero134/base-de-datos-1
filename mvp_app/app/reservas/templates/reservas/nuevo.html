@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Nueva reserva{% endblock %}
+{% block content %}
+<div class="page-header">
+  {{ crumbs.breadcrumb([
+    {"label": "Reservas", "url": url_for('reservas.listado')},
+    {"label": "Nueva reserva", "url": None},
+  ]) }}
+  <h1>Nueva reserva</h1>
+  <p class="subtitle">Cabecera de la reserva. Luego de crearla agregarás las líneas de detalle, confirmarás el pago y, si es una reserva corporativa, pre-asignarás huéspedes.</p>
+</div>
+
+<form class="card" method="post" action="{{ url_for('reservas.crear') }}">
+  <label for="reserva_tipo_cliente_filtro">Tipo de cliente a buscar</label>
+  <select id="reserva_tipo_cliente_filtro">
+    <option value="">-- Elige un tipo --</option>
+    <option value="NATURAL">Persona natural</option>
+    <option value="JURIDICA">Persona jurídica (empresa)</option>
+  </select>
+
+  <label for="reserva_id_cliente">Cliente (reservante/pagador)</label>
+  <select name="id_cliente" id="reserva_id_cliente" required
+          data-searchable="Buscar cliente por nombre o documento…"
+          data-filter-by="reserva_tipo_cliente_filtro"
+          data-filter-placeholder="Primero elige el tipo de cliente arriba…">
+    <option value="">-- Selecciona un cliente --</option>
+    {% for c in clientes %}
+      <option value="{{ c.id_cliente }}" data-filter-value="{{ c.tipo_persona }}" {% if seleccion_reserva and seleccion_reserva.id_cliente|string == c.id_cliente|string %}selected{% endif %}>{{ c.nombre_reservante }} ({{ c.tipo_persona }}) — {{ c.documento }}</option>
+    {% endfor %}
+  </select>
+
+  <p><strong>Hotel:</strong> {{ session.get('nombre_hotel') }}</p>
+
+  <label for="reserva_canal">Canal</label>
+  <select name="canal" id="reserva_canal" required>
+    {% for c in canales %}
+      <option value="{{ c }}" {% if seleccion_reserva and seleccion_reserva.canal == c %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="reserva_fecha_checkin">Fecha check-in</label>
+  <input type="date" name="fecha_checkin" id="reserva_fecha_checkin" required value="{{ seleccion_reserva.fecha_checkin if seleccion_reserva else '' }}">
+
+  <label for="reserva_fecha_checkout">Fecha check-out</label>
+  <input type="date" name="fecha_checkout" id="reserva_fecha_checkout" required value="{{ seleccion_reserva.fecha_checkout if seleccion_reserva else '' }}">
+
+  <label for="reserva_fecha_limite_pago">Fecha límite de pago</label>
+  <input type="date" name="fecha_limite_pago" id="reserva_fecha_limite_pago" required value="{{ seleccion_reserva.fecha_limite_pago if seleccion_reserva else '' }}">
+
+  <label for="reserva_id_cliente_contacto">Cliente contacto <span class="optional">(opcional, corporativo)</span></label>
+  <select name="id_cliente_contacto" id="reserva_id_cliente_contacto" data-searchable="Buscar cliente contacto…">
+    <option value="">-- Ninguno --</option>
+    {% for c in clientes %}
+      <option value="{{ c.id_cliente }}" {% if seleccion_reserva and seleccion_reserva.id_cliente_contacto|string == c.id_cliente|string %}selected{% endif %}>{{ c.nombre_reservante }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="reserva_observaciones">Observaciones <span class="optional">(opcional)</span></label>
+  <textarea name="observaciones" id="reserva_observaciones">{{ seleccion_reserva.observaciones if seleccion_reserva else '' }}</textarea>
+
+  {# invoca sp_registrar_reserva #}
+  <button type="submit">Crear reserva</button>
+</form>
+
+<details class="card" {% if seleccion_cliente %}open{% endif %}>
+  <summary>¿Cliente nuevo?</summary>
+  <div class="details-body">
+  <form method="post" action="{{ url_for('reservas.cliente_nuevo') }}" id="formClienteNuevo">
+    {# Copia de la cabecera de reserva ya tecleada, para no perderla al crear el cliente a mitad de camino. #}
+    <input type="hidden" name="draft_canal">
+    <input type="hidden" name="draft_fecha_checkin">
+    <input type="hidden" name="draft_fecha_checkout">
+    <input type="hidden" name="draft_fecha_limite_pago">
+    <input type="hidden" name="draft_id_cliente_contacto">
+    <input type="hidden" name="draft_observaciones">
+
+    <label for="cliente_tipo">Tipo de cliente</label>
+    <select name="tipo" id="cliente_tipo">
+      <option value="NATURAL" {% if seleccion_cliente and seleccion_cliente.tipo == 'NATURAL' %}selected{% endif %}>Persona natural</option>
+      <option value="JURIDICA" {% if seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA' %}selected{% endif %}>Persona jurídica (empresa)</option>
+    </select>
+
+    <label for="cliente_telefono">Teléfono <span class="optional">(opcional)</span></label>
+    <input type="text" name="telefono" id="cliente_telefono" placeholder="987654321" value="{{ seleccion_cliente.telefono if seleccion_cliente else '' }}">
+    <label for="cliente_email">Email <span class="optional">(opcional)</span></label>
+    <input type="email" name="email" id="cliente_email" placeholder="correo@ejemplo.com" value="{{ seleccion_cliente.email if seleccion_cliente else '' }}">
+
+    <fieldset id="bloque-natural" {% if seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA' %}style="display:none" disabled{% endif %}>
+      <legend>Persona natural</legend>
+      <label for="cliente_id_tipo_documento">Tipo de documento</label>
+      <select name="id_tipo_documento" id="cliente_id_tipo_documento" required>
+        {% for td in tipos_documento %}
+          <option value="{{ td.id_tipo_documento }}" {% if seleccion_cliente and seleccion_cliente.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
+        {% endfor %}
+      </select>
+      <label for="cliente_numero_documento">Número de documento</label>
+      <input type="text" name="numero_documento" id="cliente_numero_documento" required placeholder="12345678" value="{{ seleccion_cliente.numero_documento if seleccion_cliente else '' }}">
+      <label for="cliente_nombres">Nombres</label>
+      <input type="text" name="nombres" id="cliente_nombres" required value="{{ seleccion_cliente.nombres if seleccion_cliente else '' }}">
+      <label for="cliente_apellidos">Apellidos</label>
+      <input type="text" name="apellidos" id="cliente_apellidos" required value="{{ seleccion_cliente.apellidos if seleccion_cliente else '' }}">
+      <label for="cliente_fecha_nacimiento">Fecha de nacimiento</label>
+      <input type="date" name="fecha_nacimiento" id="cliente_fecha_nacimiento" required value="{{ seleccion_cliente.fecha_nacimiento if seleccion_cliente else '' }}">
+      <label for="cliente_genero">Género</label>
+      <select name="genero" id="cliente_genero" required>
+        <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>M</option>
+        <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>F</option>
+        <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>OTRO</option>
+      </select>
+      <label for="cliente_nacionalidad">Nacionalidad</label>
+      <input type="text" name="nacionalidad" id="cliente_nacionalidad" required placeholder="Peruana" value="{{ seleccion_cliente.nacionalidad if seleccion_cliente else '' }}">
+    </fieldset>
+
+    <fieldset id="bloque-juridica" {% if not (seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA') %}style="display:none" disabled{% endif %}>
+      <legend>Persona jurídica</legend>
+      <label for="cliente_ruc">RUC</label>
+      <input type="text" name="ruc" id="cliente_ruc" required placeholder="20123456789" pattern="[0-9]{11}" value="{{ seleccion_cliente.ruc if seleccion_cliente else '' }}">
+      <label for="cliente_razon_social">Razón social</label>
+      <input type="text" name="razon_social" id="cliente_razon_social" required value="{{ seleccion_cliente.razon_social if seleccion_cliente else '' }}">
+      <label for="cliente_nombre_comercial">Nombre comercial <span class="optional">(opcional)</span></label>
+      <input type="text" name="nombre_comercial" id="cliente_nombre_comercial" value="{{ seleccion_cliente.nombre_comercial if seleccion_cliente else '' }}">
+      <label for="cliente_representante_legal">Representante legal</label>
+      <input type="text" name="representante_legal" id="cliente_representante_legal" required value="{{ seleccion_cliente.representante_legal if seleccion_cliente else '' }}">
+      <label for="cliente_giro_negocio">Giro de negocio <span class="optional">(opcional)</span></label>
+      <input type="text" name="giro_negocio" id="cliente_giro_negocio" value="{{ seleccion_cliente.giro_negocio if seleccion_cliente else '' }}">
+    </fieldset>
+
+    <label for="cliente_observaciones">Observaciones del cliente <span class="optional">(opcional)</span></label>
+    <textarea name="observaciones" id="cliente_observaciones">{{ seleccion_cliente.observaciones if seleccion_cliente else '' }}</textarea>
+
+    <button type="submit" class="btn-secondary">Crear cliente</button>
+  </form>
+  </div>
+</details>
+
+<script>
+  (function () {
+    var formCliente = document.getElementById('formClienteNuevo');
+    if (!formCliente) { return; }
+
+    // Alterna visibilidad Y validación (fieldset disabled) del bloque
+    // natural/jurídica. Un <fieldset disabled> excluye a sus campos de la
+    // validación de constraints HTML5 y del envío del form; sin esto, los
+    // campos required del bloque oculto bloqueaban el submit en silencio.
+    var tipoSelect = document.getElementById('cliente_tipo');
+    var bloqueNatural = document.getElementById('bloque-natural');
+    var bloqueJuridica = document.getElementById('bloque-juridica');
+    if (tipoSelect && bloqueNatural && bloqueJuridica) {
+      var sincronizarBloqueCliente = function () {
+        var esNatural = tipoSelect.value === 'NATURAL';
+        bloqueNatural.style.display = esNatural ? 'block' : 'none';
+        bloqueNatural.disabled = !esNatural;
+        bloqueJuridica.style.display = esNatural ? 'none' : 'block';
+        bloqueJuridica.disabled = esNatural;
+      };
+      tipoSelect.addEventListener('change', sincronizarBloqueCliente);
+      sincronizarBloqueCliente();
+    }
+
+    var mapeo = {
+      draft_canal: 'reserva_canal',
+      draft_fecha_checkin: 'reserva_fecha_checkin',
+      draft_fecha_checkout: 'reserva_fecha_checkout',
+      draft_fecha_limite_pago: 'reserva_fecha_limite_pago',
+      draft_id_cliente_contacto: 'reserva_id_cliente_contacto',
+      draft_observaciones: 'reserva_observaciones'
+    };
+    formCliente.addEventListener('submit', function () {
+      Object.keys(mapeo).forEach(function (nombreOculto) {
+        var origen = document.getElementById(mapeo[nombreOculto]);
+        var destino = formCliente.querySelector('input[name="' + nombreOculto + '"]');
+        if (origen && destino) { destino.value = origen.value; }
+      });
+    });
+  })();
+</script>
+{% endblock %}

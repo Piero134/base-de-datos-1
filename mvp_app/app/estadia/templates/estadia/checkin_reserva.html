@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Check-in reserva #{{ reserva.id_reserva }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="{{ url_for('estadia.checkin_listado') }}">Check-in</a> &rsaquo; <span class="current">Reserva #{{ reserva.id_reserva }}</span>
+  </div>
+  <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
+  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}</p>
+</div>
+
+{% if completo %}
+<p class="alert alert-success">✓ Check-in completo: ya se asignó habitación a todas las líneas de esta reserva.</p>
+{% endif %}
+
+{% for l in lineas %}
+<div class="card">
+  <h2>Línea #{{ l.id_detalle_reserva }} — {{ l.tipo_habitacion }} (x{{ l.cantidad_habitaciones }})</h2>
+
+  {% if l.asignadas %}
+  <p><strong>Ya asignadas ({{ l.asignadas|length }} de {{ l.cantidad_habitaciones }}):</strong></p>
+  <ul>
+    {% for a in l.asignadas %}
+    <li>N° {{ a.numero }} (piso {{ a.piso }}) — <a href="{{ url_for('estadia.ver', id_alojamiento=a.id_alojamiento) }}">ver alojamiento →</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if l.pendientes > 0 %}
+  {% set habitaciones = habitaciones_por_tipo.get(l.id_detalle_reserva) %}
+  <p class="subtitle">Faltan {{ l.pendientes }} habitación(es) de este tipo por asignar.</p>
+  {% if habitaciones %}
+  <form method="post" action="{{ url_for('estadia.checkin_post') }}">
+    <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
+    <input type="hidden" name="id_detalle_reserva" value="{{ l.id_detalle_reserva }}">
+    <label for="id_habitacion_{{ l.id_detalle_reserva }}">Habitación disponible</label>
+    <select name="id_habitacion" id="id_habitacion_{{ l.id_detalle_reserva }}" required data-searchable="Buscar habitación por número o piso…">
+      {% for h in habitaciones %}
+        <option value="{{ h.id_habitacion }}">N° {{ h.numero }} (piso {{ h.piso }})</option>
+      {% endfor %}
+    </select>
+    {# invoca sp_realizar_checkin #}
+    <button type="submit">Realizar check-in</button>
+  </form>
+  {% else %}
+  <p class="empty-state">No hay habitaciones físicas disponibles de este tipo en este momento. Vuelve a intentarlo más tarde o revisa disponibilidad en otro hotel/tipo.</p>
+  {% endif %}
+  {% else %}
+  <p class="badge badge-good">✓ Línea completa</p>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if completo %}
+<p class="actions">
+  <a href="{{ url_for('estadia.activos') }}" class="btn-primary-link">Ir a estadías activas →</a>
+</p>
+{% endif %}
+{% endblock %}

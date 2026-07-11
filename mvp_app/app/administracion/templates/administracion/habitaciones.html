@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Habitaciones{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Habitaciones — {{ session.get('nombre_hotel') }}</h1>
+  <p class="subtitle">{{ filas|length }} habitación{{ 'es' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Tipo</th><th>N°</th><th>Piso</th><th>Estado</th><th>Cambiar estado</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.tipo }}</td><td>{{ f.numero }}</td><td>{{ f.piso }}</td>
+    <td><span class="badge {{ f.estado|badge_class }}">{{ f.estado }}</span></td>
+    <td>
+      <form method="post" action="{{ url_for('administracion.habitacion_estado', id_habitacion=f.id_habitacion) }}"
+            class="inline-form" data-confirm="¿Cambiar el estado de la habitación {{ f.numero }}?">
+        <label class="sr-only" for="estado_{{ f.id_habitacion }}">Nuevo estado para la habitación {{ f.numero }}</label>
+        <select name="estado" id="estado_{{ f.id_habitacion }}">
+          <option value="DISPONIBLE" {% if f.estado == 'DISPONIBLE' %}selected{% endif %}>DISPONIBLE</option>
+          <option value="RESERVADA" {% if f.estado == 'RESERVADA' %}selected{% endif %}>RESERVADA</option>
+          <option value="OCUPADA" {% if f.estado == 'OCUPADA' %}selected{% endif %}>OCUPADA</option>
+          <option value="LIMPIEZA" {% if f.estado == 'LIMPIEZA' %}selected{% endif %}>LIMPIEZA</option>
+        </select>
+        {# invoca sp_cambiar_estado_habitacion #}
+        <button type="submit" class="btn-secondary">Actualizar</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay habitaciones registradas.</p>
+{% endif %}
+
+<h2>Nueva habitación</h2>
+<form class="card" method="post">
+  <label for="hab_id_tipo_habitacion">Tipo</label>
+  <select name="id_tipo_habitacion" id="hab_id_tipo_habitacion" required>
+    {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
+  </select>
+  <label for="hab_numero">Número</label>
+  <input type="text" name="numero" id="hab_numero" required value="{{ seleccion.numero if seleccion else '' }}">
+  <label for="hab_piso">Piso</label>
+  <input type="number" name="piso" id="hab_piso" required value="{{ seleccion.piso if seleccion else '' }}">
+  <label for="hab_descripcion">Descripción <span class="optional">(opcional)</span></label>
+  <textarea name="descripcion" id="hab_descripcion">{{ seleccion.descripcion if seleccion else '' }}</textarea>
+  <button type="submit">Crear habitación</button>
+</form>
+{% endblock %}

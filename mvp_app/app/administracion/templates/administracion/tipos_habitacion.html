@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Tipos de habitación{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Tipos de habitación</h1>
+  <p class="subtitle">{{ filas|length }} tipo{{ 's' if filas|length != 1 }} registrado{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombre</th><th>Capacidad base</th><th>Descripción</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr><td>{{ f.nombre }}</td><td>{{ f.capacidad_base }}</td><td>{{ f.descripcion or '—' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay tipos de habitación registrados.</p>
+{% endif %}
+
+<h2>Nuevo tipo de habitación</h2>
+<form class="card" method="post">
+  <label for="th_nombre">Nombre</label>
+  <input type="text" name="nombre" id="th_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+  <label for="th_capacidad_base">Capacidad base</label>
+  <input type="number" name="capacidad_base" id="th_capacidad_base" min="1" required value="{{ seleccion.capacidad_base if seleccion else '' }}">
+  <label for="th_descripcion">Descripción <span class="optional">(opcional)</span></label>
+  <textarea name="descripcion" id="th_descripcion">{{ seleccion.descripcion if seleccion else '' }}</textarea>
+  <button type="submit">Crear tipo</button>
+</form>
+{% endblock %}

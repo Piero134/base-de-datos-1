@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Tarifas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Tarifas por tipo de habitación y plan</h1>
+  <p class="subtitle">{{ filas|length }} tarifa{{ 's' if filas|length != 1 }} configurada{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Plan</th><th>Tipo habitación</th><th>Precio/noche</th><th>Capacidad máxima</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr><td>{{ f.plan }}</td><td>{{ f.tipo_habitacion }}</td><td class="money">S/ {{ f.precio_por_noche }}</td><td>{{ f.capacidad_maxima }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay tarifas configuradas.</p>
+{% endif %}
+
+<h2>Nueva tarifa</h2>
+<form class="card" method="post">
+  <label for="tar_id_plan">Plan tarifario</label>
+  <select name="id_plan" id="tar_id_plan" required>
+    {% for p in planes %}<option value="{{ p.id_plan }}" {% if seleccion and seleccion.id_plan|string == p.id_plan|string %}selected{% endif %}>{{ p.nombre }}</option>{% endfor %}
+  </select>
+  <label for="tar_id_tipo_habitacion">Tipo de habitación</label>
+  <select name="id_tipo_habitacion" id="tar_id_tipo_habitacion" required>
+    {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
+  </select>
+  <label for="tar_precio_por_noche">Precio por noche</label>
+  <input type="number" step="0.01" min="0" name="precio_por_noche" id="tar_precio_por_noche" required value="{{ seleccion.precio_por_noche if seleccion else '' }}">
+  <label for="tar_capacidad_maxima">Capacidad máxima</label>
+  <input type="number" min="1" name="capacidad_maxima" id="tar_capacidad_maxima" required value="{{ seleccion.capacidad_maxima if seleccion else '' }}">
+  <button type="submit">Crear tarifa</button>
+</form>
+{% endblock %}

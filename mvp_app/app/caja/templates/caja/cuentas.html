@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Cuentas por cobrar{% endblock %}
+{% block content %}
+<div class="page-header">
+  {{ crumbs.breadcrumb([{"label": "Caja", "url": None}]) }}
+  <h1>Cuentas por cobrar</h1>
+  <p class="subtitle">{{ filas|length }} cuenta{{ 's' if filas|length != 1 }} {{ 'con estado ' + estado if estado else 'en total' }}.</p>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('caja.generar_cuenta_form') }}">+ Generar cuenta por cobrar</a>
+  <a href="{{ url_for('caja.cuentas') }}" class="btn-secondary{{ ' is-current' if not estado }}">Todas</a>
+  <a href="{{ url_for('caja.cuentas', estado='PENDIENTE') }}" class="btn-secondary{{ ' is-current' if estado == 'PENDIENTE' }}">Pendientes</a>
+  <a href="{{ url_for('caja.cuentas', estado='PAGADA') }}" class="btn-secondary{{ ' is-current' if estado == 'PAGADA' }}">Pagadas</a>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ID</th><th>Alojamiento</th><th>Estado</th><th>Subtotal</th><th>Impuestos</th><th>Total</th><th>Pagado</th><th>Saldo</th><th></th></tr></thead>
+  <tbody>
+  {% for c in filas %}
+  <tr>
+    <td>#{{ c.id_cuenta }}</td>
+    <td>#{{ c.id_alojamiento }}</td>
+    <td><span class="badge {{ c.estado_cuenta|badge_class }}">{{ c.estado_cuenta }}</span></td>
+    <td class="money">S/ {{ c.subtotal }}</td>
+    <td class="money">S/ {{ c.impuestos }}</td>
+    <td class="money">S/ {{ c.total }}</td>
+    <td class="money">S/ {{ c.ya_pagado }}</td>
+    <td class="money">S/ {{ c.saldo_pendiente }}</td>
+    <td class="actions"><a href="{{ url_for('caja.ver_cuenta', id_cuenta=c.id_cuenta) }}">Ver</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">
+  {% if estado %}No hay cuentas con estado {{ estado }}.{% else %}Todavía no hay cuentas por cobrar generadas.{% endif %}
+</p>
+{% endif %}
+{% endblock %}

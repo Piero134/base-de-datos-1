@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Disponibilidad{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Consultar disponibilidad</h1>
+  <p class="subtitle">Disponibilidad real en {{ session.get('nombre_hotel') }}, por tipo de habitación y rango de fechas.</p>
+</div>
+
+<form class="card" method="post" action="{{ url_for('disponibilidad.buscar_post') }}">
+  <label for="id_tipo_habitacion">Tipo de habitación</label>
+  <select name="id_tipo_habitacion" id="id_tipo_habitacion" required>
+    {% for t in tipos %}
+      <option value="{{ t.id_tipo_habitacion }}"
+        {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>
+        {{ t.nombre }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <label for="fecha_checkin">Check-in</label>
+  <input type="date" name="fecha_checkin" id="fecha_checkin" required value="{{ seleccion.fecha_checkin if seleccion else '' }}">
+
+  <label for="fecha_checkout">Check-out</label>
+  <input type="date" name="fecha_checkout" id="fecha_checkout" required value="{{ seleccion.fecha_checkout if seleccion else '' }}">
+
+  {# invoca fn_disponibilidad_tipo_habitacion #}
+  <button type="submit">Consultar disponibilidad real</button>
+</form>
+
+{% if resultado is not none %}
+  <div class="card" role="status">
+    <strong>Habitaciones disponibles en el rango solicitado:</strong> {{ resultado }}
+  </div>
+{% endif %}
+
+<h2>Estado puntual de habitaciones</h2>
+{% if disponibles %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Hotel</th><th>N°</th><th>Piso</th><th>Tipo</th><th>Capacidad base</th></tr></thead>
+  <tbody>
+  {% for d in disponibles %}
+  <tr>
+    <td>{{ d.hotel }}</td>
+    <td>{{ d.numero }}</td>
+    <td>{{ d.piso }}</td>
+    <td>{{ d.tipo }}</td>
+    <td>{{ d.capacidad_base }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay habitaciones disponibles en este momento para el hotel seleccionado.</p>
+{% endif %}
+{% endblock %}

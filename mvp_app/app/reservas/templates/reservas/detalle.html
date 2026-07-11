@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Detalle reserva #{{ reserva.id_reserva }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  {{ crumbs.breadcrumb(pasos) }}
+  <h1>Reserva #{{ reserva.id_reserva }} — {{ reserva.hotel }}</h1>
+  <p class="subtitle">Agrega una o más líneas (tipo de habitación) antes de confirmar el pago.</p>
+</div>
+
+<div class="card card--readonly">
+  <p><strong>Reservante:</strong> {{ reserva.nombre_reservante }} ({{ reserva.tipo_persona }})</p>
+  <p><strong>Estado:</strong> <span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span>
+     — <strong>Pagado:</strong> <span class="badge {{ 'badge-good' if reserva.pagado else 'badge-warning' }}">{{ 'Sí' if reserva.pagado else 'No' }}</span></p>
+  <p><strong>Check-in:</strong> {{ reserva.fecha_checkin }} — <strong>Check-out:</strong> {{ reserva.fecha_checkout }} ({{ reserva.noches }} noches)</p>
+  <p><strong>Monto total:</strong> S/ {{ reserva.monto_total }}</p>
+</div>
+
+<h2>Líneas de la reserva</h2>
+{% if lineas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Tipo habitación</th><th>Plan</th><th>Cantidad</th><th>Precio/noche</th><th>Subtotal</th></tr></thead>
+  <tbody>
+  {% for l in lineas %}
+  <tr>
+    <td>{{ l.tipo_habitacion }}</td>
+    <td>{{ l.plan }}</td>
+    <td>{{ l.cantidad_habitaciones }}</td>
+    <td class="money">S/ {{ l.precio_unitario }}</td>
+    <td class="money">S/ {{ l.subtotal }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="actions">
+  <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+</p>
+{% else %}
+<p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa el formulario de abajo para agregar la primera antes de poder continuar a pago.</p>
+{% endif %}
+
+{% if reserva.tipo_persona == 'JURIDICA' %}
+<p class="actions">
+  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Pre-asignar huéspedes (corporativo) →</a>
+</p>
+{% else %}
+<p class="subtitle">La pre-asignación de huéspedes solo aplica a reservas corporativas (cliente jurídico); esta reserva es de un cliente natural, así que los huéspedes se registran directamente en el check-in.</p>
+{% endif %}
+<p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
+
+<h2>Agregar línea</h2>
+<form class="card" method="post" action="{{ url_for('reservas.agregar_detalle', id_reserva=reserva.id_reserva) }}">
+  <label for="det_id_tipo_habitacion">Tipo de habitación</label>
+  <select name="id_tipo_habitacion" id="det_id_tipo_habitacion" required>
+    {% for t in tipos %}
+      <option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="det_id_plan">Plan tarifario <span class="optional">(deja vacío para autodetectar por fecha)</span></label>
+  <select name="id_plan" id="det_id_plan">
+    <option value="">-- Autodetectar (solo planes públicos) --</option>
+    {% for p in planes %}
+      <option value="{{ p.id_plan }}" {% if seleccion and seleccion.id_plan|string == p.id_plan|string %}selected{% endif %}>{{ p.nombre }}{{ ' (corporativo)' if not p.es_publico else '' }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="det_cantidad_habitaciones">Cantidad de habitaciones</label>
+  <input type="number" name="cantidad_habitaciones" id="det_cantidad_habitaciones" min="1" value="{{ seleccion.cantidad_habitaciones if seleccion else 1 }}" required>
+
+  {# invoca sp_agregar_detalle_reserva #}
+  <button type="submit">Agregar línea</button>
+</form>
+{% endblock %}
