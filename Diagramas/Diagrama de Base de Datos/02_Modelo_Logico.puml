@@ -1,0 +1,339 @@
+@startuml 02_Modelo_Logico
+
+' =============================================================
+'  MODELO LÓGICO (Esquema Relacional)
+'  Tablas, campos, tipos de dato y claves primarias/foráneas,
+'  ya independiente del SGBD específico. Corresponde 1:1 con
+'  01_Creacion_Tablas.sql + 02_Reglas_Integridad.sql.
+' =============================================================
+
+hide circle
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor #333333
+    AttributeFontSize 12
+}
+
+entity "ubigeo" as ubigeo {
+  * id_ubigeo : INT <<PK>>
+  --
+  codigo : VARCHAR(6)
+  departamento : VARCHAR(60)
+  provincia : VARCHAR(60)
+  distrito : VARCHAR(60)
+}
+
+entity "hotel" as hotel {
+  * id_hotel : INT <<PK>>
+  --
+  nombre : VARCHAR(120)
+  direccion : VARCHAR(200)
+  telefono : VARCHAR(20)
+  email : VARCHAR(100)
+  # id_ubigeo : INT <<FK>>
+  activo : TINYINT(1)
+}
+
+entity "cargo_empleado" as cargo_empleado {
+  * id_cargo : INT <<PK>>
+  --
+  nombre : VARCHAR(80)
+}
+
+entity "empleado" as empleado {
+  * id_empleado : INT <<PK>>
+  --
+  # id_hotel : INT <<FK>>
+  # id_cargo : INT <<FK>>
+  nombres : VARCHAR(100)
+  apellidos : VARCHAR(100)
+  activo : TINYINT(1)
+}
+
+entity "tipo_documento" as tipo_documento {
+  * id_tipo_documento : INT <<PK>>
+  --
+  nombre : VARCHAR(60)
+  abreviatura : VARCHAR(10)
+}
+
+entity "persona" as persona {
+  * id_persona : INT <<PK>>
+  --
+  tipo : ENUM('NATURAL','JURIDICA')
+  telefono : VARCHAR(20)
+  email : VARCHAR(100)
+  # id_ubigeo : INT <<FK>>
+  activo : TINYINT(1)
+}
+
+entity "persona_natural" as persona_natural {
+  * id_persona : INT <<PK,FK>>
+  --
+  # id_tipo_documento : INT <<FK>>
+  numero_documento : VARCHAR(20)
+  nombres : VARCHAR(100)
+  apellidos : VARCHAR(100)
+  fecha_nacimiento : DATE
+  genero : ENUM('M','F','OTRO')
+  nacionalidad : VARCHAR(60)
+}
+
+entity "persona_juridica" as persona_juridica {
+  * id_persona : INT <<PK,FK>>
+  --
+  ruc : VARCHAR(11)
+  razon_social : VARCHAR(150)
+  nombre_comercial : VARCHAR(150)
+  representante_legal : VARCHAR(150)
+  giro_negocio : VARCHAR(100)
+}
+
+entity "cliente" as cliente {
+  * id_cliente : INT <<PK>>
+  --
+  # id_persona : INT <<FK>>
+  observaciones : TEXT
+}
+
+entity "huesped" as huesped {
+  * id_huesped : INT <<PK>>
+  --
+  # id_tipo_documento : INT <<FK>> (NULL)
+  numero_documento : VARCHAR(20) (NULL)
+  nombres : VARCHAR(100)
+  apellidos : VARCHAR(100) (NULL)
+  fecha_nacimiento : DATE (NULL)
+  genero : ENUM('M','F','OTRO') (NULL)
+  nacionalidad : VARCHAR(60) (NULL)
+  telefono : VARCHAR(20)
+  email : VARCHAR(100)
+  es_generico : TINYINT(1)
+  activo : TINYINT(1)
+}
+
+entity "tipo_habitacion" as tipo_habitacion {
+  * id_tipo_habitacion : INT <<PK>>
+  --
+  nombre : VARCHAR(60)
+  capacidad_base : TINYINT
+  descripcion : TEXT
+}
+
+entity "habitacion" as habitacion {
+  * id_habitacion : INT <<PK>>
+  --
+  # id_hotel : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  estado : ENUM('DISPONIBLE','RESERVADA','OCUPADA','LIMPIEZA')
+  numero : VARCHAR(10)
+  piso : TINYINT
+  descripcion : TEXT
+}
+
+entity "plan_tarifa" as plan_tarifa {
+  * id_plan : INT <<PK>>
+  --
+  nombre : VARCHAR(80)
+  descripcion : TEXT
+  fecha_inicio : DATE
+  fecha_fin : DATE
+  es_publico : TINYINT(1)
+  activo : TINYINT(1)
+}
+
+entity "tarifa_habitacion" as tarifa_habitacion {
+  * id_tarifa : INT <<PK>>
+  --
+  # id_plan : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  precio_por_noche : DECIMAL(10,2)
+  capacidad_maxima : TINYINT
+}
+
+entity "estado_reserva" as estado_reserva {
+  * id_estado_reserva : INT <<PK>>
+  --
+  nombre : VARCHAR(30)
+}
+
+entity "reserva" as reserva {
+  * id_reserva : INT <<PK>>
+  --
+  # id_cliente : INT <<FK>>
+  # id_hotel : INT <<FK>>
+  # id_estado_reserva : INT <<FK>>
+  # id_empleado : INT <<FK>> (NULL)
+  # id_cliente_contacto : INT <<FK>> (NULL)
+  canal : ENUM('DIRECTO','WEB','TELEFONO','AGENCIA','OTA')
+  fecha_reserva : DATETIME
+  fecha_checkin : DATE
+  fecha_checkout : DATE
+  fecha_limite_pago : DATE
+  pagado : TINYINT(1)
+  fecha_pago : DATETIME
+  monto_total : DECIMAL(12,2)
+  observaciones : TEXT
+}
+
+entity "reserva_detalle" as reserva_detalle {
+  * id_detalle_reserva : INT <<PK>>
+  --
+  # id_reserva : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  # id_plan : INT <<FK>>
+  cantidad_habitaciones : TINYINT
+  precio_unitario : DECIMAL(10,2)
+  subtotal : DECIMAL(12,2)
+}
+
+entity "detalle_huesped_reserva" as detalle_huesped_reserva {
+  * id_detalle_huesped : INT <<PK>>
+  --
+  # id_detalle_reserva : INT <<FK>>
+  # id_huesped : INT <<FK>>
+  es_titular : TINYINT(1)
+}
+
+entity "alojamiento" as alojamiento {
+  * id_alojamiento : INT <<PK>>
+  --
+  # id_reserva : INT <<FK>>
+  # id_detalle_reserva : INT <<FK>>
+  # id_habitacion : INT <<FK>>
+  estado : ENUM('ACTIVO','FINALIZADO','CANCELADO')
+  # id_empleado_checkin : INT <<FK>>
+  # id_empleado_checkout : INT <<FK>> (NULL)
+  fecha_checkin_real : DATETIME
+  fecha_checkout_real : DATETIME (NULL)
+}
+
+entity "huesped_alojamiento" as huesped_alojamiento {
+  * id_alojamiento : INT <<PK,FK>>
+  * id_huesped : INT <<PK,FK>>
+  --
+  # id_detalle_huesped : INT <<FK>> (NULL)
+  es_titular : TINYINT(1)
+  fecha_registro : DATETIME
+  fecha_salida_real : DATETIME (NULL)
+}
+
+entity "servicio" as servicio {
+  * id_servicio : INT <<PK>>
+  --
+  nombre : VARCHAR(100)
+  categoria : VARCHAR(60)
+  precio_unitario : DECIMAL(10,2)
+  activo : TINYINT(1)
+}
+
+entity "consumo_servicio" as consumo_servicio {
+  * id_consumo : INT <<PK>>
+  --
+  # id_alojamiento : INT <<FK>>
+  # id_servicio : INT <<FK>>
+  cantidad : TINYINT
+  precio_unitario : DECIMAL(10,2)
+  subtotal : DECIMAL(12,2)
+  fecha_consumo : DATETIME
+}
+
+entity "danio" as danio {
+  * id_danio : INT <<PK>>
+  --
+  # id_alojamiento : INT <<FK>>
+  descripcion : TEXT
+  costo : DECIMAL(10,2)
+  fecha_reporte : DATETIME
+  estado : ENUM('PENDIENTE','COBRADO','DISPENSADO')
+}
+
+entity "cuenta_cobrar" as cuenta_cobrar {
+  * id_cuenta : INT <<PK>>
+  --
+  # id_alojamiento : INT <<FK>>
+  fecha_generacion : DATETIME
+  subtotal : DECIMAL(12,2)
+  impuestos : DECIMAL(12,2)
+  total : DECIMAL(12,2)
+  saldo : DECIMAL(12,2)
+  estado : ENUM('PENDIENTE','PAGADA')
+}
+
+entity "cuenta_cobrar_detalle" as cuenta_cobrar_detalle {
+  * id_detalle_cuenta : INT <<PK>>
+  --
+  # id_cuenta : INT <<FK>>
+  concepto : VARCHAR(150)
+  cantidad : TINYINT
+  precio_unitario : DECIMAL(10,2)
+  subtotal : DECIMAL(12,2)
+}
+
+entity "pago_cuenta_cobrar" as pago_cuenta_cobrar {
+  * id_pago : INT <<PK>>
+  --
+  # id_cuenta : INT <<FK>>
+  monto : DECIMAL(12,2)
+  metodo_pago : ENUM('EFECTIVO','TARJETA','TRANSFERENCIA','YAPE_PLIN')
+  fecha_pago : DATETIME
+  # id_empleado : INT <<FK>> (NULL)
+}
+
+' =============================================================
+'  RELACIONES (con cardinalidad y FK)
+' =============================================================
+
+ubigeo          ||--o{ hotel                    : id_ubigeo
+ubigeo          ||--o{ persona                  : id_ubigeo
+
+hotel           ||--o{ empleado                 : id_hotel
+cargo_empleado  ||--o{ empleado                 : id_cargo
+
+hotel           ||--o{ habitacion               : id_hotel
+tipo_habitacion ||--o{ habitacion               : id_tipo_habitacion
+tipo_habitacion ||--o{ tarifa_habitacion        : id_tipo_habitacion
+plan_tarifa     ||--o{ tarifa_habitacion        : id_plan
+
+persona         ||--o{ persona_natural          : id_persona (1:1)
+persona         ||--o{ persona_juridica         : id_persona (1:1)
+tipo_documento  ||--o{ persona_natural          : id_tipo_documento
+tipo_documento  ||--o{ huesped                  : id_tipo_documento
+persona         ||--o{ cliente                  : id_persona
+
+hotel           ||--o{ reserva                  : id_hotel
+cliente         ||--o{ reserva                  : id_cliente
+cliente         ||--o{ reserva                  : id_cliente_contacto
+empleado        ||--o{ reserva                  : id_empleado
+estado_reserva  ||--o{ reserva                  : id_estado_reserva
+
+reserva         ||--o{ reserva_detalle          : id_reserva
+tipo_habitacion ||--o{ reserva_detalle          : id_tipo_habitacion
+plan_tarifa     ||--o{ reserva_detalle          : id_plan
+
+reserva_detalle ||--o{ detalle_huesped_reserva  : id_detalle_reserva
+huesped         ||--o{ detalle_huesped_reserva  : id_huesped
+
+reserva         ||--o{ alojamiento              : id_reserva
+reserva_detalle ||--o{ alojamiento              : id_detalle_reserva
+habitacion      ||--o{ alojamiento              : id_habitacion
+empleado        ||--o{ alojamiento              : id_empleado_checkin
+empleado        ||--o{ alojamiento              : id_empleado_checkout
+
+alojamiento     ||--o{ huesped_alojamiento      : id_alojamiento
+huesped         ||--o{ huesped_alojamiento      : id_huesped
+detalle_huesped_reserva ||..o{ huesped_alojamiento : id_detalle_huesped (opcional)
+
+alojamiento     ||--o{ consumo_servicio         : id_alojamiento
+servicio        ||--o{ consumo_servicio         : id_servicio
+
+alojamiento     ||--o{ danio                    : id_alojamiento
+
+alojamiento     ||--o{ cuenta_cobrar            : id_alojamiento
+cuenta_cobrar   ||--o{ cuenta_cobrar_detalle    : id_cuenta
+cuenta_cobrar   ||--o{ pago_cuenta_cobrar       : id_cuenta
+empleado        ||--o{ pago_cuenta_cobrar       : id_empleado
+
+@enduml

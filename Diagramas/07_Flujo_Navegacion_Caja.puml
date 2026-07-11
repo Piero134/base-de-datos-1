@@ -1,0 +1,65 @@
+@startuml 07_Flujo_Navegacion_Caja
+
+' =============================================================
+'  Flujo de NAVEGACIÓN (pantallas Flask) del módulo Caja, más el
+'  cambio de rol de la capa base (auth). Complementa
+'  04_Flujo_MVP_Secuencia.puml (llamadas SQL).
+' =============================================================
+
+title ANTES (AS-IS) — cambio de rol y nav activo rotos
+
+start
+:Recepcionista termina el checkout\nde una habitación;
+:Para pasar a Caja, debe\ncerrar sesión (logout);
+note right
+  ⚠ session.clear() borra
+  id_empleado/nombre/id_hotel;
+  hay que volver a loguear
+  eligiendo el mismo empleado
+end note
+:Login otra vez, ahora\ncon rol CAJA;
+:Cuentas por cobrar (listado);
+note right
+  ⚠ el único link de menú "Cuentas por
+  cobrar" no se marca activo en
+  generar_cuenta_form ni en ver_cuenta
+  (comparación de endpoint exacto)
+end note
+:Generar cuenta por cobrar;
+:Ver cuenta -> registrar pago\n(parcial o total);
+note right
+  ✓ esto ya funciona bien: saldo
+  visible, input con max, se puede
+  volver a pagar sin salir de pantalla
+end note
+stop
+
+@enduml
+
+@startuml 07_Flujo_Navegacion_Caja_DESPUES
+
+title DESPUÉS (TO-BE) — flujo corregido
+
+start
+:Recepcionista termina el checkout\nde una habitación;
+:Cambia de rol a CAJA con el\nselector del header (sin logout);
+note right
+  POST /auth/rol solo actualiza
+  session["rol"]; id_empleado,
+  nombre_empleado e id_hotel
+  se mantienen intactos
+end note
+:Cuentas por cobrar (listado);
+note right
+  El link "Cuentas por cobrar" ahora
+  se marca activo en cualquier pantalla
+  del blueprint caja (match por
+  blueprint, no por endpoint exacto)
+end note
+:Generar cuenta por cobrar;
+note right: CALL sp_generar_cuenta_cobrar
+:Ver cuenta -> registrar pago\n(parcial o total, sin cambios\n— este patrón ya era bueno);
+note right: CALL sp_registrar_pago_cuenta
+stop
+
+@enduml

@@ -1,0 +1,217 @@
+@startuml 01_Modelo_Conceptual
+
+' =============================================================
+'  MODELO CONCEPTUAL (Diagrama Entidad-Relación)
+'  Proyecto: Sistema de gestión de reservas y estadías para una
+'            cadena de hoteles turísticos.
+'  Nivel conceptual: solo entidades, atributos identificadores/
+'  clave y relaciones con su cardinalidad. Sin tipos de dato ni
+'  detalles de implementación (eso va en el modelo lógico/físico).
+' =============================================================
+
+hide circle
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+' ---------- Geografía y organización ----------
+entity Ubigeo {
+  * departamento
+  * provincia
+  * distrito
+}
+
+entity Hotel {
+  * nombre
+  * direccion
+}
+
+entity CargoEmpleado {
+  * nombre
+}
+
+entity Empleado {
+  * nombres
+  * apellidos
+}
+
+' ---------- Personas (facturación) ----------
+entity TipoDocumento {
+  * nombre
+  * abreviatura
+}
+
+entity Persona {
+  * tipo (NATURAL / JURIDICA)
+}
+
+entity PersonaNatural {
+  * numero_documento
+  * nombres, apellidos
+  * fecha_nacimiento
+}
+
+entity PersonaJuridica {
+  * ruc
+  * razon_social
+}
+
+entity Cliente {
+  * observaciones
+}
+
+' ---------- Huésped (quien se aloja) ----------
+entity Huesped {
+  * nombres
+  * numero_documento
+  * es_generico
+}
+
+' ---------- Habitaciones y tarifas ----------
+entity TipoHabitacion {
+  * nombre
+  * capacidad_base
+}
+
+entity Habitacion {
+  * numero
+  * piso
+  * estado
+}
+
+entity PlanTarifa {
+  * nombre
+  * vigencia (inicio/fin)
+  * es_publico
+}
+
+entity TarifaHabitacion {
+  * precio_por_noche
+}
+
+' ---------- Reserva ----------
+entity EstadoReserva {
+  * nombre
+}
+
+entity Reserva {
+  * canal
+  * fecha_checkin / checkout
+  * monto_total
+  * pagado
+}
+
+entity ReservaDetalle {
+  * cantidad_habitaciones
+  * subtotal
+}
+
+entity DetalleHuespedReserva {
+  * es_titular
+}
+
+' ---------- Alojamiento (ocupación real) ----------
+entity Alojamiento {
+  * estado
+  * fecha_checkin_real
+  * fecha_checkout_real
+}
+
+entity HuespedAlojamiento {
+  * es_titular
+  * fecha_salida_real
+}
+
+' ---------- Servicios, daños y cobros ----------
+entity Servicio {
+  * nombre
+  * categoria
+  * precio_unitario
+}
+
+entity ConsumoServicio {
+  * cantidad
+  * subtotal
+}
+
+entity Danio {
+  * descripcion
+  * costo
+  * estado
+}
+
+entity CuentaCobrar {
+  * total
+  * saldo
+  * estado
+}
+
+entity CuentaCobrarDetalle {
+  * concepto
+  * subtotal
+}
+
+entity PagoCuentaCobrar {
+  * monto
+  * metodo_pago
+}
+
+' =============================================================
+'  RELACIONES
+' =============================================================
+
+Ubigeo ||--o{ Hotel               : ubicado en
+Ubigeo ||--o{ Persona             : reside en
+
+Hotel  ||--o{ Empleado            : emplea
+CargoEmpleado ||--o{ Empleado     : clasifica
+
+Hotel  ||--o{ Habitacion          : posee
+TipoHabitacion ||--o{ Habitacion  : clasifica
+TipoHabitacion ||--o{ TarifaHabitacion : tiene tarifa
+PlanTarifa ||--o{ TarifaHabitacion     : define
+
+' Supertipo / subtipo (generalización)
+Persona <|-- PersonaNatural
+Persona <|-- PersonaJuridica
+TipoDocumento ||--o{ PersonaNatural : identifica
+TipoDocumento ||--o{ Huesped        : identifica
+
+Persona ||--o{ Cliente            : es
+
+Hotel  ||--o{ Reserva             : recibe
+Cliente ||--o{ Reserva            : realiza / paga
+Cliente ||--o{ Reserva            : contacto alterno
+Empleado ||--o{ Reserva           : atiende
+EstadoReserva ||--o{ Reserva      : clasifica
+
+Reserva ||--o{ ReservaDetalle     : contiene
+TipoHabitacion ||--o{ ReservaDetalle : especifica
+PlanTarifa ||--o{ ReservaDetalle  : aplica a
+
+ReservaDetalle ||--o{ DetalleHuespedReserva : preasigna
+Huesped ||--o{ DetalleHuespedReserva        : es preasignado en
+
+Reserva ||--o{ Alojamiento        : origina
+ReservaDetalle ||--o{ Alojamiento : concreta
+Habitacion ||--o{ Alojamiento     : es ocupada en
+Empleado ||--o{ Alojamiento       : hace check-in / check-out
+
+Alojamiento ||--o{ HuespedAlojamiento : hospeda
+Huesped ||--o{ HuespedAlojamiento     : ocupa
+DetalleHuespedReserva |o..o{ HuespedAlojamiento : trazabilidad (opcional)
+
+Alojamiento ||--o{ ConsumoServicio : genera
+Servicio ||--o{ ConsumoServicio    : es consumido en
+
+Alojamiento ||--o{ Danio          : puede tener
+
+Alojamiento ||--o{ CuentaCobrar   : genera
+CuentaCobrar ||--o{ CuentaCobrarDetalle : detalla
+CuentaCobrar ||--o{ PagoCuentaCobrar    : recibe
+Empleado ||--o{ PagoCuentaCobrar        : registra (caja)
+
+@enduml

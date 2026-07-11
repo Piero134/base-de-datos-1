@@ -1,0 +1,76 @@
+@startuml 06_Flujo_Navegacion_Estadia
+
+' =============================================================
+'  Flujo de NAVEGACIÓN (pantallas Flask) del módulo Estadía.
+'  Complementa 04_Flujo_MVP_Secuencia.puml (llamadas SQL) y
+'  05_Flujo_Navegacion_Reservas.puml (mismo enfoque, otro módulo).
+' =============================================================
+
+title ANTES (AS-IS) — check-in multi-habitación roto
+
+start
+:Listado de check-in\n(reservas CONFIRMADA);
+:Check-in de una reserva\n(una o más líneas);
+:Elegir habitación y\nrealizar check-in de la 1ra línea;
+:Alojamiento #N (ver.html);
+note right
+  ⚠ si la reserva tenía una 2da línea o
+  cantidad_habitaciones > 1, no hay forma
+  de continuar desde aquí: hay que volver
+  manualmente al listado y reabrir la
+  reserva a mano
+end note
+if (¿Quedan habitaciones\npor asignar?) then (sí)
+  :Recepcionista navega manualmente\nde vuelta al listado de check-in;
+else (no)
+endif
+:Consumos / daños / salida / checkout\n(todo en la misma pantalla);
+note right
+  ⚠ checkout sin mostrar el total de
+  consumos+daños antes de confirmar
+end note
+:Historial de estadías;
+note right
+  ⚠ pide un id_huesped numérico que
+  ninguna pantalla muestra visible
+end note
+stop
+
+@enduml
+
+@startuml 06_Flujo_Navegacion_Estadia_DESPUES
+
+title DESPUÉS (TO-BE) — flujo corregido
+
+start
+:Listado de check-in;
+:Check-in de una reserva;
+note right
+  Cada línea muestra "asignadas X de Y"
+  y "pendientes Z"; la BD (COUNT sobre
+  alojamiento) es la fuente de verdad
+end note
+:Elegir habitación y\nrealizar check-in de una unidad;
+note right: CALL sp_realizar_checkin
+:Vuelve a la MISMA pantalla\nde check-in de la reserva;
+if (¿Quedan habitaciones\npor asignar en esta reserva?) then (sí)
+  :Se repite: elegir habitación\npara la siguiente unidad/línea;
+else (no)
+  :"✓ Check-in completo" +\nlinks a cada alojamiento creado;
+endif
+:Alojamiento (ver.html);
+note right
+  Mini-índice de anclas: Huéspedes ·
+  Consumos · Daños · Salida/Checkout
+end note
+:Resumen de consumos + daños\npendientes antes de checkout;
+note right
+  Monto visible en pantalla y en el
+  mensaje de confirmación (data-confirm)
+end note
+:Checkout;
+note right: CALL sp_realizar_checkout
+:Ver historial de un huésped\n(link directo desde su fila\nen "Huéspedes", sin teclear ID);
+stop
+
+@enduml

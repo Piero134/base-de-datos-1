@@ -1,0 +1,93 @@
+@startuml 05_Flujo_Navegacion_Reservas
+
+' =============================================================
+'  Flujo de NAVEGACIÓN (pantallas Flask, no llamadas SQL) del
+'  módulo Reservas. Complementa 04_Flujo_MVP_Secuencia.puml, que
+'  documenta la secuencia a nivel de CALL sp_.../SELECT vw_...
+'  Este diagrama documenta el diagnóstico (ANTES) y el rediseño
+'  de usabilidad (DESPUÉS) a nivel de pantallas y redirects.
+' =============================================================
+
+title ANTES (AS-IS) — fricciones encontradas en la exploración
+
+start
+:Listado de reservas;
+:Nueva reserva (cabecera);
+if (¿Cliente ya existe?) then (no)
+  :Crear cliente (form aparte en la misma página);
+  note right
+    ⚠ redirige a "Nueva reserva" en blanco:
+    se pierde fechas/hotel/canal ya tecleados
+  end note
+  :Nueva reserva (cabecera, VACÍA otra vez);
+else (sí)
+endif
+:Crear reserva -> CALL sp_registrar_reserva;
+:Detalle de reserva;
+:Agregar línea (repetible);
+note right: botón "continuar" es solo\nun link de texto, fácil de perder
+if (¿Cliente jurídico?) then (sí)
+  :Pre-asignar huéspedes;
+  note right: el link solo aparece si es\njurídico, sin explicación si no
+else (no)
+  :(sin pista de por qué no hay\nopción de pre-asignar);
+endif
+:Confirmar pago;
+:Detalle de reserva;
+note right
+  ⚠ redirige a Detalle, no de vuelta a
+  Pago: no hay confirmación visible
+  en la pantalla donde se confirmó
+end note
+stop
+
+@enduml
+
+@startuml 05_Flujo_Navegacion_Reservas_DESPUES
+
+title DESPUÉS (TO-BE) — flujo corregido
+
+start
+:Listado de reservas;
+:Nueva reserva (cabecera);
+if (¿Cliente ya existe?) then (no)
+  :Crear cliente\n(mismo form, ahora con\ncampos ocultos draft_*);
+  note right
+    ✓ JS copia los valores de la
+    cabecera a campos ocultos antes
+    de enviar; el servidor los usa
+    para reconstruir seleccion_reserva
+  end note
+  :Nueva reserva (cabecera PRELLENADA,\ncliente recién creado ya seleccionado);
+  note right: CALL sp_registrar_reserva\nse dispara igual que antes
+else (sí)
+endif
+:Crear reserva;
+note right: CALL sp_registrar_reserva
+:Detalle de reserva;
+note right
+  Breadcrumb dinámico: Cabecera › Detalle
+  › Pago › Pre-asignación (este último
+  solo si tipo_persona = JURIDICA)
+end note
+:Agregar línea (repetible);
+note right: CALL sp_agregar_detalle_reserva
+:Botón primario "Continuar a pago"\n(visible, ya no un link perdido);
+if (¿Cliente jurídico?) then (sí)
+  :Pre-asignar huéspedes;
+  note right: CALL sp_agregar_huesped_alojamiento\n(vía detalle_huesped_reserva)
+else (no)
+  :Texto explicando que la\npre-asignación no aplica\n(cliente natural);
+endif
+:Confirmar pago;
+note right: CALL sp_confirmar_pago
+:Pago (misma pantalla);
+note right
+  ✓ redirige de vuelta a Pago:
+  estado "✓ Pago confirmado el <fecha>"
+  visible en el mismo lugar
+end note
+:Continuar a detalle;
+stop
+
+@enduml

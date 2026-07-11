@@ -1,0 +1,264 @@
+@startuml 03_Modelo_Fisico
+
+' =============================================================
+'  MODELO FÍSICO
+'  Motor: MySQL 8.0+ / MariaDB 10.11+ (InnoDB)
+'  Mismo esquema que 02_Modelo_Logico, pero con anotaciones de
+'  implementación física: motor de almacenamiento, charset,
+'  índices adicionales (más allá de PK/FK) y estrategia de
+'  particionamiento. Corresponde a 01_Creacion_Tablas.sql +
+'  02_Reglas_Integridad.sql ya ejecutados en el SGBD.
+' =============================================================
+
+hide circle
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor #333333
+    AttributeFontSize 12
+}
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor #999999
+}
+
+' ---------- Parámetros físicos globales ----------
+note as N_GLOBAL
+  <b>Parámetros físicos globales</b>
+  Motor de almacenamiento: InnoDB (todas las tablas)
+  Charset / Collation: utf8mb4 / utf8mb4_spanish_ci
+  Todas las FK generan automáticamente un índice secundario
+  sobre la columna referenciada (comportamiento de InnoDB).
+end note
+
+entity "hotel" as hotel {
+  * id_hotel : INT <<PK>> [AUTO_INCREMENT]
+  --
+  nombre : VARCHAR(120)
+  direccion : VARCHAR(200)
+  telefono : VARCHAR(20)
+  email : VARCHAR(100) <<UNIQUE>>
+  # id_ubigeo : INT <<FK>>
+  activo : TINYINT(1)
+}
+
+entity "empleado" as empleado {
+  * id_empleado : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_hotel : INT <<FK>>
+  # id_cargo : INT <<FK>>
+  nombres : VARCHAR(100)
+  apellidos : VARCHAR(100)
+  activo : TINYINT(1)
+}
+
+entity "persona_natural" as persona_natural {
+  * id_persona : INT <<PK,FK>>
+  --
+  # id_tipo_documento : INT <<FK>>
+  numero_documento : VARCHAR(20)
+  ..
+  <<UNIQUE>> uq_pnatural_documento (id_tipo_documento, numero_documento)
+}
+
+entity "persona_juridica" as persona_juridica {
+  * id_persona : INT <<PK,FK>>
+  --
+  ruc : VARCHAR(11) <<UNIQUE>>
+}
+
+entity "huesped" as huesped {
+  * id_huesped : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_tipo_documento : INT <<FK>> (NULL)
+  numero_documento : VARCHAR(20) (NULL)
+  es_generico : TINYINT(1)
+  ..
+  <<UNIQUE>> uq_huesped_documento (id_tipo_documento, numero_documento)
+}
+
+entity "tipo_habitacion" as tipo_habitacion {
+  * id_tipo_habitacion : INT <<PK>> [AUTO_INCREMENT]
+  --
+  nombre : VARCHAR(60) <<UNIQUE>>
+  capacidad_base : TINYINT
+}
+
+entity "habitacion" as habitacion {
+  * id_habitacion : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_hotel : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  estado : ENUM(...)
+  numero : VARCHAR(10)
+  piso : TINYINT
+  ..
+  <<UNIQUE>> uq_habitacion_hotel_numero (id_hotel, numero)
+  <<INDEX>> idx_habitacion_estado (id_hotel, id_tipo_habitacion, estado)
+}
+note right of habitacion
+  idx_habitacion_estado acelera la búsqueda de
+  disponibilidad puntual por hotel + tipo + estado,
+  usada por fn_disponibilidad_tipo_habitacion() y
+  vw_habitaciones_disponibles.
+end note
+
+entity "tarifa_habitacion" as tarifa_habitacion {
+  * id_tarifa : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_plan : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  precio_por_noche : DECIMAL(10,2)
+  ..
+  <<UNIQUE>> uq_tarifa_plan_tipo (id_plan, id_tipo_habitacion)
+  <<INDEX>> idx_tarifa_tipo_plan (id_tipo_habitacion, id_plan)
+}
+
+entity "reserva" as reserva {
+  * id_reserva : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_cliente : INT <<FK>>
+  # id_hotel : INT <<FK>>
+  # id_estado_reserva : INT <<FK>>
+  fecha_checkin : DATE
+  fecha_checkout : DATE
+  monto_total : DECIMAL(12,2)
+  ..
+  <<INDEX>> idx_reserva_cliente_fechas (id_cliente, fecha_checkin, fecha_checkout)
+  <<INDEX>> idx_reserva_hotel_estado (id_hotel, id_estado_reserva)
+}
+note right of reserva
+  <b>Candidata a particionamiento (a futuro):</b>
+  PARTITION BY RANGE (YEAR(fecha_checkin))
+  Justificación: el histórico de reservas crece de forma
+  indefinida y casi todas las consultas operativas filtran
+  por un rango de fechas reciente; particionar por año
+  permite podar particiones antiguas sin tocarlas.
+  No se implementa en el MVP: el volumen de datos de prueba
+  es bajo y MySQL exige que la columna de partición forme
+  parte de toda PK/UNIQUE de la tabla, lo que obligaría a
+  rediseñar la PK de reserva. Se documenta como mejora futura.
+end note
+
+entity "reserva_detalle" as reserva_detalle {
+  * id_detalle_reserva : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_reserva : INT <<FK>>
+  # id_tipo_habitacion : INT <<FK>>
+  # id_plan : INT <<FK>>
+}
+
+entity "detalle_huesped_reserva" as detalle_huesped_reserva {
+  * id_detalle_huesped : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_detalle_reserva : INT <<FK>>
+  # id_huesped : INT <<FK>>
+}
+
+entity "alojamiento" as alojamiento {
+  * id_alojamiento : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_reserva : INT <<FK>>
+  # id_detalle_reserva : INT <<FK>>
+  # id_habitacion : INT <<FK>>
+  estado : ENUM('ACTIVO','FINALIZADO','CANCELADO')
+  ..
+  <<INDEX>> idx_alojamiento_habitacion_estado (id_habitacion, estado)
+}
+note right of alojamiento
+  idx_alojamiento_habitacion_estado es el índice más
+  crítico del sistema: lo usa
+  fn_disponibilidad_tipo_habitacion() en su subconsulta de
+  solapamiento de fechas (alojamientos ACTIVOS por
+  habitación), que se ejecuta en cada intento de reserva.
+end note
+
+entity "huesped_alojamiento" as huesped_alojamiento {
+  * id_alojamiento : INT <<PK,FK>>
+  * id_huesped : INT <<PK,FK>>
+  --
+  # id_detalle_huesped : INT <<FK>> (NULL)
+  fecha_salida_real : DATETIME (NULL)
+}
+
+entity "servicio" as servicio {
+  * id_servicio : INT <<PK>> [AUTO_INCREMENT]
+}
+
+entity "consumo_servicio" as consumo_servicio {
+  * id_consumo : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_alojamiento : INT <<FK>>
+  # id_servicio : INT <<FK>>
+  fecha_consumo : DATETIME
+  ..
+  <<INDEX>> idx_consumo_aloj_fecha (id_alojamiento, fecha_consumo)
+}
+
+entity "danio" as danio {
+  * id_danio : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_alojamiento : INT <<FK>>
+}
+
+entity "cuenta_cobrar" as cuenta_cobrar {
+  * id_cuenta : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_alojamiento : INT <<FK>>
+  saldo : DECIMAL(12,2)
+}
+
+entity "cuenta_cobrar_detalle" as cuenta_cobrar_detalle {
+  * id_detalle_cuenta : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_cuenta : INT <<FK>>
+}
+
+entity "pago_cuenta_cobrar" as pago_cuenta_cobrar {
+  * id_pago : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_cuenta : INT <<FK>>
+  # id_empleado : INT <<FK>> (NULL)
+  ..
+  <<INDEX>> idx_pago_cuenta (id_cuenta, fecha_pago)
+}
+
+' =============================================================
+'  RELACIONES (abreviadas; ver 02_Modelo_Logico para el detalle
+'  completo de cardinalidad de cada FK)
+' =============================================================
+hotel           ||--o{ empleado
+hotel           ||--o{ habitacion
+tipo_habitacion ||--o{ habitacion
+tipo_habitacion ||--o{ tarifa_habitacion
+persona_natural ||..|| huesped                  : (misma persona física\nno enlazada aún — ver nota)
+hotel           ||--o{ reserva
+reserva         ||--o{ reserva_detalle
+reserva_detalle ||--o{ detalle_huesped_reserva
+huesped         ||--o{ detalle_huesped_reserva
+reserva         ||--o{ alojamiento
+habitacion      ||--o{ alojamiento
+alojamiento     ||--o{ huesped_alojamiento
+detalle_huesped_reserva ||..o{ huesped_alojamiento
+alojamiento     ||--o{ consumo_servicio
+servicio        ||--o{ consumo_servicio
+alojamiento     ||--o{ danio
+alojamiento     ||--o{ cuenta_cobrar
+cuenta_cobrar   ||--o{ cuenta_cobrar_detalle
+cuenta_cobrar   ||--o{ pago_cuenta_cobrar
+
+note bottom
+  <b>Optimizaciones aplicadas (ver 02_Reglas_Integridad.sql):</b>
+  * Toda FK crea automáticamente un índice secundario en InnoDB.
+  * Índices compuestos alineados al patrón de consulta más frecuente
+    (WHERE + ORDER BY), no solo a una columna suelta.
+  * UNIQUE en vez de índice simple donde la regla de negocio lo exige
+    (documento de identidad, RUC, número de habitación por hotel),
+    reforzando integridad y sirviendo también como índice de acceso.
+  * Roles de BD (07_Roles_Permisos.sql) limitan qué perfil de usuario
+    toca cada tabla, reduciendo el riesgo de locks/escrituras no
+    controladas desde aplicaciones no autorizadas.
+end note
+
+@enduml

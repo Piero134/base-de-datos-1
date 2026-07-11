@@ -1,0 +1,92 @@
+@startuml 04_Flujo_MVP_Secuencia
+
+' =============================================================
+'  Flujo end-to-end del MVP: reserva → pago → check-in →
+'  consumo/daño → salida individual → check-out → cuenta →
+'  pago de cuenta. Cada paso invoca directamente los
+'  procedimientos/funciones de 03_Funciones.sql y
+'  04_Procedimientos.sql.
+' =============================================================
+
+actor Recepcionista as REC
+actor Cajero as CAJ
+actor "Cliente/Huésped" as CLI
+participant "MVP (interfaz)" as APP
+database "hotel_db" as DB
+
+== 1. Reserva ==
+CLI -> REC : solicita reserva (fechas, hotel, tipo habitación)
+REC -> APP : formulario "Nueva reserva"
+APP -> DB : CALL sp_registrar_reserva(...)
+DB --> APP : id_reserva
+APP -> DB : CALL sp_agregar_detalle_reserva(id_reserva, tipo, plan=NULL, cant)
+note right
+  plan=NULL → fn_plan_vigente() autodetecta
+  la tarifa según fecha de check-in
+end note
+DB -> DB : fn_disponibilidad_tipo_habitacion()
+DB -> DB : fn_plan_vigente() + fn_precio_vigente()
+DB --> APP : detalle agregado, monto_total actualizado
+APP --> REC : confirmación + resumen de costo
+
+== 2. Confirmación de pago ==
+CLI -> REC : realiza el pago del hospedaje
+REC -> APP : "Confirmar pago"
+APP -> DB : CALL sp_confirmar_pago(id_reserva)
+DB -> DB : trigger trg_reserva_confirmar (estado → CONFIRMADA)
+DB --> APP : OK
+APP --> REC : reserva confirmada
+
+== 3. Check-in ==
+CLI -> REC : llega al hotel
+REC -> APP : "Registrar check-in"
+APP -> DB : CALL sp_realizar_checkin(...)
+DB -> DB : trigger trg_alojamiento_checkin (habitación → OCUPADA)
+DB --> APP : id_alojamiento
+APP -> DB : CALL sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, titular, id_detalle_huesped)
+DB -> DB : trigger trg_huesped_alojamiento_capacidad (valida cupo)
+DB --> APP : OK
+APP --> REC : check-in registrado
+
+== 4. Durante la estadía ==
+CLI -> REC : pide un servicio (desayuno, lavandería, etc.)
+REC -> APP : "Registrar consumo"
+APP -> DB : CALL sp_registrar_consumo(id_alojamiento, id_servicio, cantidad)
+DB --> APP : OK
+
+REC -> APP : "Registrar daño" (si aplica)
+APP -> DB : CALL sp_registrar_danio(id_alojamiento, descripcion, costo)
+DB --> APP : OK
+
+== 5. Salida (individual o conjunta) ==
+CLI -> REC : un acompañante se retira antes
+REC -> APP : "Registrar salida de huésped"
+APP -> DB : CALL sp_registrar_salida_huesped(id_alojamiento, id_huesped, id_empleado)
+DB -> DB : ¿quedan huéspedes sin salida?
+alt todos ya salieron
+  DB -> DB : alojamiento → FINALIZADO, habitación → LIMPIEZA
+else quedan huéspedes presentes
+  DB --> APP : alojamiento sigue ACTIVO
+end
+
+REC -> APP : "Check-out" (cuando todos se retiran juntos)
+APP -> DB : CALL sp_realizar_checkout(id_alojamiento, id_empleado)
+DB -> DB : trigger trg_alojamiento_checkout_validar
+DB -> DB : trigger trg_alojamiento_checkout (habitación → LIMPIEZA)
+DB --> APP : OK
+
+== 6. Cuenta por cobrar y pago ==
+REC -> CAJ : deriva la cuenta final del huésped
+CAJ -> APP : "Generar cuenta por cobrar"
+APP -> DB : CALL sp_generar_cuenta_cobrar(id_alojamiento, id_cuenta)
+DB --> APP : id_cuenta, total
+APP --> CAJ : muestra detalle (consumos + daños + IGV)
+
+CLI -> CAJ : paga (efectivo/tarjeta/yape)
+CAJ -> APP : "Registrar pago"
+APP -> DB : CALL sp_registrar_pago_cuenta(id_cuenta, monto, metodo, id_empleado)
+DB -> DB : trigger trg_cuenta_actualizar_saldo (saldo → 0, estado → PAGADA)
+DB --> APP : OK
+APP --> CAJ : cuenta liquidada
+
+@enduml
