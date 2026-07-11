@@ -233,20 +233,28 @@ def tarifas():
 @bp.route("/empleados", methods=["GET", "POST"])
 @requiere_rol("ADMINISTRADOR")
 def empleados():
+    # id_hotel es elegible (no fijo a session["id_hotel"]): un hotel recién
+    # creado no tiene empleados propios, así que si esta pantalla solo
+    # dejara gestionar el hotel de la sesión actual, sería imposible darle
+    # su primer empleado (y por lo tanto, imposible iniciar sesión en él).
+    id_hotel_filtro = request.args.get("id_hotel", type=int) or session["id_hotel"]
+
     seleccion = None
     if request.method == "POST":
+        id_hotel_nuevo = request.form.get("id_hotel", type=int) or session["id_hotel"]
         ok, _ = ejecutar_con_flash(
             execute,
             """
             INSERT INTO empleado (id_hotel, id_cargo, nombres, apellidos, activo)
             VALUES (%s, %s, %s, %s, 1)
             """,
-            (session["id_hotel"], request.form["id_cargo"], request.form["nombres"], request.form["apellidos"]),
+            (id_hotel_nuevo, request.form["id_cargo"], request.form["nombres"], request.form["apellidos"]),
             on_success_msg="Empleado creado.",
         )
         if ok:
-            return redirect(url_for("administracion.empleados"))
+            return redirect(url_for("administracion.empleados", id_hotel=id_hotel_nuevo))
         seleccion = request.form
+        id_hotel_filtro = id_hotel_nuevo
 
     filas = query(
         """
@@ -257,9 +265,11 @@ def empleados():
         WHERE e.id_hotel = %s
         ORDER BY e.apellidos
         """,
-        (session["id_hotel"],),
+        (id_hotel_filtro,),
     )
     cargos = query("SELECT id_cargo, nombre FROM cargo_empleado ORDER BY nombre")
+    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre")
     return render_template(
-        "administracion/empleados.html", filas=filas, cargos=cargos, seleccion=seleccion
+        "administracion/empleados.html", filas=filas, cargos=cargos, seleccion=seleccion,
+        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro,
     )
