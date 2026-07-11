@@ -74,8 +74,8 @@
       <input type="date" name="fecha_nacimiento" id="h_fecha_nacimiento" value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
       <label for="h_genero">Género</label>
       <select name="genero" id="h_genero">
-        <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>M</option>
-        <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>F</option>
+        <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>Masculino</option>
+        <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>Femenino</option>
         <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
       </select>
       <label for="h_nacionalidad">Nacionalidad</label>

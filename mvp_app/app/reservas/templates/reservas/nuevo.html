@@ -104,8 +104,8 @@
       <input type="date" name="fecha_nacimiento" id="cliente_fecha_nacimiento" required value="{{ seleccion_cliente.fecha_nacimiento if seleccion_cliente else '' }}">
       <label for="cliente_genero">Género</label>
       <select name="genero" id="cliente_genero" required>
-        <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>M</option>
-        <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>F</option>
+        <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>Masculino</option>
+        <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>Femenino</option>
         <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
       </select>
       <label for="cliente_nacionalidad">Nacionalidad</label>
