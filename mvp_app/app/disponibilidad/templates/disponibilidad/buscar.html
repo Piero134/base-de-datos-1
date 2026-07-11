@@ -37,7 +37,7 @@
 {% if disponibles %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Hotel</th><th>N°</th><th>Piso</th><th>Tipo</th><th>Capacidad base</th></tr></thead>
+  <thead><tr><th>Hotel</th><th>N°</th><th>Piso</th><th>Tipo</th><th>Capacidad base</th><th>Descripción</th></tr></thead>
   <tbody>
   {% for d in disponibles %}
   <tr>
@@ -46,6 +46,7 @@
     <td>{{ d.piso }}</td>
     <td>{{ d.tipo }}</td>
     <td>{{ d.capacidad_base }}</td>
+    <td>{{ d.descripcion or '—' }}</td>
   </tr>
   {% endfor %}
   </tbody>

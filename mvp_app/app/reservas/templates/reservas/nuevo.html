@@ -106,7 +106,7 @@
       <select name="genero" id="cliente_genero" required>
         <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>M</option>
         <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>F</option>
-        <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>OTRO</option>
+        <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
       </select>
       <label for="cliente_nacionalidad">Nacionalidad</label>
       <input type="text" name="nacionalidad" id="cliente_nacionalidad" required placeholder="Peruana" value="{{ seleccion_cliente.nacionalidad if seleccion_cliente else '' }}">
@@ -136,6 +136,32 @@
 
 <script>
   (function () {
+    // Bloquea en el propio selector de fecha las combinaciones que la BD
+    // rechazaría igual (chk_reserva_fechas: checkout > checkin;
+    // chk_reserva_limite_pago: fecha_limite_pago <= checkin), en vez de
+    // dejar que el usuario las escriba y recién enterarse por un error.
+    var checkin = document.getElementById('reserva_fecha_checkin');
+    var checkout = document.getElementById('reserva_fecha_checkout');
+    var limitePago = document.getElementById('reserva_fecha_limite_pago');
+    if (checkin && checkout && limitePago) {
+      var sumarDias = function (fechaStr, dias) {
+        var d = new Date(fechaStr + 'T00:00:00');
+        d.setDate(d.getDate() + dias);
+        return d.toISOString().slice(0, 10);
+      };
+      var sincronizarFechas = function () {
+        if (checkin.value) {
+          checkout.min = sumarDias(checkin.value, 1);
+          limitePago.max = checkin.value;
+        } else {
+          checkout.removeAttribute('min');
+          limitePago.removeAttribute('max');
+        }
+      };
+      checkin.addEventListener('change', sincronizarFechas);
+      sincronizarFechas();
+    }
+
     var formCliente = document.getElementById('formClienteNuevo');
     if (!formCliente) { return; }
 

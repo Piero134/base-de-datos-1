@@ -119,7 +119,7 @@
       <select name="genero" id="nh_genero">
         <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>M</option>
         <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>F</option>
-        <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>OTRO</option>
+        <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
       </select>
       <label for="nh_nacionalidad">Nacionalidad</label>
       <input type="text" name="nacionalidad" id="nh_nacionalidad" placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">

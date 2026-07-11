@@ -8,12 +8,13 @@
 {% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Tipo</th><th>N°</th><th>Piso</th><th>Estado</th><th>Cambiar estado</th></tr></thead>
+  <thead><tr><th>Tipo</th><th>N°</th><th>Piso</th><th>Estado</th><th>Descripción</th><th>Cambiar estado</th></tr></thead>
   <tbody>
   {% for f in filas %}
   <tr>
     <td>{{ f.tipo }}</td><td>{{ f.numero }}</td><td>{{ f.piso }}</td>
     <td><span class="badge {{ f.estado|badge_class }}">{{ f.estado }}</span></td>
+    <td>{{ f.descripcion or '—' }}</td>
     <td>
       <form method="post" action="{{ url_for('administracion.habitacion_estado', id_habitacion=f.id_habitacion) }}"
             class="inline-form" data-confirm="¿Cambiar el estado de la habitación {{ f.numero }}?">

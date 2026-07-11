@@ -14,6 +14,9 @@
 
   {% if reserva.pagado %}
   <p class="alert alert-success">✓ Pago confirmado{% if reserva.fecha_pago %} el {{ reserva.fecha_pago }}{% endif %}.</p>
+  <p class="actions">
+    <a href="{{ url_for('estadia.checkin_reserva', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Ir a check-in →</a>
+  </p>
   {% else %}
   <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"
         data-confirm="¿Confirmar el pago de S/ {{ reserva.monto_total }} para la reserva #{{ reserva.id_reserva }}?">

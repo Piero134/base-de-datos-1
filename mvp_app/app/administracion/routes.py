@@ -101,7 +101,7 @@ def habitaciones():
 
     filas = query(
         """
-        SELECT h.id_habitacion, ht.nombre AS hotel, th.nombre AS tipo, h.numero, h.piso, h.estado
+        SELECT h.id_habitacion, ht.nombre AS hotel, th.nombre AS tipo, h.numero, h.piso, h.estado, h.descripcion
         FROM habitacion h
         JOIN hotel ht ON ht.id_hotel = h.id_hotel
         JOIN tipo_habitacion th ON th.id_tipo_habitacion = h.id_tipo_habitacion

@@ -1,3 +1,5 @@
+import re
+
 import mysql.connector
 from mysql.connector import errorcode
 from flask import flash
@@ -11,6 +13,25 @@ _MENSAJES_DRIVER = {
     errorcode.ER_DATA_TOO_LONG: "El valor ingresado es demasiado largo para este campo.",
 }
 
+# Restricciones CHECK (errno ER_CHECK_CONSTRAINT_VIOLATED) para las que
+# damos un mensaje traducido en vez del nombre crudo de la restricción SQL.
+_MENSAJES_CHECK = {
+    "chk_reserva_fechas": "La fecha de check-out debe ser posterior a la fecha de check-in.",
+    "chk_reserva_limite_pago": "La fecha límite de pago no puede ser posterior a la fecha de check-in.",
+    "chk_reserva_monto": "El monto total de la reserva no puede ser negativo.",
+}
+_PATRON_CHECK = re.compile(r"Check constraint '([^']+)' is violated")
+
+
+def _mensaje_para_error(err):
+    if err.errno == errorcode.ER_CHECK_CONSTRAINT_VIOLATED:
+        coincidencia = _PATRON_CHECK.search(err.msg or "")
+        nombre = coincidencia.group(1) if coincidencia else None
+        return _MENSAJES_CHECK.get(
+            nombre, "Los datos ingresados no cumplen una regla de validez (revisa los valores relacionados)."
+        )
+    return _MENSAJES_DRIVER.get(err.errno, err.msg)
+
 
 def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
     """
@@ -20,7 +41,8 @@ def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
       procedimientos/triggers): se muestra el MESSAGE_TEXT tal cual lo
       escribió el SP, sin reinterpretarlo.
     - Errores de driver listados en _MENSAJES_DRIVER (rango/longitud fuera
-      de límite): se traducen a un mensaje en español más claro.
+      de límite) o restricciones CHECK listadas en _MENSAJES_CHECK: se
+      traducen a un mensaje en español más claro.
     - Cualquier otro error de driver: se muestra err.msg crudo (comportamiento
       previo, sin cambios).
 
@@ -32,5 +54,5 @@ def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
             flash(on_success_msg, "success")
         return True, resultado
     except mysql.connector.Error as err:
-        flash(_MENSAJES_DRIVER.get(err.errno, err.msg), "danger")
+        flash(_mensaje_para_error(err), "danger")
         return False, None
