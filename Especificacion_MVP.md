@@ -134,7 +134,7 @@ Estos actores ya están modelados como roles de base de datos en `07_Roles_Permi
 
 ### UC-13: Mantenimiento de catálogos
 - **Actor:** Administrador
-- **Flujo principal:** CRUD simple (INSERT/UPDATE) sobre `hotel`, `tipo_habitacion`, `habitacion`, `servicio`, `plan_tarifa`, `tarifa_habitacion`, `empleado`. No requiere procedimientos especiales; son operaciones directas de mantenimiento.
+- **Flujo principal:** CRUD simple (INSERT/UPDATE) sobre `hotel`, `tipo_habitacion`, `habitacion`, `categoria_servicio`, `servicio`, `plan_tarifa`, `tarifa_habitacion`, `empleado`. No requiere procedimientos especiales; son operaciones directas de mantenimiento.
 
 ---
 

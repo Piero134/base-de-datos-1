@@ -136,6 +136,28 @@ def habitacion_estado(id_habitacion):
 
 
 # ---------------------------------------------------------------------
+# Categorías de servicio
+# ---------------------------------------------------------------------
+@bp.route("/categorias-servicio", methods=["GET", "POST"])
+@requiere_rol("ADMINISTRADOR")
+def categorias_servicio():
+    seleccion = None
+    if request.method == "POST":
+        ok, _ = ejecutar_con_flash(
+            execute,
+            "INSERT INTO categoria_servicio (nombre) VALUES (%s)",
+            (request.form["nombre"],),
+            on_success_msg="Categoría de servicio creada.",
+        )
+        if ok:
+            return redirect(url_for("administracion.categorias_servicio"))
+        seleccion = request.form
+
+    filas = query("SELECT * FROM categoria_servicio ORDER BY nombre")
+    return render_template("administracion/categorias_servicio.html", filas=filas, seleccion=seleccion)
+
+
+# ---------------------------------------------------------------------
 # Servicios
 # ---------------------------------------------------------------------
 @bp.route("/servicios", methods=["GET", "POST"])
@@ -145,16 +167,24 @@ def servicios():
     if request.method == "POST":
         ok, _ = ejecutar_con_flash(
             execute,
-            "INSERT INTO servicio (nombre, categoria, precio_unitario, activo) VALUES (%s, %s, %s, 1)",
-            (request.form["nombre"], request.form["categoria"], request.form["precio_unitario"]),
+            "INSERT INTO servicio (nombre, id_categoria, precio_unitario, activo) VALUES (%s, %s, %s, 1)",
+            (request.form["nombre"], request.form["id_categoria"], request.form["precio_unitario"]),
             on_success_msg="Servicio creado.",
         )
         if ok:
             return redirect(url_for("administracion.servicios"))
         seleccion = request.form
 
-    filas = query("SELECT * FROM servicio ORDER BY categoria, nombre")
-    return render_template("administracion/servicios.html", filas=filas, seleccion=seleccion)
+    filas = query(
+        """
+        SELECT s.id_servicio, s.nombre, cat.nombre AS categoria, s.precio_unitario, s.activo
+        FROM servicio s
+        JOIN categoria_servicio cat ON cat.id_categoria = s.id_categoria
+        ORDER BY cat.nombre, s.nombre
+        """
+    )
+    categorias = query("SELECT id_categoria, nombre FROM categoria_servicio ORDER BY nombre")
+    return render_template("administracion/servicios.html", filas=filas, categorias=categorias, seleccion=seleccion)
 
 
 # ---------------------------------------------------------------------

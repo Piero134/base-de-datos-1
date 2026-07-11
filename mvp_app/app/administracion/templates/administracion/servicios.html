@@ -22,8 +22,12 @@
 
 <h2>Nuevo servicio</h2>
 <form class="card" method="post">
-  <label for="serv_categoria">Categoría</label>
-  <input type="text" name="categoria" id="serv_categoria" required placeholder="LAVANDERIA, RESTAURANTE, MINIBAR..." value="{{ seleccion.categoria if seleccion else '' }}">
+  <label for="serv_id_categoria">Categoría</label>
+  <select name="id_categoria" id="serv_id_categoria" required data-searchable="Buscar categoría…">
+    {% for c in categorias %}
+      <option value="{{ c.id_categoria }}" {% if seleccion and seleccion.id_categoria|string == c.id_categoria|string %}selected{% endif %}>{{ c.nombre }}</option>
+    {% endfor %}
+  </select>
   <label for="serv_nombre">Nombre</label>
   <input type="text" name="nombre" id="serv_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
   <label for="serv_precio_unitario">Precio unitario</label>

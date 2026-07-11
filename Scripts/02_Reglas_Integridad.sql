@@ -152,6 +152,12 @@ ALTER TABLE huesped_alojamiento
         FOREIGN KEY (id_detalle_huesped) REFERENCES detalle_huesped_reserva (id_detalle_huesped)
         ON UPDATE CASCADE ON DELETE SET NULL;
 
+-- ── servicio ──────────────────────────────────────────────────
+ALTER TABLE servicio
+    ADD CONSTRAINT fk_servicio_categoria
+        FOREIGN KEY (id_categoria) REFERENCES categoria_servicio (id_categoria)
+        ON UPDATE CASCADE ON DELETE RESTRICT;
+
 -- ── consumo_servicio ──────────────────────────────────────────
 ALTER TABLE consumo_servicio
     ADD CONSTRAINT fk_consumo_alojamiento
@@ -234,6 +240,10 @@ ALTER TABLE estado_reserva
 -- Los nombres de cargo no deben repetirse.
 ALTER TABLE cargo_empleado
     ADD CONSTRAINT uq_cargo_nombre UNIQUE (nombre);
+
+-- Los nombres de categoría de servicio no deben repetirse.
+ALTER TABLE categoria_servicio
+    ADD CONSTRAINT uq_categoria_servicio_nombre UNIQUE (nombre);
 
 -- El correo de un hotel, si se registra, debe ser único.
 ALTER TABLE hotel

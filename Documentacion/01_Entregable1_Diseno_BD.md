@@ -92,7 +92,7 @@ Entidades principales y su razón de ser:
 Ver `Diagramas/Diagrama de Base de Datos/02_Modelo_Logico.png` (fuente: `02_Modelo_Logico.puml`),
 que corresponde 1:1 con `Scripts/01_Creacion_Tablas.sql` + `Scripts/02_Reglas_Integridad.sql`.
 
-25 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
+26 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
 destacables del esquema relacional:
 
 - Todas las claves primarias son `INT AUTO_INCREMENT`, excepto `huesped_alojamiento` que usa clave
@@ -116,8 +116,8 @@ Decisiones de implementación física en MySQL 8.0:
 - `ENUM` para dominios cerrados y estables (`estado` de reserva/habitación/alojamiento/daño/cuenta,
   `canal`, `metodo_pago`, `genero`, `tipo` de persona) en vez de tablas catálogo adicionales,
   cuando el dominio es fijo y no requiere atributos propios; se usan tablas catálogo
-  (`estado_reserva`, `tipo_documento`, `cargo_empleado`) cuando el dominio sí necesita nombre
-  descriptivo administrable sin migración de esquema.
+  (`estado_reserva`, `tipo_documento`, `cargo_empleado`, `categoria_servicio`) cuando el dominio sí
+  necesita nombre descriptivo administrable sin migración de esquema.
 - Claves foráneas declaradas explícitamente en `02_Reglas_Integridad.sql`, separadas del DDL base,
   para poder crear primero todas las tablas sin preocuparse por el orden de dependencias y luego
   cerrar la integridad referencial en un segundo paso auditable.

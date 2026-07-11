@@ -256,7 +256,13 @@ def _contexto_ver(id_alojamiento):
             "SELECT * FROM vw_consumos_alojamiento WHERE id_alojamiento = %s ORDER BY fecha_consumo", (id_alojamiento,)
         ),
         "servicios": query(
-            "SELECT id_servicio, nombre, categoria, precio_unitario FROM servicio WHERE activo = 1 ORDER BY categoria, nombre"
+            """
+            SELECT s.id_servicio, s.nombre, cat.nombre AS categoria, s.precio_unitario
+            FROM servicio s
+            JOIN categoria_servicio cat ON cat.id_categoria = s.id_categoria
+            WHERE s.activo = 1
+            ORDER BY cat.nombre, s.nombre
+            """
         ),
         "danios": query(
             "SELECT id_danio, descripcion, costo, fecha_reporte, estado FROM danio WHERE id_alojamiento = %s ORDER BY fecha_reporte",

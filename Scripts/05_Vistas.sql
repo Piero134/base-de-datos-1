@@ -136,14 +136,15 @@ JOIN tipo_habitacion th  ON th.id_tipo_habitacion = h.id_tipo_habitacion;
 CREATE OR REPLACE VIEW vw_consumos_alojamiento AS
 SELECT
     cs.id_alojamiento,
-    s.categoria,
+    cat.nombre AS categoria,
     s.nombre AS servicio,
     cs.cantidad,
     cs.precio_unitario,
     cs.subtotal,
     cs.fecha_consumo
 FROM consumo_servicio cs
-JOIN servicio s ON s.id_servicio = cs.id_servicio;
+JOIN servicio s             ON s.id_servicio    = cs.id_servicio
+JOIN categoria_servicio cat ON cat.id_categoria = s.id_categoria;
 
 -- -------------------------------------------------------------
 -- V7. vw_danios_pendientes

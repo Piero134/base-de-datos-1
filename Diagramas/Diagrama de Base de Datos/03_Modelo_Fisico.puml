@@ -182,8 +182,16 @@ entity "huesped_alojamiento" as huesped_alojamiento {
   fecha_salida_real : DATETIME (NULL)
 }
 
+entity "categoria_servicio" as categoria_servicio {
+  * id_categoria : INT <<PK>> [AUTO_INCREMENT]
+  --
+  nombre : VARCHAR(60) <<UNIQUE>>
+}
+
 entity "servicio" as servicio {
   * id_servicio : INT <<PK>> [AUTO_INCREMENT]
+  --
+  # id_categoria : INT <<FK>>
 }
 
 entity "consumo_servicio" as consumo_servicio {
@@ -243,6 +251,7 @@ alojamiento     ||--o{ huesped_alojamiento
 detalle_huesped_reserva ||..o{ huesped_alojamiento
 alojamiento     ||--o{ consumo_servicio
 servicio        ||--o{ consumo_servicio
+categoria_servicio ||--o{ servicio
 alojamiento     ||--o{ danio
 alojamiento     ||--o{ cuenta_cobrar
 cuenta_cobrar   ||--o{ cuenta_cobrar_detalle

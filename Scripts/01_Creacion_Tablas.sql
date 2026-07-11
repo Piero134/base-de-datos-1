@@ -269,10 +269,16 @@ CREATE TABLE huesped_alojamiento (
 -- -------------------------------------------------------------
 --  10. SERVICIOS Y DAÑOS
 -- -------------------------------------------------------------
+CREATE TABLE categoria_servicio (
+    id_categoria INT           NOT NULL AUTO_INCREMENT,
+    nombre       VARCHAR(60)   NOT NULL,
+    CONSTRAINT pk_categoria_servicio PRIMARY KEY (id_categoria)
+) COMMENT = 'Catálogo de categorías de servicio (Ej: LAVANDERIA, RESTAURANTE, MINIBAR…)';
+
 CREATE TABLE servicio (
     id_servicio     INT             NOT NULL AUTO_INCREMENT,
     nombre          VARCHAR(100)    NOT NULL,
-    categoria       VARCHAR(60)     NOT NULL COMMENT 'Ej: LAVANDERIA, RESTAURANTE, MINIBAR…',
+    id_categoria    INT             NOT NULL,
     precio_unitario DECIMAL(10,2)   NOT NULL,
     activo          TINYINT(1)      NOT NULL DEFAULT 1,
     CONSTRAINT pk_servicio PRIMARY KEY (id_servicio)

@@ -220,11 +220,17 @@ entity "huesped_alojamiento" as huesped_alojamiento {
   fecha_salida_real : DATETIME (NULL)
 }
 
+entity "categoria_servicio" as categoria_servicio {
+  * id_categoria : INT <<PK>>
+  --
+  nombre : VARCHAR(60)
+}
+
 entity "servicio" as servicio {
   * id_servicio : INT <<PK>>
   --
   nombre : VARCHAR(100)
-  categoria : VARCHAR(60)
+  # id_categoria : INT <<FK>>
   precio_unitario : DECIMAL(10,2)
   activo : TINYINT(1)
 }
@@ -328,6 +334,7 @@ detalle_huesped_reserva ||..o{ huesped_alojamiento : id_detalle_huesped (opciona
 
 alojamiento     ||--o{ consumo_servicio         : id_alojamiento
 servicio        ||--o{ consumo_servicio         : id_servicio
+categoria_servicio ||--o{ servicio              : id_categoria
 
 alojamiento     ||--o{ danio                    : id_alojamiento
 

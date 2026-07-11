@@ -265,17 +265,25 @@ INSERT INTO estado_reserva (id_estado_reserva, nombre) VALUES
 (5, 'FINALIZADA');
 
 -- =============================================================
---  16. SERVICIO
+--  16. CATEGORIA_SERVICIO Y SERVICIO
 -- =============================================================
-INSERT INTO servicio (id_servicio, nombre, categoria, precio_unitario, activo) VALUES
-(1, 'Servicio de cuarto (desayuno)', 'RESTAURANTE',     25.00, 1),
-(2, 'Servicio de cuarto (almuerzo)', 'RESTAURANTE',     35.00, 1),
-(3, 'Servicio de cuarto (cena)',     'RESTAURANTE',     40.00, 1),
-(4, 'Lavandería (prenda)',           'LAVANDERIA',      12.00, 1),
-(5, 'Transporte aeropuerto (ida)',   'TRANSPORTE',      80.00, 1),
-(6, 'Minibar (recarga completa)',    'MINIBAR',         45.00, 1),
-(7, 'Spa (sesión 60 min)',           'SPA',            120.00, 1),
-(8, 'Estacionamiento (por día)',     'ESTACIONAMIENTO', 30.00, 1);
+INSERT INTO categoria_servicio (id_categoria, nombre) VALUES
+(1, 'RESTAURANTE'),
+(2, 'LAVANDERIA'),
+(3, 'TRANSPORTE'),
+(4, 'MINIBAR'),
+(5, 'SPA'),
+(6, 'ESTACIONAMIENTO');
+
+INSERT INTO servicio (id_servicio, nombre, id_categoria, precio_unitario, activo) VALUES
+(1, 'Servicio de cuarto (desayuno)', 1,  25.00, 1),
+(2, 'Servicio de cuarto (almuerzo)', 1,  35.00, 1),
+(3, 'Servicio de cuarto (cena)',     1,  40.00, 1),
+(4, 'Lavandería (prenda)',           2,  12.00, 1),
+(5, 'Transporte aeropuerto (ida)',   3,  80.00, 1),
+(6, 'Minibar (recarga completa)',    4,  45.00, 1),
+(7, 'Spa (sesión 60 min)',           5, 120.00, 1),
+(8, 'Estacionamiento (por día)',     6,  30.00, 1);
 
 -- =============================================================
 --  17. RESERVAS

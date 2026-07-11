@@ -126,9 +126,12 @@ entity HuespedAlojamiento {
 }
 
 ' ---------- Servicios, daños y cobros ----------
+entity CategoriaServicio {
+  * nombre
+}
+
 entity Servicio {
   * nombre
-  * categoria
   * precio_unitario
 }
 
@@ -206,6 +209,7 @@ DetalleHuespedReserva |o..o{ HuespedAlojamiento : trazabilidad (opcional)
 
 Alojamiento ||--o{ ConsumoServicio : genera
 Servicio ||--o{ ConsumoServicio    : es consumido en
+CategoriaServicio ||--o{ Servicio  : clasifica
 
 Alojamiento ||--o{ Danio          : puede tener
 

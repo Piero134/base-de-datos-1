@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Categorías de servicio{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Categorías de servicio</h1>
+  <p class="subtitle">{{ filas|length }} categoría{{ 's' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombre</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr><td>{{ f.nombre }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay categorías de servicio registradas.</p>
+{% endif %}
+
+<h2>Nueva categoría</h2>
+<form class="card" method="post">
+  <label for="cs_nombre">Nombre</label>
+  <input type="text" name="nombre" id="cs_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+  <button type="submit">Crear categoría</button>
+</form>
+{% endblock %}
