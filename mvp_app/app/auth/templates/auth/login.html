@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Login — Hotel MVP{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ingresar</h1>
+  <p class="subtitle">Selecciona tu usuario y el rol con el que vas a trabajar en esta sesión.</p>
+</div>
+<form class="card" method="post">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <label for="login_id_hotel">Hotel <span class="optional">(filtra la lista de empleados)</span></label>
+  <select id="login_id_hotel">
+    <option value="">-- Todos los hoteles --</option>
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}">{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="id_empleado">Empleado</label>
+  <select name="id_empleado" id="id_empleado" required>
+    <option value="">-- Selecciona un empleado --</option>
+    {% for e in empleados %}
+      <option value="{{ e.id_empleado }}" data-hotel="{{ e.id_hotel }}">
+        {{ e.nombres }} {{ e.apellidos }} — {{ e.cargo }} ({{ e.hotel }})
+      </option>
+    {% endfor %}
+  </select>
+
+  <label for="rol">Rol de la sesión</label>
+  <select name="rol" id="rol" required>
+    <option value="">-- Selecciona un rol --</option>
+    {% for r in roles %}
+      <option value="{{ r }}">{{ r }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Ingresar</button>
+</form>
+
+<script>
+  (function () {
+    var hotelSel = document.getElementById('login_id_hotel');
+    var empleadoSel = document.getElementById('id_empleado');
+    if (!hotelSel || !empleadoSel) { return; }
+    var opciones = Array.prototype.slice.call(empleadoSel.options);
+    function filtrarPorHotel() {
+      var idHotel = hotelSel.value;
+      opciones.forEach(function (opt) {
+        if (!opt.value) { return; }
+        var coincide = !idHotel || opt.dataset.hotel === idHotel;
+        opt.hidden = !coincide;
+        if (!coincide && opt.selected) {
+          opt.selected = false;
+          empleadoSel.value = '';
+        }
+      });
+    }
+    hotelSel.addEventListener('change', filtrarPorHotel);
+  })();
+</script>
+{% endblock %}

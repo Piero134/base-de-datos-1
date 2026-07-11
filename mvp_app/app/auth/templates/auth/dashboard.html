@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Inicio — Hotel MVP{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Hola, {{ session.get('nombre_empleado') }}</h1>
+  <div class="subtitle">Sesión activa como {{ rol }} — {{ session.get('nombre_hotel') }}</div>
+</div>
+
+{% if rol == 'RECEPCION' %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.reservas_pendientes_pago }}</div>
+    <div class="kpi-label">Reservas pendientes de pago</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.alojamientos_activos }}</div>
+    <div class="kpi-label">Alojamientos activos</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.checkouts_pendientes }}</div>
+    <div class="kpi-label">Check-outs pendientes</div>
+  </div>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('disponibilidad.buscar') }}">Consultar disponibilidad</a>
+  <a href="{{ url_for('reservas.nuevo') }}">Nueva reserva</a>
+  <a href="{{ url_for('estadia.checkin_listado') }}">Realizar check-in</a>
+  <a href="{{ url_for('estadia.activos') }}">Alojamientos activos</a>
+</div>
+
+{% elif rol == 'CAJA' %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.cuentas_pendientes }}</div>
+    <div class="kpi-label">Cuentas por cobrar pendientes</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">S/ {{ "%.2f"|format(kpis.monto_pendiente) }}</div>
+    <div class="kpi-label">Monto total pendiente de cobro</div>
+  </div>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('caja.generar_cuenta_form') }}">Generar cuenta por cobrar</a>
+  <a href="{{ url_for('caja.cuentas') }}">Ver todas las cuentas</a>
+</div>
+
+{% elif rol == 'GERENCIA' %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.habitaciones_ocupadas }}/{{ kpis.habitaciones_total }}</div>
+    <div class="kpi-label">Habitaciones ocupadas</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.habitaciones_disponibles }}</div>
+    <div class="kpi-label">Habitaciones disponibles</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">S/ {{ "%.2f"|format(kpis.ingreso_total) }}</div>
+    <div class="kpi-label">Ingreso total (hospedaje + servicios)</div>
+  </div>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('reportes.ocupacion') }}">Ocupación por hotel</a>
+  <a href="{{ url_for('reportes.ingresos') }}">Ingresos por hotel</a>
+  <a href="{{ url_for('reportes.ranking') }}">Ranking de clientes</a>
+</div>
+
+{% elif rol == 'ADMINISTRADOR' %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.hoteles_activos }}</div>
+    <div class="kpi-label">Hoteles activos</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.habitaciones_registradas }}</div>
+    <div class="kpi-label">Habitaciones registradas</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.empleados_activos }}</div>
+    <div class="kpi-label">Empleados activos</div>
+  </div>
+</div>
+<div class="quick-links">
+  <a href="{{ url_for('administracion.hoteles') }}">Hoteles</a>
+  <a href="{{ url_for('administracion.habitaciones') }}">Habitaciones</a>
+  <a href="{{ url_for('administracion.servicios') }}">Servicios</a>
+  <a href="{{ url_for('administracion.empleados') }}">Empleados</a>
+</div>
+{% endif %}
+{% endblock %}

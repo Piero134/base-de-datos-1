@@ -1,0 +1,8 @@
+{% macro breadcrumb(pasos) -%}
+<div class="breadcrumb">
+  {%- for paso in pasos %}
+    {%- if not loop.first %} &rsaquo; {% endif -%}
+    {%- if paso.url %}<a href="{{ paso.url }}">{{ paso.label }}</a>{% else %}<span class="current">{{ paso.label }}</span>{% endif -%}
+  {%- endfor %}
+</div>
+{%- endmacro %}

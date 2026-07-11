@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hotel MVP{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {# match_blueprint=True: marca el link activo para CUALQUIER pantalla del
+     blueprint (útil cuando un solo link de menú cubre varias sub-pantallas,
+     ej. Reservas, Estadía, Caja). Sin ese flag, solo se activa en match
+     exacto de endpoint (necesario cuando un blueprint tiene varios links de
+     menú distintos, ej. Reportes, Administración). #}
+  {% macro navlink(endpoint, label, match_blueprint=False) -%}
+  {%- set seccion = endpoint.split('.')[0] -%}
+  {%- set es_activo = (request.blueprint == seccion) if match_blueprint else (request.endpoint == endpoint) -%}
+  <a href="{{ url_for(endpoint) }}"{% if es_activo %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+  {%- endmacro %}
+
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <header class="topbar">
+    <div class="brand">Hotel San Marcos — MVP</div>
+    <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="mainNav">
+      <span class="sr-only">Abrir menú</span>&#9776;
+    </button>
+    <nav id="mainNav">
+      {% if session.get('rol') %}
+        {{ navlink('auth.landing', 'Inicio') }}
+      {% endif %}
+      {% if session.get('rol') == 'RECEPCION' %}
+        {{ navlink('disponibilidad.buscar', 'Disponibilidad') }}
+        {{ navlink('reservas.listado', 'Reservas', match_blueprint=True) }}
+        {{ navlink('estadia.activos', 'Estadía', match_blueprint=True) }}
+      {% elif session.get('rol') == 'CAJA' %}
+        {{ navlink('caja.cuentas', 'Cuentas por cobrar', match_blueprint=True) }}
+      {% elif session.get('rol') == 'GERENCIA' %}
+        {{ navlink('reportes.ocupacion', 'Ocupación') }}
+        {{ navlink('reportes.ingresos', 'Ingresos') }}
+        {{ navlink('reportes.ranking', 'Ranking clientes') }}
+      {% elif session.get('rol') == 'ADMINISTRADOR' %}
+        {{ navlink('administracion.hoteles', 'Hoteles') }}
+        {{ navlink('administracion.tipos_habitacion', 'Tipos habitación') }}
+        {{ navlink('administracion.habitaciones', 'Habitaciones') }}
+        {{ navlink('administracion.servicios', 'Servicios') }}
+        {{ navlink('administracion.planes_tarifa', 'Planes tarifa') }}
+        {{ navlink('administracion.tarifas', 'Tarifas') }}
+        {{ navlink('administracion.empleados', 'Empleados') }}
+      {% endif %}
+    </nav>
+    <div class="session-info">
+      {% if session.get('rol') %}
+        <span>{{ session.get('nombre_empleado') }} — {{ session.get('nombre_hotel') }}</span>
+        <form method="post" action="{{ url_for('auth.cambiar_rol') }}" class="inline-form role-switch">
+          <label for="rolSwitch" class="sr-only">Cambiar rol activo</label>
+          <select name="rol" id="rolSwitch">
+            {% for r in roles_disponibles %}
+              <option value="{{ r }}" {% if r == session.get('rol') %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-secondary">Cambiar rol</button>
+        </form>
+        <a href="{{ url_for('auth.logout') }}">Salir</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Ingresar</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="content" id="main" tabindex="-1">
+    {% include 'partials/flash.html' %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <dialog id="confirmDialog" class="confirm-dialog">
+    <form method="dialog">
+      <p id="confirmMessage"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn-secondary" id="confirmCancel">Cancelar</button>
+        <button type="button" id="confirmAccept">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (function () {
+      var confirmDialog = document.getElementById('confirmDialog');
+      var confirmMessage = document.getElementById('confirmMessage');
+      var confirmAccept = document.getElementById('confirmAccept');
+      var confirmCancel = document.getElementById('confirmCancel');
+      var pendingForm = null;
+
+      function marcarProcesando(form) {
+        var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (!btn || btn.disabled) { return; }
+        if (btn.tagName === 'BUTTON') {
+          btn.dataset.originalText = btn.textContent;
+          btn.textContent = 'Guardando…';
+        }
+        btn.disabled = true;
+        window.setTimeout(function () {
+          if (!form.checkValidity || form.checkValidity()) { return; }
+          btn.disabled = false;
+          if (btn.dataset.originalText) { btn.textContent = btn.dataset.originalText; }
+        }, 50);
+      }
+
+      // Confirmación de acciones sensibles vía <dialog> nativo: cualquier
+      // <form data-confirm="mensaje"> muestra el diálogo antes de enviarse.
+      // Combinado con el anti doble-submit en el mismo listener para evitar
+      // que ambos comportamientos se pisen entre sí.
+      document.querySelectorAll('form').forEach(function (form) {
+        form.addEventListener('submit', function (evt) {
+          if (form.dataset.confirm && form.dataset.confirmed !== 'true') {
+            evt.preventDefault();
+            evt.stopImmediatePropagation();
+            pendingForm = form;
+            confirmMessage.textContent = form.dataset.confirm;
+            if (typeof confirmDialog.showModal === 'function') {
+              confirmDialog.showModal();
+            } else if (window.confirm(form.dataset.confirm)) {
+              form.dataset.confirmed = 'true';
+              form.requestSubmit();
+            }
+            return;
+          }
+          marcarProcesando(form);
+        });
+      });
+
+      if (confirmAccept) {
+        confirmAccept.addEventListener('click', function () {
+          confirmDialog.close();
+          if (pendingForm) {
+            pendingForm.dataset.confirmed = 'true';
+            pendingForm.requestSubmit();
+            pendingForm = null;
+          }
+        });
+      }
+      if (confirmCancel) {
+        confirmCancel.addEventListener('click', function () {
+          confirmDialog.close();
+          pendingForm = null;
+        });
+      }
+
+      // Menú compacto en pantallas angostas.
+      var toggle = document.getElementById('navToggle');
+      var nav = document.getElementById('mainNav');
+      if (toggle && nav) {
+        toggle.addEventListener('click', function () {
+          var open = nav.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+
+      // Selects con buscador: cualquier <select data-searchable="placeholder">
+      // se convierte en un <input list> + <datalist> (autocompletado nativo,
+      // sin dependencias). El <select> original queda oculto en el DOM con su
+      // name quitado (para no duplicar el envío); sin JS, el <select> normal
+      // sigue funcionando tal cual.
+      //
+      // Filtro previo opcional: si el select trae data-filter-by="<id de otro
+      // select>", el datalist solo incluye las <option> cuyo data-filter-value
+      // coincide con el valor de ese select filtro, y el buscador arranca
+      // deshabilitado hasta que se elija un valor de filtro.
+      var contadorDatalist = 0;
+      document.querySelectorAll('select[data-searchable]').forEach(function (select) {
+        var placeholder = select.dataset.searchable || 'Buscar…';
+        var idOriginal = select.id;
+        var datalistId = (idOriginal || 'searchable_' + (contadorDatalist++)) + '_lista';
+        var selectFiltro = select.dataset.filterBy ? document.getElementById(select.dataset.filterBy) : null;
+        var placeholderSinFiltro = select.dataset.filterPlaceholder || 'Elige primero un filtro…';
+
+        var datalist = document.createElement('datalist');
+        datalist.id = datalistId;
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.setAttribute('list', datalistId);
+        input.autocomplete = 'off';
+        if (select.required) { input.required = true; }
+        // El input visible hereda el id original (el <label for="..."> del
+        // select ya apunta ahí), el select oculto se renombra para no chocar.
+        if (idOriginal) {
+          input.id = idOriginal;
+          select.id = idOriginal + '_select_oculto';
+        }
+
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = select.name;
+
+        var idPorTexto = {};
+        function reconstruirDatalist() {
+          datalist.innerHTML = '';
+          idPorTexto = {};
+          Array.prototype.forEach.call(select.options, function (opt) {
+            if (opt.value === '') { return; }
+            if (selectFiltro && opt.dataset.filterValue !== selectFiltro.value) { return; }
+            var texto = opt.textContent.trim();
+            var dataOpt = document.createElement('option');
+            dataOpt.value = texto;
+            datalist.appendChild(dataOpt);
+            idPorTexto[texto] = opt.value;
+          });
+        }
+
+        function sincronizarEstadoFiltro() {
+          if (!selectFiltro) { return; }
+          var hayFiltro = selectFiltro.value !== '';
+          input.disabled = !hayFiltro;
+          input.placeholder = hayFiltro ? placeholder : placeholderSinFiltro;
+        }
+
+        // Si el select ya trae una opción preseleccionada (re-render tras un
+        // error, o auto-selección del cliente recién creado), sincroniza el
+        // select-filtro con su data-filter-value ANTES de construir el
+        // datalist, para no dejar el buscador deshabilitado con una
+        // selección ya válida por debajo.
+        var seleccionActual = select.options[select.selectedIndex];
+        if (selectFiltro && seleccionActual && seleccionActual.value !== '' && seleccionActual.dataset.filterValue) {
+          selectFiltro.value = seleccionActual.dataset.filterValue;
+        }
+
+        reconstruirDatalist();
+        input.placeholder = placeholder;
+        sincronizarEstadoFiltro();
+
+        if (seleccionActual && seleccionActual.value !== '') {
+          input.value = seleccionActual.textContent.trim();
+        }
+        hidden.value = select.value;
+
+        input.addEventListener('input', function () {
+          var idCoincide = idPorTexto[input.value.trim()];
+          hidden.value = idCoincide !== undefined ? idCoincide : '';
+        });
+
+        if (selectFiltro) {
+          selectFiltro.addEventListener('change', function () {
+            input.value = '';
+            hidden.value = '';
+            reconstruirDatalist();
+            sincronizarEstadoFiltro();
+          });
+        }
+
+        select.insertAdjacentElement('afterend', datalist);
+        select.insertAdjacentElement('afterend', hidden);
+        select.insertAdjacentElement('afterend', input);
+        select.removeAttribute('name');
+        // El <select> original nunca vuelve a actualizar su propio value (la
+        // selección real vive en el <input type="hidden">): si se deja
+        // "required" aquí, un <select> oculto sin opción marcada queda
+        // required+inválido+no-focusable y bloquea el submit del formulario
+        // en silencio, sin mostrar ningún error visible al usuario.
+        select.removeAttribute('required');
+        select.style.display = 'none';
+        select.setAttribute('aria-hidden', 'true');
+        select.tabIndex = -1;
+      });
+    })();
+  </script>
+</body>
+</html>
