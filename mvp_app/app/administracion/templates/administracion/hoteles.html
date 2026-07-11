@@ -26,15 +26,24 @@
 <h2>Nuevo hotel</h2>
 <form class="card" method="post">
   <label for="h_nombre">Nombre</label>
-  <input type="text" name="nombre" id="h_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+  <input type="text" name="nombre" id="h_nombre" required
+         pattern=".*[A-Za-zÁÉÍÓÚÑÜáéíóúñü].*"
+         title="El nombre debe incluir al menos una letra."
+         value="{{ seleccion.nombre if seleccion else '' }}">
   <label for="h_direccion">Dirección</label>
   <input type="text" name="direccion" id="h_direccion" required value="{{ seleccion.direccion if seleccion else '' }}">
   <label for="h_telefono">Teléfono <span class="optional">(opcional)</span></label>
-  <input type="text" name="telefono" id="h_telefono" placeholder="01-4251000" value="{{ seleccion.telefono if seleccion else '' }}">
+  <input type="text" name="telefono" id="h_telefono" placeholder="01-4251000"
+         pattern="[0-9+\s\-\(\)]{6,20}"
+         title="Solo números, espacios, guiones, paréntesis y '+' (6 a 20 caracteres)."
+         value="{{ seleccion.telefono if seleccion else '' }}">
   <label for="h_email">Email <span class="optional">(opcional)</span></label>
-  <input type="email" name="email" id="h_email" value="{{ seleccion.email if seleccion else '' }}">
-  <label for="h_id_ubigeo">Ubigeo</label>
-  <select name="id_ubigeo" id="h_id_ubigeo" required data-searchable="Buscar departamento / provincia / distrito…">
+  <input type="email" name="email" id="h_email"
+         pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+         title="Ingresa un email con dominio (ej: nombre@dominio.pe)."
+         value="{{ seleccion.email if seleccion else '' }}">
+  <label for="h_id_ubigeo">Ubicación (departamento / provincia / distrito)</label>
+  <select name="id_ubigeo" id="h_id_ubigeo" required data-searchable="Buscar por departamento, provincia o distrito…">
     {% for u in ubigeos %}
       <option value="{{ u.id_ubigeo }}" {% if seleccion and seleccion.id_ubigeo|string == u.id_ubigeo|string %}selected{% endif %}>{{ u.departamento }} / {{ u.provincia }} / {{ u.distrito }}</option>
     {% endfor %}

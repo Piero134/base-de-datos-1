@@ -44,7 +44,10 @@
     {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
   </select>
   <label for="hab_numero">Número</label>
-  <input type="text" name="numero" id="hab_numero" required value="{{ seleccion.numero if seleccion else '' }}">
+  <input type="text" name="numero" id="hab_numero" required
+         pattern="[A-Za-z0-9][A-Za-z0-9\-]*"
+         title="Debe empezar con letra o número (sin signo negativo); admite guiones internos, ej: 10B, PH-1."
+         value="{{ seleccion.numero if seleccion else '' }}">
   <label for="hab_piso">Piso</label>
   <input type="number" name="piso" id="hab_piso" required value="{{ seleccion.piso if seleccion else '' }}">
   <label for="hab_descripcion">Descripción <span class="optional">(opcional)</span></label>

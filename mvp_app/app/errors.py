@@ -1,13 +1,28 @@
 import mysql.connector
+from mysql.connector import errorcode
 from flask import flash
+
+# Errores de DRIVER (no de negocio) para los que damos un mensaje más claro
+# que el crudo de MySQL, antes de caer al mensaje genérico. Los errores de
+# negocio (SIGNAL SQLSTATE '45000', errno ER_SIGNAL_EXCEPTION) no pasan por
+# este diccionario y se siguen mostrando tal cual los escribió el SP/trigger.
+_MENSAJES_DRIVER = {
+    errorcode.ER_WARN_DATA_OUT_OF_RANGE: "El valor ingresado está fuera del rango permitido para este campo.",
+    errorcode.ER_DATA_TOO_LONG: "El valor ingresado es demasiado largo para este campo.",
+}
 
 
 def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
     """
     Ejecuta func(*args, **kwargs) (normalmente call_procedure o execute) y
-    traduce cualquier error de negocio de MySQL (SIGNAL SQLSTATE '45000',
-    lanzado por los procedimientos/triggers) a un flash message, mostrando
-    el MESSAGE_TEXT tal cual lo escribió el SP, sin reinterpretarlo.
+    traduce cualquier error de MySQL a un flash message:
+    - Errores de negocio (SIGNAL SQLSTATE '45000', lanzados por los
+      procedimientos/triggers): se muestra el MESSAGE_TEXT tal cual lo
+      escribió el SP, sin reinterpretarlo.
+    - Errores de driver listados en _MENSAJES_DRIVER (rango/longitud fuera
+      de límite): se traducen a un mensaje en español más claro.
+    - Cualquier otro error de driver: se muestra err.msg crudo (comportamiento
+      previo, sin cambios).
 
     Devuelve (ok: bool, resultado_o_None).
     """
@@ -17,5 +32,5 @@ def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
             flash(on_success_msg, "success")
         return True, resultado
     except mysql.connector.Error as err:
-        flash(err.msg, "danger")
+        flash(_MENSAJES_DRIVER.get(err.errno, err.msg), "danger")
         return False, None
