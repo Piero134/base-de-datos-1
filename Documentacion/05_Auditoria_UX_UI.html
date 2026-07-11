@@ -1,0 +1,889 @@
+<title>Auditoría UX/UI — Hotel MVP</title>
+<style>
+  :root {
+    --paper: #eef1f6;
+    --surface: #ffffff;
+    --surface-2: #e4e9f1;
+    --ink: #101826;
+    --ink-muted: #4b5872;
+    --line: #cdd6e3;
+    --navy: #1c3a5e;
+    --navy-deep: #0f2740;
+    --brass: #b9812f;
+    --brass-ink: #7a5417;
+    --sev-alta: #a8392d;
+    --sev-alta-bg: #f6e3e0;
+    --sev-media: #a6721c;
+    --sev-media-bg: #f5ecd9;
+    --sev-baja: #3f6e52;
+    --sev-baja-bg: #e2ecE4;
+    --sev-good: #2d5f7c;
+    --sev-good-bg: #e0edf3;
+    --shadow: 0 1px 2px rgba(15, 39, 64, .06), 0 6px 20px -8px rgba(15, 39, 64, .18);
+    --radius: 10px;
+    --font-display: "Iowan Old Style", "Sitka Text", "Palatino Linotype", Georgia, "Noto Serif", serif;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0b1420;
+      --surface: #101c2c;
+      --surface-2: #16243838;
+      --ink: #e8edf5;
+      --ink-muted: #9fadc4;
+      --line: #26364f;
+      --navy: #7fa6d6;
+      --navy-deep: #0a1826;
+      --brass: #e0ab5b;
+      --brass-ink: #f2c988;
+      --sev-alta: #ec7a6c;
+      --sev-alta-bg: #3a1c19;
+      --sev-media: #e0ac5c;
+      --sev-media-bg: #3a2c14;
+      --sev-baja: #7fbf9a;
+      --sev-baja-bg: #163226;
+      --sev-good: #7fb8d9;
+      --sev-good-bg: #122c39;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -10px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0b1420; --surface: #101c2c; --surface-2: #16243838; --ink: #e8edf5; --ink-muted: #9fadc4;
+    --line: #26364f; --navy: #7fa6d6; --navy-deep: #0a1826; --brass: #e0ab5b; --brass-ink: #f2c988;
+    --sev-alta: #ec7a6c; --sev-alta-bg: #3a1c19; --sev-media: #e0ac5c; --sev-media-bg: #3a2c14;
+    --sev-baja: #7fbf9a; --sev-baja-bg: #163226; --sev-good: #7fb8d9; --sev-good-bg: #122c39;
+  }
+  :root[data-theme="light"] {
+    --paper: #eef1f6; --surface: #ffffff; --surface-2: #e4e9f1; --ink: #101826; --ink-muted: #4b5872;
+    --line: #cdd6e3; --navy: #1c3a5e; --navy-deep: #0f2740; --brass: #b9812f; --brass-ink: #7a5417;
+    --sev-alta: #a8392d; --sev-alta-bg: #f6e3e0; --sev-media: #a6721c; --sev-media-bg: #f5ecd9;
+    --sev-baja: #3f6e52; --sev-baja-bg: #e2ece4; --sev-good: #2d5f7c; --sev-good-bg: #e0edf3;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--navy); }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 3px; }
+  ::selection { background: var(--brass); color: var(--navy-deep); }
+
+  h1, h2, h3 { font-family: var(--font-display); color: var(--ink); text-wrap: balance; font-weight: 600; margin: 0; }
+  code, .mono, .cite { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .cite {
+    display: inline-block; font-size: .78rem; color: var(--ink-muted);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 7px;
+  }
+
+  /* ---------- shell layout ---------- */
+  .shell { display: grid; grid-template-columns: 280px minmax(0,1fr); min-height: 100vh; }
+  @media (max-width: 900px) { .shell { grid-template-columns: 1fr; } }
+
+  .rail {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    background: var(--navy-deep); color: #dfe8f3; padding: 22px 18px 40px;
+    border-right: 1px solid rgba(0,0,0,.2);
+  }
+  @media (max-width: 900px) {
+    .rail { position: static; height: auto; }
+  }
+  .rail-brand { font-family: var(--font-display); font-size: 1.05rem; letter-spacing: .01em; color: #fff; }
+  .rail-brand small { display:block; font-family: var(--font-body); font-size: .72rem; color: #9fb2cc; margin-top: 3px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+  .rail nav { margin-top: 22px; display: flex; flex-direction: column; gap: 1px; }
+  .rail nav a {
+    color: #c3d1e6; text-decoration: none; font-size: .86rem; padding: 7px 10px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .rail nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .rail nav a .n { font-family: var(--font-mono); font-size: .72rem; color: #7f93b3; }
+  .rail nav .grp-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: #6f84a4; margin: 16px 0 4px 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink:0; }
+  .dot.alta { background: #e6685a; } .dot.media { background: #dba64f; } .dot.baja { background: #6fae8c; }
+
+  main { padding: 0; min-width: 0; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 56px 28px 100px; }
+  section { margin-top: 76px; scroll-margin-top: 24px; }
+  section:first-of-type { margin-top: 0; }
+
+  /* ---------- cover ---------- */
+  .cover {
+    background: linear-gradient(160deg, var(--navy-deep), var(--navy));
+    color: #eef3fa; padding: 64px 28px 48px;
+  }
+  .cover .wrap { padding-top: 0; padding-bottom: 0; }
+  .eyebrow { font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+  .cover h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); color: #fff; margin-top: 10px; max-width: 18ch; }
+  .cover p.lede { font-size: 1.05rem; color: #c3d3e8; max-width: 62ch; margin-top: 14px; }
+  .cover-meta { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 30px; font-size: .82rem; color: #9fb2cc; }
+  .cover-meta b { color: #eef3fa; display:block; font-family: var(--font-mono); font-size: 1rem; }
+
+  /* ---------- gauges ---------- */
+  .gauges { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 40px; }
+  @media (max-width: 760px) { .gauges { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 480px) { .gauges { grid-template-columns: repeat(2, 1fr); } }
+  .gauge { text-align: center; }
+  .ring {
+    width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 10px;
+    background: conic-gradient(var(--brass) calc(var(--pct)*1%), rgba(255,255,255,.12) 0);
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .ring::before { content:""; position:absolute; inset:7px; background: var(--navy-deep); border-radius:50%; }
+  .ring span { position: relative; font-family: var(--font-mono); font-weight: 600; font-size: 1.15rem; color: #fff; }
+  .gauge label { display:block; font-size: .74rem; color: #b7c6dd; margin-top: 2px; }
+
+  /* ---------- generic text rhythm ---------- */
+  .lede-block p, section > p { max-width: 68ch; color: var(--ink-muted); font-size: .97rem; }
+  section h2 { font-size: 1.5rem; }
+  section .kicker { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--brass-ink); font-weight: 600; }
+  .dimension-head { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  .dimension-head .tally { display:flex; gap:14px; margin-top:10px; font-size:.82rem; color: var(--ink-muted); }
+  .dimension-head .tally span { display:flex; align-items:center; gap:5px; }
+
+  /* ---------- finding card ---------- */
+  .finding { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: var(--radius); padding: 20px 22px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .finding.alta { border-left-color: var(--sev-alta); }
+  .finding.media { border-left-color: var(--sev-media); }
+  .finding.baja { border-left-color: var(--sev-baja); }
+  .finding.good { border-left-color: var(--sev-good); }
+  .finding-top { display:flex; align-items:flex-start; justify-content:space-between; gap: 14px; flex-wrap: wrap; }
+  .finding h3 { font-size: 1.08rem; max-width: 46ch; }
+  .badge { font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge.alta { background: var(--sev-alta-bg); color: var(--sev-alta); }
+  .badge.media { background: var(--sev-media-bg); color: var(--sev-media); }
+  .badge.baja { background: var(--sev-baja-bg); color: var(--sev-baja); }
+  .badge.good { background: var(--sev-good-bg); color: var(--sev-good); }
+  .finding .cites { margin-top: 8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .finding .field { margin-top: 14px; }
+  .finding .field .k { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); font-weight: 600; margin-bottom: 4px; }
+  .finding .field p { margin: 0; color: var(--ink); font-size: .93rem; max-width: 70ch; }
+  .code-compare { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  @media (max-width: 620px) { .code-compare { grid-template-columns: 1fr; } }
+  .code-block { background: var(--navy-deep); border-radius: 8px; overflow: hidden; }
+  .code-block header { display:flex; align-items:center; justify-content:space-between; padding: 6px 12px; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; }
+  .code-block.before header { color: #f0b3a9; background: rgba(168,57,45,.25); }
+  .code-block.after header { color: #a9d6bb; background: rgba(63,110,82,.25); }
+  .code-block pre { margin:0; padding: 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: .78rem; line-height: 1.5; color: #dbe6f5; }
+
+  /* ---------- strength callout reuse of finding.good handled above ---------- */
+
+  /* ---------- quick wins ---------- */
+  .qw-list { display: flex; flex-direction: column; gap: 10px; }
+  .qw { display:flex; gap:14px; align-items:flex-start; background: var(--surface); border:1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .qw .box { width:20px;height:20px;flex-shrink:0; border:2px solid var(--navy); border-radius: 5px; margin-top:2px; }
+  .qw .txt b { font-size: .94rem; }
+  .qw .txt p { margin: 3px 0 0; color: var(--ink-muted); font-size: .86rem; }
+  .qw .effort { margin-left:auto; font-family: var(--font-mono); font-size:.72rem; color: var(--ink-muted); white-space:nowrap; padding-top:2px; }
+
+  /* ---------- phases roadmap ---------- */
+  .phases { display:flex; flex-direction:column; gap:0; margin-top: 10px; }
+  .phase { display:grid; grid-template-columns: 64px 1fr; gap: 18px; position:relative; padding-bottom: 34px; }
+  .phase:last-child { padding-bottom: 0; }
+  .phase .marker { display:flex; flex-direction:column; align-items:center; }
+  .phase .marker .num { width:44px;height:44px;border-radius:50%; background:var(--navy); color:#fff; display:flex;align-items:center;justify-content:center; font-family:var(--font-display); font-size:1.1rem; }
+  .phase .marker .line { flex:1; width:2px; background:var(--line); margin-top:6px; }
+  .phase:last-child .marker .line { display:none; }
+  .phase .content { background: var(--surface); border:1px solid var(--line); border-radius: var(--radius); padding:18px 20px; box-shadow: var(--shadow); }
+  .phase .content h3 { font-size: 1.05rem; }
+  .phase .content .tag { font-size:.7rem; color: var(--brass-ink); text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+  .phase .content ul { margin: 10px 0 0; padding-left: 20px; color: var(--ink-muted); font-size: .89rem; }
+  .phase .content ul li { margin-bottom: 4px; }
+  .phase.optional .marker .num { background: var(--surface-2); color: var(--ink-muted); border: 1px dashed var(--line); }
+
+  /* ---------- score table ---------- */
+  table.scores { width:100%; border-collapse: collapse; margin-top: 12px; }
+  table.scores th, table.scores td { text-align:left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: .92rem; }
+  table.scores th { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color: var(--ink-muted); font-weight:600; }
+  table.scores td.num { font-family: var(--font-mono); font-weight:700; font-size:1rem; }
+  .bar-wrap { background: var(--surface-2); border-radius: 4px; height: 8px; width: 140px; overflow:hidden; }
+  .bar { height:100%; background: var(--brass); border-radius:4px; }
+
+  footer.credits { border-top:1px solid var(--line); margin-top: 80px; padding-top: 24px; color: var(--ink-muted); font-size:.82rem; }
+
+  .toggle-theme { position: fixed; bottom: 18px; right: 18px; z-index: 20; background: var(--navy); color:#fff; border:none; border-radius: 20px; padding: 9px 16px; font-size:.78rem; font-family: var(--font-body); cursor:pointer; box-shadow: var(--shadow); }
+  .rail-toggle { display:none; }
+  @media (max-width: 900px) {
+    .rail-toggle { display:block; position:sticky; top:0; z-index:15; width:100%; background:var(--navy-deep); color:#fff; border:none; padding:12px 18px; font-family:var(--font-body); font-size:.85rem; text-align:left; }
+    .rail nav.collapsed { display:none; }
+  }
+</style>
+
+<div class="shell">
+  <aside class="rail">
+    <button class="rail-toggle" id="railToggle" type="button">☰ Índice de la auditoría</button>
+    <div class="rail-brand">Auditoría UX/UI<small>Hotel MVP · mvp_app</small></div>
+    <nav id="railNav">
+      <div class="grp-label">Resumen</div>
+      <a href="#resumen">Portada &amp; puntajes <span class="n">00</span></a>
+      <a href="#metodologia">Metodología <span class="n">00</span></a>
+      <div class="grp-label">14 dimensiones</div>
+      <a href="#d1-jerarquia">Jerarquía visual <span class="n"><span class="dot alta"></span> 2</span></a>
+      <a href="#d2-layout">Layout &amp; espaciado <span class="n"><span class="dot media"></span> 2</span></a>
+      <a href="#d3-color">Color &amp; contraste <span class="n"><span class="dot baja"></span> 2</span></a>
+      <a href="#d4-tipografia">Tipografía <span class="n"><span class="dot baja"></span> 2</span></a>
+      <a href="#d5-navegacion">Navegación <span class="n"><span class="dot alta"></span> 3</span></a>
+      <a href="#d6-responsive">Responsive <span class="n"><span class="dot alta"></span> 2</span></a>
+      <a href="#d7-accesibilidad">Accesibilidad WCAG <span class="n"><span class="dot alta"></span> 4</span></a>
+      <a href="#d8-consistencia">Consistencia <span class="n"><span class="dot media"></span> 3</span></a>
+      <a href="#d9-flujo">Flujo &amp; fricción <span class="n"><span class="dot alta"></span> 3</span></a>
+      <a href="#d10-formularios">Formularios <span class="n"><span class="dot media"></span> 3</span></a>
+      <a href="#d11-estados">Estados de UI <span class="n"><span class="dot alta"></span> 3</span></a>
+      <a href="#d12-microinteracciones">Microinteracciones <span class="n"><span class="dot baja"></span> 1</span></a>
+      <a href="#d13-rendimiento">Rendimiento percibido <span class="n"><span class="dot media"></span> 2</span></a>
+      <a href="#d14-practicas">Buenas prácticas 2026 <span class="n"><span class="dot baja"></span> 3</span></a>
+      <div class="grp-label">Plan de acción</div>
+      <a href="#quick-wins">Quick Wins</a>
+      <a href="#fases">Rediseño por fases</a>
+      <a href="#puntuacion">Puntuación final</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="cover">
+      <div class="wrap">
+        <div class="eyebrow">Informe de auditoría · Curso Base de Datos I, UNMSM FISI</div>
+        <h1 id="resumen">Auditoría UX/UI del MVP hotelero</h1>
+        <p class="lede">Revisión crítica de <code>mvp_app/</code> — 32 plantillas Jinja, 194 líneas de CSS y 7 blueprints de Flask — con hallazgos citados por archivo y línea, calibrados a un límite deliberado: esto es una interfaz académica mínima, no un producto comercial.</p>
+        <div class="cover-meta">
+          <div><b>32</b>plantillas auditadas</div>
+          <div><b>7</b>blueprints Flask</div>
+          <div><b>29</b>hallazgos con cita</div>
+          <div><b>2026-07-07</b>fecha de auditoría</div>
+        </div>
+        <div class="gauges">
+          <div class="gauge"><div class="ring" style="--pct:60"><span>6</span></div><label>Diseño visual</label></div>
+          <div class="gauge"><div class="ring" style="--pct:50"><span>5</span></div><label>Usabilidad</label></div>
+          <div class="gauge"><div class="ring" style="--pct:40"><span>4</span></div><label>Accesibilidad</label></div>
+          <div class="gauge"><div class="ring" style="--pct:50"><span>5</span></div><label>Consistencia</label></div>
+          <div class="gauge"><div class="ring" style="--pct:20"><span>2</span></div><label>Exp. móvil</label></div>
+          <div class="gauge"><div class="ring" style="--pct:50"><span>5</span></div><label>Exp. general</label></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+
+      <section id="metodologia">
+        <div class="kicker">Metodología &amp; alcance</div>
+        <h2>Cómo se hizo esta auditoría</h2>
+        <div class="lede-block">
+          <p>Se leyeron directamente <code>app/templates/base.html</code>, <code>app/static/style.css</code> íntegro, las 32 plantillas Jinja de los 7 módulos (auth, disponibilidad, reservas, estadía, caja, reportes, administración) y los 7 archivos <code>routes.py</code> más <code>errors.py</code>, <code>huespedes.py</code> y <code>constants.py</code>. Cada hallazgo de este informe cita archivo:línea verificable — no hay recomendaciones genéricas de plantilla.</p>
+          <p><b style="color:var(--ink)">Calibración deliberada:</b> el profesor del curso pidió explícitamente una interfaz <i>&ldquo;no tan fina&rdquo;</i> — un MVP funcional para sustentación, no un producto comercial. Por eso cada recomendación de este informe es alcanzable con HTML/CSS/Jinja + JavaScript vanilla mínimo, sin frameworks nuevos, sin librerías de animación y sin dependencias adicionales al stack ya elegido (Flask + Jinja2). Donde una práctica de diseño 2026 exigiría más presupuesto del que el alcance académico justifica, se marca explícitamente como <span class="badge baja" style="vertical-align:1px">fuera de alcance</span>.</p>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d1-jerarquia">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 1 / 14</div>
+          <h2>Jerarquía visual y organización del contenido</h2>
+          <div class="tally"><span><span class="dot alta"></span> 1 alta</span><span><span class="dot media"></span> 1 media</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top">
+            <h3>Nombres de procedimientos y vistas SQL filtran a la interfaz de usuario final</h3>
+            <span class="badge alta">Alta</span>
+          </div>
+          <div class="cites"><span class="cite">estadia/checkin_reserva.html:21</span><span class="cite">disponibilidad/buscar.html:33</span><span class="cite">reservas/listado.html:4</span><span class="cite">caja/ver_cuenta.html:12</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>~16 de 27 botones y ~10 de los ~20 encabezados incluyen literalmente el nombre del SP/vista entre paréntesis: <code>"Realizar check-in (sp_realizar_checkin)"</code>, <code>&lt;h1&gt;Reservas (vw_reservas_detalle)&lt;/h1&gt;</code>.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un recepcionista o cajero no necesita ni entiende qué es un "sp_" o una "vw_" — es jerga de implementación filtrada a la capa de presentación. Además es inconsistente: ni siquiera aparece en todos los botones equivalentes, así que tampoco funciona como ayuda de depuración sistemática.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Mover esa referencia a un comentario Jinja <code>{# invoca sp_realizar_checkin #}</code> (invisible en el HTML renderizado) o a un atributo <code>data-sp="sp_realizar_checkin"</code> solo visible para quien inspeccione el DOM durante la sustentación.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · checkin_reserva.html:21</header><pre>&lt;button type="submit"&gt;
+  Realizar check-in
+  (sp_realizar_checkin)
+&lt;/button&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>{# invoca sp_realizar_checkin #}
+&lt;button type="submit"&gt;
+  Realizar check-in
+&lt;/button&gt;</pre></div>
+          </div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top">
+            <h3>Tono inconsistente en títulos H1/H2</h3>
+            <span class="badge media">Media</span>
+          </div>
+          <div class="cites"><span class="cite">reservas/detalle.html:2</span><span class="cite">administracion/hoteles.html:4</span><span class="cite">disponibilidad/buscar.html:4</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>El &lt;h1&gt; de cada pantalla mezcla estilos sin convención: a veces es el nombre de la entidad ("Hoteles"), a veces una frase de acción ("Consultar disponibilidad"), a veces datos interpolados ("Reserva #12 — Hotel San Marcos Lima").</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>La jerarquía visual (CSS) es consistente, pero la <i>convención de contenido</i> no lo es — el usuario no puede predecir qué tipo de información encontrará en el título de la siguiente pantalla.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Adoptar una convención fija: <code>[Entidad] — [dato clave]</code> para pantallas de detalle, y solo <code>[Entidad en plural]</code> para listados. Ya existe <code>.page-header</code> en el CSS (usado hoy solo en el dashboard) — extenderlo a las 19 pantallas restantes resuelve esto y el hallazgo de navegación #2 a la vez.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d2-layout">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 2 / 14</div>
+          <h2>Distribución de los elementos (layout y espaciado)</h2>
+          <div class="tally"><span><span class="dot media"></span> 2 media</span></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Una sola clase <code>.card</code> para formularios y paneles de solo lectura</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">style.css:96-104</span><span class="cite">reservas/detalle.html:6-11</span><span class="cite">caja/ver_cuenta.html:5-9</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p><code>.card</code> se reutiliza tanto para <code>form.card</code> (algo que el usuario debe completar) como para <code>&lt;div class="card"&gt;</code> de datos ya guardados (algo que el usuario solo lee) — misma apariencia, dos propósitos distintos.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>El usuario debe leer el contenido para saber si una tarjeta es "editable" o "informativa" — no hay ninguna señal visual (borde, ícono, encabezado de sección) que lo distinga de un vistazo.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Agregar un modificador <code>.card--readonly</code> con fondo ligeramente distinto (<code>var(--surface-2)</code> en vez de blanco puro) para los paneles de solo lectura, sin tocar la clase base.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Páginas con 3–5 formularios apilados sin jerarquía entre ellos</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">estadia/ver.html:29-118</span><span class="cite">reservas/nuevo.html:6-107</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>La pantalla "hub" de un alojamiento (<code>estadia/ver.html</code>) apila 5 <code>form.card</code> completos en una sola columna larga: agregar huésped, crear huésped, registrar consumo, registrar daño, checkout. <code>reservas/nuevo.html</code> hace lo mismo con 2 formularios completos (cabecera de reserva + alta de cliente).</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Todo tiene el mismo peso visual, así que la acción más frecuente (agregar un consumo) no se distingue de la menos frecuente (dar de alta un huésped completamente nuevo, un caso excepcional). El usuario debe leer toda la página para orientarse.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Usar el elemento nativo <code>&lt;details&gt;&lt;summary&gt;</code> (cero JS, cero dependencias) para colapsar por defecto los formularios secundarios/excepcionales ("¿Huésped nuevo?"), dejando expandido solo el flujo principal.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes</header><pre>&lt;h2&gt;¿Huésped nuevo?&lt;/h2&gt;
+&lt;form class="card"&gt;...&lt;/form&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>&lt;details class="card"&gt;
+  &lt;summary&gt;¿Huésped nuevo?&lt;/summary&gt;
+  &lt;form&gt;...&lt;/form&gt;
+&lt;/details&gt;</pre></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d3-color">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 3 / 14</div>
+          <h2>Paleta de colores, contraste y legibilidad</h2>
+          <div class="tally"><span><span class="dot baja"></span> 1 fortaleza</span><span><span class="dot media"></span> 1 media</span></div>
+        </div>
+
+        <div class="finding good">
+          <div class="finding-top"><h3>Fortaleza confirmada: el contraste de color ya cumple WCAG AA</h3><span class="badge good">Fortaleza</span></div>
+          <div class="cites"><span class="cite">style.css:1-16</span></div>
+          <div class="field"><div class="k">Qué está bien</div><p>Se calcularon los ratios reales de las combinaciones de la paleta: texto muted sobre fondo (5.43:1), texto muted sobre tarjeta (5.98:1), texto base sobre fondo (13.65:1), blanco sobre navy (12.67:1), alerta de éxito (7.03:1) y de error (8.43:1) — todas pasan AA, la mayoría con margen para AAA.</p></div>
+          <div class="field"><div class="k">Por qué es relevante</div><p>Esto <b>no es un área a priorizar</b> en el rediseño — el esfuerzo debe ir a accesibilidad estructural (foco, semántica, formularios), no a repintar colores.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Estados de negocio sin codificación de color (texto plano)</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">style.css:149 (.badge sin uso)</span><span class="cite">estadia/activos.html</span><span class="cite">caja/cuentas.html</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Estados como <code>DISPONIBLE/OCUPADA/RESERVADA/LIMPIEZA</code> o <code>PENDIENTE/PAGADA</code> se muestran como texto negro plano en las tablas. La clase <code>.badge</code> ya existe en el CSS pero <b>no se usa en ninguna plantilla</b>.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>En una tabla de 20 habitaciones, distinguir cuáles están OCUPADAS de cuáles están DISPONIBLES exige leer palabra por palabra en vez de escanear por color — el patrón de "estado como color" (chip/pill) que pide Material Design 3 no está aplicado pese a que el CSS ya lo soporta.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Mapear cada estado a una clase de severidad ya definida (<code>.badge.alta/media/baja/good</code>) vía un pequeño filtro Jinja, sin CSS nuevo.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · estadia/activos.html</header><pre>&lt;td&gt;{{ h.estado }}&lt;/td&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>&lt;td&gt;
+  &lt;span class="badge {{ estado_color[h.estado] }}"&gt;
+    {{ h.estado }}
+  &lt;/span&gt;
+&lt;/td&gt;</pre></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d4-tipografia">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 4 / 14</div>
+          <h2>Tipografía (tamaños, pesos y consistencia)</h2>
+          <div class="tally"><span><span class="dot baja"></span> 1 fortaleza</span><span><span class="dot baja"></span> 1 baja</span></div>
+        </div>
+
+        <div class="finding good">
+          <div class="finding-top"><h3>Fortaleza: unidades relativas y pila de fuentes de sistema consistente</h3><span class="badge good">Fortaleza</span></div>
+          <div class="cites"><span class="cite">style.css:21-25</span></div>
+          <div class="field"><div class="k">Qué está bien</div><p>Todos los tamaños de fuente usan <code>rem</code> (nunca <code>px</code>), lo que respeta el zoom del usuario — una buena práctica de accesibilidad frecuentemente ignorada. <code>line-height: 1.45</code> global da buen espacio de lectura.</p></div>
+        </div>
+
+        <div class="finding baja">
+          <div class="finding-top"><h3>Sin <code>text-wrap: balance</code> en encabezados</h3><span class="badge baja">Baja</span></div>
+          <div class="cites"><span class="cite">style.css:56-58</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Encabezados largos con interpolación de datos (ej. "Pre-asignación de huéspedes — Reserva #12") pueden partirse en líneas desbalanceadas.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Una línea de CSS: <code>h1, h2 { text-wrap: balance; }</code> — soportado en navegadores modernos, cero riesgo.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d5-navegacion">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 5 / 14</div>
+          <h2>Navegación y facilidad para encontrar información</h2>
+          <div class="tally"><span><span class="dot alta"></span> 2 alta</span><span><span class="dot media"></span> 1 media</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Sin indicador de "sección activa" en el menú</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">base.html:12-33</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Ningún enlace del <code>&lt;nav&gt;</code> tiene <code>aria-current="page"</code> ni una clase <code>.active</code> — se confirmó por búsqueda global, cero coincidencias.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>El rol Administrador ve 7 enlaces con apariencia idéntica; nada indica en cuál de ellos está parado. Es la carencia de orientación más notoria de toda la app.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Comparar <code>request.endpoint</code> contra cada enlace en Jinja y añadir <code>aria-current="page"</code> + una clase visual.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · base.html</header><pre>&lt;a href="{{ url_for(
+  'administracion.hoteles') }}"&gt;
+  Hoteles&lt;/a&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>&lt;a href="{{ url_for(
+  'administracion.hoteles') }}"
+  {% if request.endpoint ==
+     'administracion.hoteles' %}
+   class="active" aria-current="page"
+  {% endif %}&gt;Hoteles&lt;/a&gt;</pre></div>
+          </div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Flujo de 4 pasos (reserva) sin ruta ni indicador de progreso</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">style.css:60-68 (.breadcrumb, sin uso)</span><span class="cite">reservas/nuevo.html:4</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>El CSS ya define <code>.page-header .breadcrumb</code>, pero ninguna plantilla la usa. El flujo cabecera → detalle → pago → pre-asignación no muestra en qué paso está el usuario ni cuántos quedan; el &lt;h1&gt; solo dice "paso 1" sin indicar el total.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>En un flujo transaccional de varias pantallas, no saber "cuánto falta" genera ansiedad e incertidumbre — un principio básico de UX de formularios largos.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Activar el breadcrumb ya definido en CSS: <code>Reserva #12 &rsaquo; Detalle &rsaquo; Pago</code>, con el paso actual en negrita — cero CSS nuevo, solo conectarlo en las 4 plantillas.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Tres patrones distintos de filtrado para el mismo propósito</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">reservas/listado.html:5-10</span><span class="cite">estadia/historial.html:5-9</span><span class="cite">reportes/ocupacion.html:16-24</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Filtrar un listado se resuelve de 3 formas distintas en la misma app: enlaces con querystring fija, un formulario GET con botón "Filtrar", y un <code>&lt;select onchange="window.location=..."&gt;</code> de auto-navegación.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>El tercer patrón (auto-submit al cambiar el select) es además un antipatrón de accesibilidad documentado (WCAG 3.2.2, "On Input"): un usuario que navega el select con las flechas del teclado dispara una navegación no solicitada, sin previo aviso.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Adoptar un único patrón (formulario GET + botón explícito "Filtrar") en las 3 pantallas.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d6-responsive">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 6 / 14</div>
+          <h2>Diseño responsive (móvil, tablet, escritorio)</h2>
+          <div class="tally"><span><span class="dot alta"></span> 2 alta</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Cero <code>meta viewport</code> y cero media queries en todo el proyecto</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">base.html:1-7</span><span class="cite">style.css (194 líneas, 0 @media)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>El <code>&lt;head&gt;</code> no declara <code>&lt;meta name="viewport"&gt;</code>, y el CSS no tiene ni una sola <code>@media</code> query. Sin viewport, un móvil renderiza a ~980px de ancho virtual y fuerza al usuario a hacer zoom/pan.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un recepcionista revisando una reserva desde su celular (escenario realista en un hotel) tiene una experiencia de escritorio comprimida, no una app usable.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Agregar la meta tag (una línea) y 2–3 media queries básicas para colapsar el grid de KPIs y el nav en pantallas angostas.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · base.html &lt;head&gt;</header><pre>&lt;meta charset="utf-8"&gt;
+&lt;title&gt;...&lt;/title&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>&lt;meta charset="utf-8"&gt;
+&lt;meta name="viewport"
+  content="width=device-width,
+           initial-scale=1"&gt;
+&lt;title&gt;...&lt;/title&gt;</pre></div>
+          </div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Tablas sin contenedor de scroll horizontal</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">style.css:70-94</span><span class="cite">~20 plantillas con &lt;table&gt;</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Ninguna de las ~20 tablas (ej. <code>vw_reservas_detalle</code> con 10 columnas) está envuelta en un contenedor con <code>overflow-x: auto</code>.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>En pantalla angosta, una tabla de 10 columnas se comprime ilegible o desborda la página sin forma controlada de desplazarse horizontalmente.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Envolver cada <code>&lt;table&gt;</code> en <code>&lt;div class="table-scroll"&gt;</code> con <code>overflow-x:auto</code> — un solo patrón, reutilizable en las 20 plantillas.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d7-accesibilidad">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 7 / 14</div>
+          <h2>Accesibilidad (WCAG): contraste, foco, teclado, etiquetas</h2>
+          <div class="tally"><span><span class="dot alta"></span> 4 alta</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3><code>label for=</code> sin <code>id</code> correspondiente en ~90% de los formularios</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">reservas/nuevo.html:7-8,54-55</span><span class="cite">disponibilidad/buscar.html:7-8</span><span class="cite">estadia/ver.html:42-76</span><span class="cite">administracion/*.html</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Los <code>&lt;label for="X"&gt;</code> apuntan a un <code>id="X"</code> que casi nunca existe en el control (solo tiene <code>name="X"</code>). Único caso correcto: <code>auth/login.html</code>. Caso incluso peor en <code>reservas/nuevo.html:54-55</code>: el <code>label for="tipo"</code> ni siquiera coincide con el <code>id="tipo-cliente"</code> real del select.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un lector de pantalla no anuncia la etiqueta al enfocar el campo, y clicar sobre el texto de la etiqueta no enfoca el input — falla dos veces la accesibilidad de formularios (WCAG 1.3.1 / 4.1.2).</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Agregar <code>id</code> igual al <code>name</code> en cada control — sin cambiar CSS ni lógica de backend.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · disponibilidad/buscar.html:7-8</header><pre>&lt;label for="id_hotel"&gt;Hotel&lt;/label&gt;
+&lt;select name="id_hotel" required&gt;</pre></div>
+            <div class="code-block after"><header>Después</header><pre>&lt;label for="id_hotel"&gt;Hotel&lt;/label&gt;
+&lt;select name="id_hotel" id="id_hotel" required&gt;</pre></div>
+          </div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Ninguna tabla usa <code>&lt;thead&gt;</code>/<code>&lt;tbody&gt;</code></h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">~20 plantillas, 0 coincidencias de &lt;thead&gt;</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Todas las tablas usan una <code>&lt;tr&gt;&lt;th&gt;...&lt;/th&gt;&lt;/tr&gt;</code> plana seguida del bucle Jinja, sin separación semántica de encabezado/cuerpo.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Los lectores de pantalla usan <code>&lt;thead&gt;</code> para anunciar "encabezado de columna X" al navegar celda por celda — sin él, la tabla se lee como texto plano sin contexto de columna.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Envolver la fila de encabezado en <code>&lt;thead&gt;</code> y el <code>{% for %}</code> en <code>&lt;tbody&gt;</code> — cambio mecánico, mismo CSS.</p></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Foco de teclado visible solo en inputs, no en enlaces/botones</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">style.css:117-121</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Solo <code>input, select, textarea</code> definen un anillo de foco (borde + sombra); ningún <code>&lt;a&gt;</code> ni <code>&lt;button&gt;</code> tiene <code>:focus</code> propio, solo <code>:hover</code>.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un usuario que navega solo con Tab por el menú de 7 enlaces (rol Administrador) no tiene una señal de foco diseñada — depende del outline nativo del navegador, que puede casi no distinguirse contra el degradado oscuro del topbar.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Una regla global con <code>:focus-visible</code> (ya usada en este mismo informe) que no interfiera con el mouse pero sí sea nítida con teclado.</p></div>
+          <div class="code-compare">
+            <div class="code-block after"><header>Agregar a style.css</header><pre>a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}</pre></div>
+          </div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Flash messages sin <code>role="alert"</code> ni "skip to content"</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">partials/flash.html:3-7</span><span class="cite">base.html (sin skip-link)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Los mensajes de error/éxito no tienen <code>role="alert"</code>/<code>aria-live</code>, así que un lector de pantalla no los anuncia automáticamente al cargar la página. Tampoco existe un enlace "Saltar al contenido" antes del nav.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p><code>&lt;div class="flash-container" role="alert"&gt;</code> (una palabra) + un <code>&lt;a class="skip-link" href="#main"&gt;Saltar al contenido&lt;/a&gt;</code> visualmente oculto hasta recibir foco.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d8-consistencia">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 8 / 14</div>
+          <h2>Consistencia entre componentes</h2>
+          <div class="tally"><span><span class="dot media"></span> 3 media</span></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Un solo estilo de botón para toda acción, sin importar su severidad</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">style.css:123-135</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Crear un hotel, cambiar el estado de una habitación y registrar un daño usan exactamente el mismo botón azul sólido — no hay variante secundaria/de peligro.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Añadir <code>.btn-secondary</code> (borde, sin relleno) para acciones no primarias, reservando el azul sólido para la acción principal de cada pantalla.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Verbos de botón inconsistentes: "Agregar" sin objeto</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">estadia/ver.html:49</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>De 27 botones en toda la app, 26 siguen el patrón "Verbo + Objeto" (ej. "Crear hotel", "Registrar pago"); uno solo dice simplemente "Agregar" sin especificar qué.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Renombrar a "Agregar huésped" — coherente con el resto.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Toggle "huésped genérico" no oculta los campos que ignora</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">estadia/ver.html:55</span><span class="cite">reservas/nuevo.html:55 (patrón correcto de referencia)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>El toggle NATURAL/JURIDICA sí oculta/muestra bloques con <code>onchange</code>; el checkbox "huésped genérico" no — dejando visibles 8 campos que el backend ignorará si se marca.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Reutilizar el mismo patrón <code>onchange</code> ya escrito en <code>nuevo.html:55</code> para ocultar el resto de campos cuando el checkbox esté marcado.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d9-flujo">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 9 / 14</div>
+          <h2>Flujo de usuario y reducción de fricción</h2>
+          <div class="tally"><span><span class="dot alta"></span> 3 alta</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top">
+            <h3>El hallazgo de mayor impacto: los errores de negocio vacían el formulario completo</h3>
+            <span class="badge alta">Alta · máxima prioridad</span>
+          </div>
+          <div class="cites"><span class="cite">reservas/routes.py:112-122</span><span class="cite">reservas/routes.py:167-173</span><span class="cite">reservas/routes.py:97</span><span class="cite">disponibilidad/routes.py:31-57 (patrón correcto)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Cuando un procedimiento almacenado rechaza una operación (<code>SIGNAL</code> — ej. sobreventa, RUC duplicado, capacidad excedida), el código casi siempre hace <code>redirect()</code> a la página en blanco en vez de re-renderizarla con los datos ya escritos. La <b>única excepción correcta ya existe</b> en <code>disponibilidad/routes.py::buscar_post</code>, que sí pasa <code>seleccion=request.form</code> de vuelta a la plantilla.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un recepcionista que se equivoca en la cantidad de habitaciones de una reserva de 8 campos, o en el alta de un cliente jurídico de 14 campos, pierde <b>todo</b> lo tecleado y debe empezar de cero al ver el mensaje de error. Es la fricción más severa medida en todo el sistema.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Replicar el patrón ya correcto de <code>disponibilidad</code> en <code>reservas</code>, <code>estadia</code>, <code>caja</code> y <code>administracion</code>: cuando <code>ejecutar_con_flash</code> devuelva <code>ok=False</code>, re-renderizar el template con <code>request.form</code> en vez de redirigir.</p></div>
+          <div class="code-compare">
+            <div class="code-block before"><header>Antes · reservas/routes.py:118-122</header><pre>ok, data = ejecutar_con_flash(
+    call_procedure, "sp_registrar_reserva",
+    (...), on_success_msg="...")
+if not ok:
+    return redirect(
+      url_for("reservas.nuevo"))</pre></div>
+            <div class="code-block after"><header>Después · mismo patrón que disponibilidad</header><pre>ok, data = ejecutar_con_flash(
+    call_procedure, "sp_registrar_reserva",
+    (...), on_success_msg="...")
+if not ok:
+    return render_template(
+      "reservas/nuevo.html",
+      clientes=clientes, hoteles=hoteles,
+      canales=CANALES, seleccion=request.form)</pre></div>
+          </div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Login forzado no conserva la página de destino</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">auth/routes.py:16-20</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p><code>requiere_rol</code> siempre redirige a <code>/login</code> sin un parámetro <code>?next=</code>; tras loguearse, el usuario cae en el dashboard, no en la página que originalmente pedía.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un enlace profundo compartido entre colegas (ej. a una reserva específica) se pierde si el receptor no tenía sesión activa — debe volver a navegar manualmente hasta ahí.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Guardar <code>request.path</code> en <code>session['next']</code> antes de redirigir, y usarlo en <code>login()</code> tras autenticar.</p></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Confirmación de acciones irreversibles: solo 1 de al menos 5 casos sensibles</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">estadia/ver.html:12 (único confirm())</span><span class="cite">reservas/pago.html:11-13</span><span class="cite">caja/ver_cuenta.html (pago)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Solo el checkout grupal pide confirmación (<code>onsubmit="return confirm(...)"</code>). Confirmar pago, registrar pago de cuenta, registrar salida individual de huésped y cambiar el estado de una habitación — igual de sensibles o más — no piden ninguna confirmación.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>No hay un criterio aparente de cuándo el sistema protege al usuario de un clic accidental; se siente arbitrario en vez de una política de diseño.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Aplicar el mismo <code>confirm()</code> (o, mejor, un <code>&lt;dialog&gt;</code> nativo, ver Dimensión 14) de forma consistente a las 4 acciones restantes.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d10-formularios">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 10 / 14</div>
+          <h2>Formularios: validaciones, mensajes de error y facilidad de uso</h2>
+          <div class="tally"><span><span class="dot media"></span> 3 media</span></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Formularios de alta de cliente/huésped sin ningún campo <code>required</code></h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">reservas/nuevo.html:60-104</span><span class="cite">estadia/ver.html:56-75</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Mientras la cabecera de reserva usa <code>required</code> en casi todos sus campos, los formularios de alta de cliente natural/jurídico y de huésped (9–14 campos) no tienen <b>ningún</b> campo requerido — se pueden enviar completamente vacíos.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>El error solo aparece después del <code>POST</code>, como excepción de backend (ver Dimensión 11) en vez de una validación inmediata del navegador — inconsistente con el resto de la app y peor experiencia.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Agregar <code>required</code> a los campos verdaderamente obligatorios (nombres, documento) igual que en el resto de formularios.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Un solo <code>placeholder</code> en toda la aplicación</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">administracion/servicios.html:15 (único caso)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Campos con formato esperado específico (RUC de 11 dígitos, teléfono, número de documento) no tienen ninguna pista de formato — solo el campo "categoría" de servicios tiene un placeholder de ejemplo.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Agregar placeholders de ejemplo (<code>placeholder="20123456789"</code> para RUC, etc.) en los ~10 campos con formato reconocible.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Sin convención visual para campos opcionales</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">reservas/nuevo.html:38</span><span class="cite">reservas/detalle.html:43</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Solo 2 campos en toda la app aclaran "(opcional)" en su label; el resto de campos opcionales (teléfono, email, observaciones) no tienen ninguna marca, y se infieren solo por la ausencia de <code>required</code>.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Sufijo <code>(opcional)</code> consistente en todo campo sin <code>required</code>, o su inverso: asterisco visual solo en los obligatorios.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d11-estados">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 11 / 14</div>
+          <h2>Estados de la interfaz: hover, focus, loading, vacío, error, éxito</h2>
+          <div class="tally"><span><span class="dot alta"></span> 3 alta</span></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>13 de 14 listados no manejan el estado vacío</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">caja/generar_cuenta.html:15-17 (único caso correcto)</span><span class="cite">reservas/listado.html, estadia/*, reportes/*, administracion/* (sin manejo)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Si la colección de una tabla está vacía, la tabla se renderiza solo con la fila de encabezado y el cuerpo en blanco — sin mensaje de "no hay datos". El único caso bien resuelto es <code>caja/generar_cuenta.html</code>.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Con los datos de prueba limitados de un MVP académico, es muy probable que un evaluador tope con un listado vacío durante la sustentación y lo interprete como un error, no como "no hay resultados aún".</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Replicar el patrón ya correcto: <code>{% if not filas %}&lt;p&gt;No hay [entidad] registrada(s).&lt;/p&gt;{% endif %}</code> en las 13 plantillas restantes.</p></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Errores de negocio: solo banner genérico, nunca junto al campo</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">app/errors.py:14-21</span><span class="cite">partials/flash.html:3-7</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p><code>ejecutar_con_flash</code> muestra el <code>MESSAGE_TEXT</code> del <code>SIGNAL</code> tal cual, como único banner arriba de la página — nunca junto al campo del formulario que causó el problema (no existe ningún patrón de error a nivel de campo en toda la app).</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Combinado con la pérdida de datos del formulario (Dimensión 9), el usuario debe: leer el mensaje → adivinar a qué campo se refiere → reabrir el formulario ya vacío → re-teclear todo correctamente.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>Mantener el banner (es correcto mostrarlo, el texto del SP es útil), pero resolver primero el "sticky form" de la Dimensión 9 — eso ya reduce el 80% del daño de este hallazgo sin tocar <code>errors.py</code>.</p></div>
+        </div>
+
+        <div class="finding alta">
+          <div class="finding-top"><h3>Sin protección de doble-submit en pagos y checkout</h3><span class="badge alta">Alta</span></div>
+          <div class="cites"><span class="cite">reservas/pago.html:11-13</span><span class="cite">caja/ver_cuenta.html (form de pago)</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>No hay spinner, ni texto "Procesando…", ni <code>disabled</code> tras el primer clic, en ninguna acción — incluidas "Confirmar pago" y "Registrar pago", las más sensibles del sistema.</p></div>
+          <div class="field"><div class="k">Por qué afecta al usuario</div><p>Un doble clic accidental (frecuente sin feedback visual de que algo está pasando) podría intentar duplicar un pago, dependiendo de si el procedimiento lo previene a nivel de base de datos.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>3 líneas de JS vanilla, sin dependencias: deshabilitar el botón y cambiar su texto al enviar el formulario.</p></div>
+          <div class="code-compare">
+            <div class="code-block after"><header>Agregar (vanilla, sin dependencias)</header><pre>document.querySelectorAll('form').forEach(f =&gt;
+  f.addEventListener('submit', () =&gt; {
+    const b = f.querySelector('button[type=submit]');
+    if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  }));</pre></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d12-microinteracciones">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 12 / 14</div>
+          <h2>Microinteracciones y animaciones que aporten valor sin distraer</h2>
+          <div class="tally"><span><span class="dot baja"></span> 1 baja</span></div>
+        </div>
+
+        <div class="finding baja">
+          <div class="finding-top"><h3>Prácticamente cero microinteracciones — y está bien así, con una excepción</h3><span class="badge baja">Baja</span></div>
+          <div class="cites"><span class="cite">style.css:61,135,181 (transiciones hover existentes)</span></div>
+          <div class="field"><div class="k">Qué hay hoy</div><p>Solo transiciones de <code>background</code> en hover (0.15s) en enlaces/botones — correcto y suficiente para el alcance académico. No hay animaciones de entrada, skeletons ni toasts, y <b>no se recomienda agregarlos</b>: excederían el límite de "interfaz mínima" que pidió el profesor.</p></div>
+          <div class="field"><div class="k">Única adición sugerida</div><p>Un <code>transition</code> sutil (150ms) al aparecer el flash message, y respetar <code>prefers-reduced-motion</code> si se agrega cualquier animación futura — ambas de una línea de CSS, sin librerías.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d13-rendimiento">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 13 / 14</div>
+          <h2>Rendimiento percibido</h2>
+          <div class="tally"><span><span class="dot media"></span> 2 media</span></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Recarga completa de página en cada paso de un flujo largo</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">reservas/routes.py:160-173</span><span class="cite">estadia/routes.py:98-116</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Agregar cada línea de una reserva, o hacer check-in de cada habitación de una reserva múltiple, dispara una recarga completa de página por cada envío — inherente a Flask clásico sin AJAX.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo dentro del límite académico</div><p>No se recomienda introducir AJAX/fetch (excede el alcance); en su lugar, la mitigación de doble-submit (Dimensión 11) ya da la sensación de "el sistema respondió" sin necesidad de arquitectura nueva.</p></div>
+        </div>
+
+        <div class="finding media">
+          <div class="finding-top"><h3>Sin feedback visual inmediato al enviar un formulario</h3><span class="badge media">Media</span></div>
+          <div class="cites"><span class="cite">Todas las plantillas con &lt;form&gt;</span></div>
+          <div class="field"><div class="k">Qué está mal</div><p>Entre el clic en "Registrar pago" y la recarga de la página, no hay ningún indicador de que la acción se está procesando.</p></div>
+          <div class="field"><div class="k">Cómo solucionarlo</div><p>El mismo snippet de JS de la Dimensión 11 (deshabilitar + cambiar texto del botón) resuelve ambos hallazgos con una sola implementación.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="d14-practicas">
+        <div class="dimension-head">
+          <div class="kicker">Dimensión 14 / 14</div>
+          <h2>Buenas prácticas de diseño moderno 2026, adaptadas al límite académico</h2>
+          <div class="tally"><span><span class="dot baja"></span> 3 baja</span></div>
+        </div>
+
+        <div class="finding baja">
+          <div class="finding-top"><h3>Reemplazar <code>window.confirm()</code> por <code>&lt;dialog&gt;</code> nativo</h3><span class="badge baja">Baja</span></div>
+          <div class="cites"><span class="cite">estadia/ver.html:12</span></div>
+          <div class="field"><div class="k">Recomendación</div><p>El elemento <code>&lt;dialog&gt;</code> tiene soporte nativo amplio en 2026, cero dependencias, y se ve más cuidado que el diálogo del sistema operativo que produce <code>confirm()</code> — coherente con Material Design 3 / Apple HIG sin añadir una librería de modales.</p></div>
+        </div>
+
+        <div class="finding baja">
+          <div class="finding-top"><h3>Adoptar <code>:focus-visible</code> en vez de <code>:focus</code></h3><span class="badge baja">Baja</span></div>
+          <div class="cites"><span class="cite">style.css:117-121</span></div>
+          <div class="field"><div class="k">Recomendación</div><p><code>:focus-visible</code> (ya usado en este informe) solo muestra el anillo de foco durante navegación por teclado, no en cada clic de mouse — el estándar 2026 para foco, sin JS.</p></div>
+        </div>
+
+        <div class="finding baja">
+          <div class="finding-top"><h3>Modo oscuro: fuera de esta pasada, pero de bajo costo futuro</h3><span class="badge baja">Baja</span></div>
+          <div class="cites"><span class="cite">style.css:1-16 (tokens ya en custom properties)</span></div>
+          <div class="field"><div class="k">Recomendación</div><p>Como la paleta ya está en variables CSS (<code>:root</code>), añadir dark mode en el futuro es solo un bloque <code>@media (prefers-color-scheme: dark)</code> redefiniendo esos mismos tokens — no se prioriza ahora porque no aporta a la sustentación del curso.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="quick-wins">
+        <div class="kicker">Plan de acción</div>
+        <h2>Quick Wins</h2>
+        <p>Ordenados por relación impacto/esfuerzo. Ninguno requiere una dependencia nueva.</p>
+        <div class="qw-list">
+          <div class="qw"><div class="box"></div><div class="txt"><b>Agregar <code>id</code> a cada control con <code>label for=</code></b><p>Resuelve el bug de accesibilidad más extendido de la app en un solo pase mecánico sobre ~30 plantillas.</p></div><span class="effort">~1–2h</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Envolver <code>&lt;tr&gt;&lt;th&gt;</code> en <code>&lt;thead&gt;</code> y el resto en <code>&lt;tbody&gt;</code></b><p>Cambio mecánico en ~20 tablas, mismo CSS, corrige la semántica para lectores de pantalla.</p></div><span class="effort">~30min</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Agregar <code>&lt;meta name="viewport"&gt;</code></b><p>Una línea en <code>base.html</code>; primer paso obligatorio antes de cualquier ajuste responsive.</p></div><span class="effort">~2min</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Aplicar <code>.badge</code> (ya definido) a las columnas de estado</b><p>Cero CSS nuevo — solo mapear estado → clase de severidad en las tablas de habitaciones/reservas/cuentas.</p></div><span class="effort">~1h</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Mensaje de "no hay datos" en los 13 listados que faltan</b><p>Replicar el patrón ya correcto de <code>caja/generar_cuenta.html</code>.</p></div><span class="effort">~1h</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Deshabilitar el botón de envío al hacer submit (anti doble-clic)</b><p>Un snippet de JS vanilla de 5 líneas en <code>base.html</code>, aplica a toda la app de una vez.</p></div><span class="effort">~20min</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Envolver cada <code>&lt;table&gt;</code> en un contenedor con <code>overflow-x:auto</code></b><p>Evita el desborde en pantallas angostas mientras se planea el responsive completo (Fase 3).</p></div><span class="effort">~30min</span></div>
+          <div class="qw"><div class="box"></div><div class="txt"><b>Quitar los nombres de SP/vistas de títulos y botones visibles</b><p>Moverlos a comentarios Jinja <code>{# ... #}</code> — mejora inmediata de percepción profesional para la sustentación.</p></div><span class="effort">~45min</span></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="fases">
+        <div class="kicker">Plan de acción</div>
+        <h2>Plan de rediseño por fases</h2>
+        <p>Las fases son secuenciales porque cada una depende de que la anterior esté resuelta (ej. no tiene sentido pulir consistencia visual sobre formularios que todavía pierden datos del usuario).</p>
+        <div class="phases">
+          <div class="phase">
+            <div class="marker"><div class="num">1</div><div class="line"></div></div>
+            <div class="content">
+              <span class="tag">Crítico · no perder datos del usuario</span>
+              <h3>Accesibilidad estructural y recuperación de errores</h3>
+              <ul>
+                <li>Sticky-form en todos los <code>POST</code> con error de negocio (replicar el patrón de <code>disponibilidad</code>)</li>
+                <li><code>label for=</code>/<code>id</code> correctos en todos los formularios</li>
+                <li><code>&lt;meta viewport&gt;</code> + <code>&lt;thead&gt;</code>/<code>&lt;tbody&gt;</code> en todas las tablas</li>
+                <li><code>:focus-visible</code> en enlaces y botones; <code>?next=</code> en el login forzado</li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="marker"><div class="num">2</div><div class="line"></div></div>
+            <div class="content">
+              <span class="tag">Consistencia de componentes</span>
+              <h3>Un solo lenguaje visual para estados y acciones</h3>
+              <ul>
+                <li>Aplicar <code>.badge</code> a todos los estados (habitación, reserva, cuenta, daño)</li>
+                <li>Activar <code>.page-header</code>/<code>.breadcrumb</code> en las 19 pantallas que faltan</li>
+                <li>Unificar el patrón de filtrado de listados (un solo mecanismo, no tres)</li>
+                <li>Confirmación consistente para las 5 acciones sensibles identificadas</li>
+                <li>Retirar nombres de SP/vistas de la UI visible</li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="marker"><div class="num">3</div><div class="line"></div></div>
+            <div class="content">
+              <span class="tag">Responsive básico</span>
+              <h3>Usable en tablet y móvil</h3>
+              <ul>
+                <li>2–3 media queries: colapsar <code>.kpi-grid</code> y el nav en pantallas angostas</li>
+                <li><code>overflow-x:auto</code> en el contenedor de cada tabla</li>
+                <li>Menú compacto (acordeón simple con <code>&lt;details&gt;</code>, sin JS de terceros) para el rol Administrador en móvil</li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase optional">
+            <div class="marker"><div class="num">4</div></div>
+            <div class="content">
+              <span class="tag">Opcional · solo si el proyecto trasciende el curso</span>
+              <h3>Pulido visual adicional</h3>
+              <ul>
+                <li>Modo oscuro (los tokens ya están listos en variables CSS)</li>
+                <li><code>&lt;dialog&gt;</code> nativo en vez de <code>confirm()</code></li>
+                <li>Iconografía mínima (SVG inline, sin librería) para estados y navegación</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="puntuacion">
+        <div class="kicker">Cierre</div>
+        <h2>Puntuación final</h2>
+        <p>Sobre 10. Calibrada contra un MVP académico funcional, no contra un producto comercial — ver metodología.</p>
+        <table class="scores">
+          <thead><tr><th>Categoría</th><th></th><th>Puntaje</th></tr></thead>
+          <tbody>
+            <tr><td>Diseño visual</td><td><div class="bar-wrap"><div class="bar" style="width:60%"></div></div></td><td class="num">6 / 10</td></tr>
+            <tr><td>Usabilidad</td><td><div class="bar-wrap"><div class="bar" style="width:50%"></div></div></td><td class="num">5 / 10</td></tr>
+            <tr><td>Accesibilidad</td><td><div class="bar-wrap"><div class="bar" style="width:40%"></div></div></td><td class="num">4 / 10</td></tr>
+            <tr><td>Consistencia</td><td><div class="bar-wrap"><div class="bar" style="width:50%"></div></div></td><td class="num">5 / 10</td></tr>
+            <tr><td>Experiencia móvil</td><td><div class="bar-wrap"><div class="bar" style="width:20%"></div></div></td><td class="num">2 / 10</td></tr>
+            <tr><td><b>Experiencia general</b></td><td><div class="bar-wrap"><div class="bar" style="width:50%"></div></div></td><td class="num"><b>5 / 10</b></td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:18px">La paleta, la tipografía y el contraste de color son genuinamente sólidos — no son el problema. El problema es estructural: datos de formulario que se pierden, accesibilidad de teclado/lectores de pantalla incompleta, y cero soporte responsive. Las Fases 1–3 del plan anterior son alcanzables en un fin de semana de trabajo sin agregar una sola dependencia nueva al proyecto.</p>
+      </section>
+
+      <footer class="credits">
+        Auditoría UX/UI — Hotel MVP · Base de Datos I, UNMSM FISI · Fuentes: <code>app/templates/</code>, <code>app/static/style.css</code>, <code>app/*/routes.py</code> del proyecto <code>mvp_app/</code>. Ver también <code>Documentacion/05_Auditoria_UX_UI.md</code> para el resumen ejecutivo versionado en el repositorio.
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<button class="toggle-theme" id="themeToggle" type="button">🌓 Cambiar tema</button>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    btn.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next;
+      if (!current) { next = prefersDark ? 'light' : 'dark'; }
+      else { next = current === 'dark' ? 'light' : 'dark'; }
+      root.setAttribute('data-theme', next);
+    });
+
+    var railToggle = document.getElementById('railToggle');
+    var railNav = document.getElementById('railNav');
+    if (railToggle) {
+      railNav.classList.add('collapsed');
+      railToggle.addEventListener('click', function () {
+        railNav.classList.toggle('collapsed');
+      });
+    }
+  })();
+</script>

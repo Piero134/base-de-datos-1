@@ -1,0 +1,61 @@
+# Mapa de pantallas → SQL invocado
+
+Referencia rápida de qué consulta/procedimiento dispara cada pantalla o botón de `mvp_app`,
+construida directamente a partir de `routes.py` de cada blueprint. Complementa
+[`Especificacion_MVP.md`](../Especificacion_MVP.md), que mapea cada caso de uso (UC) a su
+procedimiento/vista a nivel de flujo de negocio; esta tabla baja un nivel más, a la pantalla y
+ruta Flask concreta, útil durante la sustentación para responder "¿qué consulta corre este botón?"
+sin tener que abrir el código.
+
+Los diagramas `Diagramas/05_Flujo_Navegacion_*.puml`, `06_..._Estadia.puml` y `07_..._Caja.puml`
+incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-BE.
+
+## Reservas (`app/reservas/routes.py`)
+
+| Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto / trigger disparado |
+|---|---|---|---|---|
+| Listado de reservas | `GET /reservas/` | Ver reservas (todas o pendientes de pago) | `SELECT * FROM vw_reservas_detalle` | — |
+| Reservas corporativas | `GET /reservas/corporativas` | Ver pre-asignaciones corporativas | `SELECT * FROM vw_reservas_corporativas` | — |
+| Nueva reserva (cabecera) | `GET /reservas/nuevo` | Cargar catálogos (clientes, hoteles, tipos de documento) | `SELECT` sobre `vw_reservante`, `hotel`, `tipo_documento` | — |
+| Crear cliente | `POST /reservas/cliente/nuevo` | Alta de cliente natural o jurídico | `INSERT` en `persona` → `persona_natural`/`persona_juridica` → `cliente` (transacción directa, sin SP) | — |
+| Crear reserva | `POST /reservas/nuevo` | Confirmar cabecera de la reserva | `CALL sp_registrar_reserva(...)` | Crea reserva en estado `PENDIENTE` |
+| Detalle de reserva | `GET/POST /reservas/<id>/detalle` | Agregar línea (tipo de habitación) | `CALL sp_agregar_detalle_reserva(...)` (usa `fn_plan_vigente`, `fn_disponibilidad_tipo_habitacion` internamente) | Recalcula `monto_total` |
+| Confirmación de pago | `GET/POST /reservas/<id>/pago` | Confirmar pago de la reserva | `CALL sp_confirmar_pago(id_reserva)` | Trigger `trg_reserva_confirmar` → estado pasa a `CONFIRMADA` |
+| Pre-asignación corporativa | `GET/POST /reservas/<id>/preasignar` | Asignar huésped a una línea | `INSERT INTO detalle_huesped_reserva` (directo, sin SP) | — |
+| Huésped nuevo (desde reservas) | `POST /reservas/huesped/nuevo` | Alta de huésped real o genérico | `INSERT INTO huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` | — |
+
+## Estadía (`app/estadia/routes.py`)
+
+| Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto / trigger disparado |
+|---|---|---|---|---|
+| Alojamientos activos | `GET /estadia/activos` | Ver habitaciones ocupadas | `SELECT * FROM vw_alojamientos_activos` | — |
+| Daños pendientes | `GET /estadia/danios-pendientes` | Ver daños sin cobrar | `SELECT * FROM vw_danios_pendientes` (+ `SELECT id_danio, id_alojamiento FROM danio` para enlazar cada fila a su alojamiento) | — |
+| Check-outs pendientes | `GET /estadia/checkouts-pendientes` | Ver salidas vencidas/próximas | `SELECT * FROM vw_checkouts_pendientes` | — |
+| Historial de estadías | `GET /estadia/historial` | Ver historial (global o por huésped) | `SELECT * FROM vw_historial_estadias [WHERE id_huesped = ...]` | — |
+| Listado de check-in | `GET /estadia/checkin` | Ver reservas `CONFIRMADA` listas para check-in | `SELECT * FROM vw_reservas_detalle WHERE estado = 'CONFIRMADA'` | — |
+| Check-in de una reserva | `GET /estadia/checkin/<id_reserva>` | Ver líneas pendientes y habitaciones disponibles | `SELECT` sobre `reserva_detalle`, `alojamiento` (unidades ya asignadas), `habitacion` | — |
+| Realizar check-in | `POST /estadia/checkin` | Asignar habitación a una línea | `CALL sp_realizar_checkin(...)` | Trigger `trg_alojamiento_checkin` → habitación pasa a `OCUPADA` |
+| Alojamiento (hub) | `GET /estadia/<id_alojamiento>` | Ver huéspedes, consumos, daños | `SELECT` sobre `alojamiento`, `huesped_alojamiento`, `vw_consumos_alojamiento`, `servicio`, `danio` | — |
+| Agregar huésped existente | `POST /estadia/<id>/huespedes` | Sumar huésped ya registrado al alojamiento | `CALL sp_agregar_huesped_alojamiento(...)` | Trigger `trg_huesped_alojamiento_capacidad` valida cupo |
+| Huésped nuevo (desde estadía) | `POST /estadia/huesped/nuevo` | Alta de huésped real o genérico | `INSERT INTO huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` | — |
+| Registrar consumo | `POST /estadia/<id>/consumo` | Cargar un servicio consumido | `CALL sp_registrar_consumo(...)` | Calcula subtotal con precio vigente |
+| Registrar daño | `POST /estadia/<id>/danio` | Reportar daño en la habitación | `CALL sp_registrar_danio(...)` | — |
+| Salida individual | `POST /estadia/<id>/salida-huesped` | Registrar salida de un huésped | `CALL sp_registrar_salida_huesped(...)` | Si es el último huésped, finaliza el alojamiento automáticamente |
+| Check-out completo | `POST /estadia/<id>/checkout` | Cerrar la habitación completa | `CALL sp_realizar_checkout(...)` | Triggers `trg_alojamiento_checkout_validar` y `trg_alojamiento_checkout` → habitación pasa a `LIMPIEZA` |
+
+## Caja (`app/caja/routes.py`)
+
+| Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto / trigger disparado |
+|---|---|---|---|---|
+| Cuentas por cobrar | `GET /caja/cuentas` | Ver cuentas (todas / pendientes / pagadas) | `SELECT * FROM vw_cuenta_cobrar_resumen` | — |
+| Generar cuenta (form) | `GET /caja/generar-cuenta` | Elegir alojamiento `FINALIZADO` sin cuenta | `SELECT` sobre `alojamiento`/`habitacion`/`hotel` con `LEFT JOIN cuenta_cobrar` | — |
+| Generar cuenta | `POST /caja/generar-cuenta` | Confirmar generación de cuenta | `CALL sp_generar_cuenta_cobrar(...)` | Suma consumos + daños pendientes, aplica IGV 18%, genera `cuenta_cobrar_detalle` |
+| Ver cuenta | `GET /caja/cuenta/<id_cuenta>` | Ver detalle, pagos y saldo | `SELECT` sobre `vw_cuenta_cobrar_resumen`, `cuenta_cobrar_detalle`, `pago_cuenta_cobrar` | — |
+| Registrar pago | `POST /caja/cuenta/<id>/pago` | Registrar pago (parcial o total) | `CALL sp_registrar_pago_cuenta(...)` | Trigger `trg_cuenta_actualizar_saldo` recalcula saldo; si llega a 0, cuenta pasa a `PAGADA` |
+
+## Capa base (`app/auth/routes.py`)
+
+| Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto |
+|---|---|---|---|---|
+| Login | `GET/POST /login` | Elegir empleado y rol de app | `SELECT` sobre `empleado`/`cargo_empleado`/`hotel` | Inicializa `session` |
+| Cambiar rol | `POST /auth/rol` | Cambiar el rol activo sin cerrar sesión | Ninguno (solo actualiza `session["rol"]`) | El rol de app es independiente del cargo real del empleado (ver `README.md`) |

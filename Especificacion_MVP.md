@@ -1,0 +1,183 @@
+# Especificación del MVP — Sistema de Gestión de Reservas y Estadías para Cadena Hotelera
+
+## 1. Objetivo y alcance del MVP
+
+Según lo indicado por el profesor en la asesoría: **"el proyecto final no va a ser la aplicación al 100% desarrollada, sino centrarnos en cómo hacer un MVP que use todas las consultas que estamos viendo"**, y su exigencia explícita fue: *"la aplicación tiene que ser la interfase... puede no estar construida en un milímetro, no tan fino, pero sí tiene que haber conectividad a la base de datos, tiene que haber usado una serie de instrucciones SQL"*.
+
+Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 25 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
+
+### Qué SÍ entra en el MVP
+- Una interfaz (web, escritorio o incluso consola con menú) con conectividad real a `hotel_db`.
+- Un flujo completo y ejecutable de principio a fin: reserva → pago → check-in → consumo/daño → check-out → cuenta por cobrar → pago.
+- Pantallas/comandos que ejecuten explícitamente los procedimientos, funciones y vistas ya creados (no reimplementar la lógica de negocio en el frontend).
+- Reportes básicos para gerencia (ocupación, ingresos, ranking de clientes).
+
+### Qué NO entra en el MVP (explícitamente fuera de alcance)
+- Diseño visual elaborado, responsive design, identidad de marca.
+- Pasarela de pago real (se simula el registro del pago, no se integra Visa/Culqi/etc.).
+- Notificaciones por correo/SMS, app móvil, multi-idioma.
+- Módulo de facturación electrónica SUNAT (se calcula IGV, pero no se emite comprobante real).
+- Autenticación robusta (basta un login simple que determine el rol: Recepción/Caja/Gerencia/Admin).
+
+---
+
+## 2. Actores del sistema
+
+Estos actores ya están modelados como roles de base de datos en `07_Roles_Permisos.sql`, así que el MVP simplemente necesita un login que determine cuál rol usa cada sesión:
+
+| Actor | Rol de BD | Qué hace en el MVP |
+|---|---|---|
+| **Recepcionista** | `rol_recepcion` | Reservas, check-in, check-out, pre-asignación corporativa, consulta de disponibilidad |
+| **Cajero/a** | `rol_caja` | Consumos, daños, cuentas por cobrar, pagos |
+| **Gerente** | `rol_gerencia` | Solo lectura: reportes de ocupación, ingresos, ranking |
+| **Administrador** | `rol_administrador` | Mantenimiento de catálogos (hoteles, tipos de habitación, tarifas, servicios, empleados) |
+
+---
+
+## 3. Módulos funcionales
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      MVP — Menú Principal                    │
+├───────────────┬───────────────┬───────────────┬─────────────┤
+│  1. Reservas  │ 2. Estadía    │  3. Caja       │ 4. Reportes │
+│               │  (check-in/   │  (consumos,    │ (gerencia)  │
+│               │   check-out)  │   daños, pagos)│             │
+├───────────────┴───────────────┴───────────────┴─────────────┤
+│              5. Administración (catálogos, empleados)        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. Casos de uso detallados
+
+### UC-01: Registrar reserva
+- **Actor:** Recepcionista
+- **Precondición:** el hotel, tipo de habitación y (opcionalmente) el plan tarifario ya existen.
+- **Flujo principal:**
+  1. El recepcionista ingresa: cliente (o lo crea si es nuevo), hotel, canal, fecha check-in/checkout, fecha límite de pago.
+  2. El sistema llama `sp_registrar_reserva(...)` → obtiene `id_reserva`.
+  3. Por cada tipo de habitación solicitado, el sistema llama `sp_agregar_detalle_reserva(id_reserva, tipo, plan, cantidad)`.
+     - Si el plan no se especifica, `fn_plan_vigente()` lo autodetecta por fecha.
+     - Internamente se valida disponibilidad real con `fn_disponibilidad_tipo_habitacion()`.
+  4. El sistema muestra el `monto_total` calculado.
+- **Flujo alterno:** si no hay disponibilidad o no hay tarifa vigente, el procedimiento lanza `SIGNAL` con mensaje de error, que la interfaz debe mostrar tal cual (no debe intentar "adivinar" un precio).
+- **Postcondición:** reserva creada en estado `PENDIENTE`, sin habitación física asignada aún.
+- **Consulta MVP relacionada:** `09_Consultas_MVP.sql` #1b, #1c, #2.
+
+### UC-02: Confirmar pago de reserva
+- **Actor:** Recepcionista o Caja
+- **Flujo principal:** el sistema llama `sp_confirmar_pago(id_reserva)`; la reserva pasa a `CONFIRMADA`.
+- **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada.
+- **Consulta relacionada:** vista `vw_reservas_detalle` filtrando `pagado = 0` (reservas pendientes de pago, útil también para mostrar el caso contrario ya resuelto).
+
+### UC-03: Pre-asignar huéspedes (reserva corporativa)
+- **Actor:** Recepcionista
+- **Precondición:** reserva con detalle ya creado, cliente de tipo `JURIDICA`.
+- **Flujo principal:** para cada línea de reserva, se registra qué huésped (empleado de la empresa) ocupará esa habitación, insertando en `detalle_huesped_reserva`.
+- **Postcondición:** pre-asignación registrada, disponible para comparar luego contra el check-in real.
+- **Consulta relacionada:** `vw_reservas_corporativas`.
+
+### UC-04: Realizar check-in
+- **Actor:** Recepcionista
+- **Precondición:** reserva `CONFIRMADA`, habitación física disponible.
+- **Flujo principal:**
+  1. `sp_realizar_checkin(id_reserva, id_detalle_reserva, id_habitacion, id_empleado)` → `id_alojamiento`.
+  2. Por cada huésped que ocupa la habitación: `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)`.
+     - Si el huésped acompañante aún no tiene nombre, se usa un **huésped genérico** (`es_generico = 1`, ej. "Invitado 1"), a completar después.
+- **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción.
+- **Postcondición:** habitación pasa a `OCUPADA` (trigger `trg_alojamiento_checkin`).
+- **Consulta relacionada:** `vw_alojamientos_activos`, `vw_preasignacion_vs_checkin`.
+
+### UC-05: Registrar consumo de servicio
+- **Actor:** Cajero o Recepcionista
+- **Flujo principal:** `sp_registrar_consumo(id_alojamiento, id_servicio, cantidad)` calcula el subtotal con el precio vigente del servicio.
+- **Consulta relacionada:** `vw_consumos_alojamiento`.
+
+### UC-06: Registrar daño
+- **Actor:** Recepcionista o Camarero/a (vía recepción)
+- **Flujo principal:** `sp_registrar_danio(id_alojamiento, descripcion, costo)`.
+- **Consulta relacionada:** `vw_danios_pendientes`.
+
+### UC-07: Registrar salida individual de huésped
+- **Actor:** Recepcionista
+- **Flujo principal:** `sp_registrar_salida_huesped(id_alojamiento, id_huesped, id_empleado)`.
+- **Regla de negocio clave:** si es el último huésped pendiente, el propio procedimiento finaliza el alojamiento automáticamente; si no, la habitación sigue `ACTIVA`.
+- **Consulta relacionada:** `vw_historial_estadias` (columna `fecha_salida_huesped`).
+
+### UC-08: Realizar check-out (de toda la habitación)
+- **Actor:** Recepcionista
+- **Flujo principal:** `sp_realizar_checkout(id_alojamiento, id_empleado)`; cierra la salida de cualquier huésped pendiente y finaliza el alojamiento.
+- **Postcondición:** habitación pasa a `LIMPIEZA`.
+- **Consulta relacionada:** `vw_checkouts_pendientes`.
+
+### UC-09: Generar cuenta por cobrar
+- **Actor:** Cajero
+- **Precondición:** alojamiento `FINALIZADO`.
+- **Flujo principal:** `sp_generar_cuenta_cobrar(id_alojamiento, id_cuenta)` suma consumos + daños pendientes, aplica IGV 18%, genera detalle línea por línea.
+- **Consulta relacionada:** `vw_cuenta_cobrar_resumen`, `cuenta_cobrar_detalle`.
+
+### UC-10: Registrar pago de cuenta
+- **Actor:** Cajero
+- **Flujo principal:** `sp_registrar_pago_cuenta(id_cuenta, monto, metodo_pago, id_empleado)`.
+- **Postcondición:** trigger `trg_cuenta_actualizar_saldo` recalcula el saldo; si llega a 0, la cuenta pasa a `PAGADA`.
+
+### UC-11: Consultar disponibilidad de habitaciones
+- **Actor:** Recepcionista (o el propio cliente vía un formulario simple)
+- **Flujo principal:** para un hotel + tipo + rango de fechas, se llama `fn_disponibilidad_tipo_habitacion(...)`.
+- **Consulta relacionada:** `vw_habitaciones_disponibles` (estado puntual) + la función (disponibilidad real por fecha).
+
+### UC-12: Ver reportes gerenciales
+- **Actor:** Gerente
+- **Flujo principal:** pantallas de solo lectura sobre `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel`, y `sp_resumen_ocupacion_hotel(id_hotel)`.
+
+### UC-13: Mantenimiento de catálogos
+- **Actor:** Administrador
+- **Flujo principal:** CRUD simple (INSERT/UPDATE) sobre `hotel`, `tipo_habitacion`, `habitacion`, `servicio`, `plan_tarifa`, `tarifa_habitacion`, `empleado`. No requiere procedimientos especiales; son operaciones directas de mantenimiento.
+
+---
+
+## 5. Flujo end-to-end (diagrama de secuencia)
+
+Se adjunta `04_Flujo_MVP_Secuencia.puml` (validado con PlantUML), que recorre el ciclo completo: **reserva → confirmación de pago → check-in → consumo/daño → salida individual/check-out → cuenta por cobrar → pago**, mostrando exactamente qué procedimiento y qué trigger se dispara en cada paso. Es la demostración más importante para la sustentación, porque en una sola corrida evidencia el uso de procedimientos, funciones, triggers y vistas.
+
+---
+
+## 6. Stack tecnológico sugerido (para no sobredimensionar el esfuerzo)
+
+Dado que el profesor fue explícito en que la interfaz "puede no estar tan fina", conviene priorizar velocidad de desarrollo sobre sofisticación. Alternativas razonables, de menor a mayor esfuerzo:
+
+| Opción | Cuándo conviene |
+|---|---|
+| **Script de consola en Python (`mysql-connector-python`) con menú numerado** | Si el tiempo es muy limitado; demuestra conectividad y uso de SPs sin necesidad de frontend. |
+| **App web simple (Flask/FastAPI + HTML básico, o PHP + mysqli)** | Balance razonable: se ve como "aplicación" real en la sustentación, sigue siendo rápida de construir. |
+| **Streamlit (Python)** | Genera pantallas con tablas y formularios muy rápido, ideal para mostrar vistas/reportes sin escribir HTML/CSS. |
+
+En cualquier caso, la interfaz debe limitarse a **llamar** los procedimientos/funciones/vistas ya creados (`CALL sp_...`, `SELECT ... FROM vw_...`) — no debe reimplementar reglas de negocio (cálculo de IGV, validación de capacidad, etc.) en el código de la aplicación, porque eso es precisamente lo que el curso evalúa que esté en la base de datos.
+
+---
+
+## 7. Mapeo explícito con la rúbrica de evaluación
+
+| Criterio de la rúbrica | Cómo lo cubre este MVP |
+|---|---|
+| **1. Logro del producto planificado** | El flujo end-to-end completo (UC-01 a UC-10) funciona de principio a fin sobre datos reales cargados en `08_Carga_Datos.sql`. |
+| **2. Aplicación de herramientas para su desarrollo** | Se usan explícitamente: tablas normalizadas, FK, CHECK, UNIQUE, funciones, procedimientos almacenados, vistas, triggers, roles — y una interfaz que los invoca directamente. |
+| **3. Nivel de complejidad del proyecto (alcances)** | Supertype/subtype de persona, pre-asignación corporativa vs. check-in real, autodetección de tarifa por fecha, salida individual por huésped, cuentas con abonos parciales — casos que van más allá de un CRUD básico. |
+| **4. Cumplimiento de tareas y avances por fase** | Los 9 scripts numerados corresponden 1:1 a las fases del curso (creación → integridad → funciones → procedimientos → vistas → triggers → roles → carga → consultas MVP). |
+| **5. Presentación y exposición** | El diagrama de secuencia (`04_Flujo_MVP_Secuencia.puml`) sirve como guion de la demo en vivo: cada paso de la exposición corresponde a una línea del diagrama. |
+| **6. Aportes, recomendaciones, experiencias** | Documentar en la sustentación las decisiones tomadas a partir de la asesoría del profesor (separación cliente/huésped, huésped genérico, stock por fecha vs. contador, plan público vs. corporativo) como "aportes" propios justificados. |
+| **7. Respuestas a consultas finales** | Tener a la mano los `.sql` y los diagramas (conceptual/lógico/físico) para responder preguntas puntuales sobre cualquier tabla, procedimiento o regla de negocio durante la sustentación. |
+
+---
+
+## 8. Recomendación de orden de desarrollo del MVP
+
+1. Login simple (determina el rol activo).
+2. Pantalla de disponibilidad (UC-11) — es la más simple y ya usa una función.
+3. Flujo de reserva completo (UC-01, UC-02, UC-03) — el más largo, hazlo primero por si toma más tiempo del previsto.
+4. Flujo de estadía (UC-04 a UC-08).
+5. Caja (UC-09, UC-10).
+6. Reportes de gerencia (UC-12) — son solo `SELECT * FROM vw_...`, rápidos de armar al final.
+7. Administración de catálogos (UC-13) — la de menor prioridad si el tiempo apremia, porque los datos de prueba ya cubren la demo.
