@@ -19,7 +19,7 @@
   {% for hab in l.habitaciones %}
   {% set primer_ocupado = hab.slots | selectattr('estadia') | first %}
   {% set habitaciones_disponibles = habitaciones_por_tipo.get(l.id_detalle_reserva) %}
-  <div>
+  <div id="hab_{{ l.id_detalle_reserva }}_{{ hab.n }}">
   <div class="table-scroll">
   <table>
     <thead>

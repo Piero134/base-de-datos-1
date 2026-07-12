@@ -137,6 +137,10 @@ h2 { font-size: 1.15rem; margin-top: 32px; }
 .table-scroll { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; }
 .table-scroll table { box-shadow: none; margin-bottom: 0; }
 
+/* Resalta la habitación destino cuando se llega por un link con anchor
+   (ej. desde la búsqueda de check-in por titular). */
+[id^="hab_"]:target { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: var(--radius); }
+
 table {
   border-collapse: collapse;
   width: 100%;

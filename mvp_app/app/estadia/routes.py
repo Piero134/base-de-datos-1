@@ -97,11 +97,57 @@ def historial():
 @bp.route("/checkin")
 @requiere_rol("RECEPCION", "ADMINISTRADOR")
 def checkin_listado():
-    reservas = query(
-        "SELECT * FROM vw_reservas_detalle WHERE estado = 'CONFIRMADA' AND hotel = %s ORDER BY fecha_checkin",
-        (session["nombre_hotel"],),
+    """Punto de entrada al check-in: una fila por HABITACIÓN todavía sin
+    check-in (no por reserva), para poder buscar directo por el nombre o
+    documento del titular en vez de tener que abrir cada reserva a
+    adivinar. Cada fila enlaza directo a esa habitación específica dentro
+    de checkin_reserva.html (mismo formulario de siempre, sin duplicar la
+    lógica de elegir habitación física / validar titular-primero)."""
+    buscar = request.args.get("buscar", "").strip()
+
+    reservas_confirmadas = query(
+        """
+        SELECT r.id_reserva, v.nombre_reservante, r.fecha_checkin
+        FROM reserva r
+        JOIN vw_reservante v ON v.id_cliente = r.id_cliente
+        WHERE r.estado = 'CONFIRMADA' AND r.id_hotel = %s
+        ORDER BY r.fecha_checkin
+        """,
+        (session["id_hotel"],),
     )
-    return render_template("estadia/checkin_listado.html", reservas=reservas)
+
+    filas = []
+    for r in reservas_confirmadas:
+        for linea in construir_grid_reserva(r["id_reserva"], con_estado_estadia=True):
+            for hab in linea["habitaciones"]:
+                if hab["id_alojamiento"] is not None:
+                    continue  # ya tiene check-in: no es "pendiente"
+                titular = next((s for s in hab["slots"] if s["es_titular"]), None)
+                filas.append(
+                    {
+                        "id_reserva": r["id_reserva"],
+                        "nombre_reservante": r["nombre_reservante"],
+                        "fecha_checkin": r["fecha_checkin"],
+                        "id_detalle_reserva": linea["id_detalle_reserva"],
+                        "n_habitacion": hab["n"],
+                        "tipo_habitacion": linea["tipo_habitacion"],
+                        "tiene_titular": hab["tiene_titular"],
+                        "titular_nombre": titular["nombre"] if titular else None,
+                        "titular_documento": titular["numero_documento"] if titular else None,
+                    }
+                )
+
+    if buscar:
+        b = buscar.lower()
+        filas = [
+            f
+            for f in filas
+            if (f["titular_nombre"] and b in f["titular_nombre"].lower())
+            or (f["titular_documento"] and b in f["titular_documento"].lower())
+            or (f["nombre_reservante"] and b in f["nombre_reservante"].lower())
+        ]
+
+    return render_template("estadia/checkin_listado.html", filas=filas, buscar=buscar)
 
 
 def _contexto_checkin_reserva(id_reserva):

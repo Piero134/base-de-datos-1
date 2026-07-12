@@ -3,27 +3,48 @@
 {% block content %}
 <div class="page-header">
   <div class="breadcrumb"><a href="{{ url_for('estadia.activos') }}">Estadía</a> &rsaquo; <span class="current">Check-in</span></div>
-  <h1>Reservas confirmadas listas para check-in</h1>
+  <h1>Check-in pendiente</h1>
+  <p class="subtitle">Una fila por habitación todavía sin check-in, en reservas ya confirmadas. Busca por el nombre o documento del titular para encontrarla rápido.</p>
 </div>
-{% if reservas %}
+
+<form method="get" class="card card--wide filter-bar">
+  <div>
+    <label for="buscar">Buscar por titular <span class="optional">(nombre, documento, o reservante)</span></label>
+    <input type="text" name="buscar" id="buscar" placeholder="Ej. García o 45123678" value="{{ buscar }}">
+  </div>
+  <button type="submit">Buscar</button>
+</form>
+
+{% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>ID</th><th>Reservante</th><th>Hotel</th><th>Check-in</th><th>Check-out</th><th></th></tr></thead>
+  <thead>
+    <tr><th>Titular</th><th>Documento</th><th>Reserva</th><th>Reservante</th><th>Habitación</th><th>Check-in previsto</th><th></th></tr>
+  </thead>
   <tbody>
-  {% for r in reservas %}
+  {% for f in filas %}
   <tr>
-    <td>#{{ r.id_reserva }}</td>
-    <td>{{ r.nombre_reservante }}</td>
-    <td>{{ r.hotel }}</td>
-    <td>{{ r.fecha_checkin }}</td>
-    <td>{{ r.fecha_checkout }}</td>
-    <td class="actions"><a href="{{ url_for('estadia.checkin_reserva', id_reserva=r.id_reserva) }}">Hacer check-in</a></td>
+    <td>{{ f.titular_nombre or '—' }}</td>
+    <td>{{ f.titular_documento or '—' }}</td>
+    <td>#{{ f.id_reserva }}</td>
+    <td>{{ f.nombre_reservante }}</td>
+    <td>{{ f.tipo_habitacion }} {{ f.n_habitacion }}</td>
+    <td>{{ f.fecha_checkin }}</td>
+    <td class="actions">
+      {% if f.tiene_titular %}
+      <a href="{{ url_for('estadia.checkin_reserva', id_reserva=f.id_reserva) }}#hab_{{ f.id_detalle_reserva }}_{{ f.n_habitacion }}">Check-in →</a>
+      {% else %}
+      <a href="{{ url_for('reservas.preasignar', id_reserva=f.id_reserva) }}">Falta titular →</a>
+      {% endif %}
+    </td>
   </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 {% else %}
-<p class="empty-state">No hay reservas confirmadas esperando check-in.</p>
+<p class="empty-state">
+  {% if buscar %}Ningún titular coincide con "{{ buscar }}".{% else %}No hay habitaciones pendientes de check-in.{% endif %}
+</p>
 {% endif %}
 {% endblock %}
