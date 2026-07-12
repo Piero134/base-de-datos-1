@@ -298,7 +298,7 @@ def agregar_detalle(id_reserva):
 
 
 @bp.route("/<int:id_reserva>/pago", methods=["GET"])
-@requiere_rol("RECEPCION", "CAJA", "ADMINISTRADOR")
+@requiere_rol("CAJA", "ADMINISTRADOR")
 def pago(id_reserva):
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")

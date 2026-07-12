@@ -1,4 +1,4 @@
-from flask import url_for
+from flask import session, url_for
 
 from app.db import query
 
@@ -10,10 +10,17 @@ def construir_pasos_reserva(id_reserva, actual):
     ese paso está realmente completo en la BD (ej. si ya se pagó), solo
     dónde está el usuario parado en la secuencia. La navegación real sigue
     sin ser lineal: cualquier paso conserva su link y se puede visitar
-    fuera de orden."""
+    fuera de orden -- excepto "Pago", cuya URL es CAJA/ADMINISTRADOR
+    exclusiva; para el resto de roles se muestra sin link para no ofrecer
+    un acceso que el servidor va a rechazar igual."""
+    url_pago = (
+        url_for("reservas.pago", id_reserva=id_reserva)
+        if session.get("rol") in ("CAJA", "ADMINISTRADOR")
+        else None
+    )
     definicion = [
         ("detalle", "Detalle", url_for("reservas.detalle", id_reserva=id_reserva)),
-        ("pago", "Pago", url_for("reservas.pago", id_reserva=id_reserva)),
+        ("pago", "Pago", url_pago),
         ("preasignar", "Asignación de huéspedes", url_for("reservas.preasignar", id_reserva=id_reserva)),
         ("checkin", "Check-in", url_for("estadia.checkin_reserva", id_reserva=id_reserva)),
     ]

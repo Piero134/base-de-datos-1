@@ -36,7 +36,11 @@
 </div>
 <p class="actions">
   {% if not reserva.pagado %}
-  <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+    {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
+    <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+    {% else %}
+    <p class="empty-state">Reserva pendiente de pago.</p>
+    {% endif %}
   {% elif session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
   <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
   {% endif %}
@@ -47,7 +51,7 @@
 
 {% if lineas and not reserva.pagado and session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
 <p class="actions">
-  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Asignar huéspedes →</a>
+  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
 </p>
 {% endif %}
 <p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
