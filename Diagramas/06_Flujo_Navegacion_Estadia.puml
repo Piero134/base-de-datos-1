@@ -46,15 +46,22 @@ start
 :Listado de check-in;
 :Check-in de una reserva;
 note right
-  Cada línea muestra "asignadas X de Y"
-  y "pendientes Z"; la BD (COUNT sobre
-  alojamiento) es la fuente de verdad
+  Reusa el mismo grid que la asignación
+  de huéspedes de reservas (por línea →
+  habitación → cupos); una habitación sin
+  titular todavía no ofrece botón de check-in
 end note
-:Elegir habitación y\nrealizar check-in de una unidad;
-note right: CALL sp_realizar_checkin
+:Elegir habitación física y\nconfirmar check-in de una\nhabitación COMPLETA;
+note right
+  call_procedures_en_transaccion:
+  CALL sp_realizar_checkin +
+  CALL sp_agregar_huesped_alojamiento
+  por cada huésped ya asignado a esa
+  habitación (titular incluido), atómico
+end note
 :Vuelve a la MISMA pantalla\nde check-in de la reserva;
 if (¿Quedan habitaciones\npor asignar en esta reserva?) then (sí)
-  :Se repite: elegir habitación\npara la siguiente unidad/línea;
+  :Se repite: elegir habitación\npara el siguiente grupo;
 else (no)
   :"✓ Check-in completo" +\nlinks a cada alojamiento creado;
 endif

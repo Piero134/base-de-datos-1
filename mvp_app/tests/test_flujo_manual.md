@@ -1,8 +1,9 @@
 # Checklist de verificación end-to-end — MVP Hotel
 
 Replica el recorrido de `Diagramas/04_Flujo_MVP_Secuencia.puml`. Verificado
-contra `hotel_db` real (MySQL) el 2026-07-06; marcar de nuevo tras cambios
-importantes.
+contra `hotel_db` real (MySQL) el 2026-07-06; los ítems de reservas/estadía se
+re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
+tabla (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -18,8 +19,15 @@ importantes.
       persona→persona_natural→cliente funcionó y el cliente apareció
       inmediatamente en el combo de `/reservas/nuevo`.
 - [x] **Reserva corporativa (UC-03):** reserva para "Corporación ABC S.A.C."
-      + pre-asignación de huésped vía INSERT directo en
-      `detalle_huesped_reserva`, visible luego en `vw_reservas_corporativas`.
+      + asignación de huésped, visible luego en `vw_reservas_corporativas`.
+- [x] **Asignación de huéspedes por habitación (UC-03, re-verificado
+      2026-07-12):** en una línea "Doble x1" (capacidad 2), guardar la
+      habitación sin marcar titular fue rechazado; con titular marcado se
+      guardó `detalle_huesped_reserva` en una sola transacción. Aplica a
+      reserva NATURAL, no solo JURIDICA.
+- [x] **Bloqueo de línea nueva en reserva pagada (2026-07-12):**
+      `sp_agregar_detalle_reserva` sobre una reserva con `pagado=1` rechazó
+      con *"La reserva ya está pagada; no se pueden agregar más líneas."*
 - [x] **Error de negocio propagado tal cual:** pedir 50 habitaciones Simple
       (solo hay 3 libres) mostró el mensaje SIGNAL exacto de
       `sp_agregar_detalle_reserva`: *"No hay disponibilidad suficiente de
@@ -34,6 +42,23 @@ importantes.
       la marcó OCUPADA.
 - [x] **Agregar huésped (UC-04):** `sp_agregar_huesped_alojamiento` asoció
       al huésped titular sin exceder la capacidad.
+- [x] **Check-in por habitación completa (UC-04, re-verificado
+      2026-07-12):** con 2 huéspedes ya asignados a una habitación (uno
+      titular), el check-in creó UN `alojamiento` y adjuntó a los 2 en la
+      misma operación (`call_procedures_en_transaccion`); la habitación
+      quedó de solo lectura en la pantalla de asignación. Sin titular
+      asignado, la pantalla de check-in no ofreció el botón.
+- [x] **Un huésped no puede estar en dos estadías activas
+      (UC-04b, 2026-07-12):** intentar hacer check-in de un huésped ya
+      activo en otro alojamiento fue rechazado por
+      `sp_agregar_huesped_alojamiento` con *"Este huésped ya está activo en
+      otro alojamiento."*, revirtiendo también el `alojamiento` recién
+      creado en la misma transacción (sin fila huérfana).
+- [x] **Registro de personas en ventana flotante (2026-07-12):** los
+      formularios de cliente nuevo y huésped nuevo abren como `<dialog>`
+      (antes `<details>`) en `reservas/nuevo.html`, `reservas/preasignar.html`
+      y `estadia/ver.html`; el submit real (creación de huésped) siguió
+      funcionando igual.
 - [x] **Consumo y daño (UC-05/06):** `sp_registrar_consumo` (2× desayuno =
       S/50) y `sp_registrar_danio` (S/45) quedaron reflejados en
       `vw_consumos_alojamiento` / el detalle del alojamiento.

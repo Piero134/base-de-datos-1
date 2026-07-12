@@ -118,9 +118,9 @@ SELECT * FROM vw_reservas_corporativas
 ORDER BY id_reserva;
 
 -- =============================================================
--- 11b. Pre-asignación corporativa vs. check-in real: detecta si
---      quien efectivamente ocupó la habitación coincide con quien
---      la empresa había pre-asignado.
+-- 11b. Asignación de huéspedes vs. check-in real: detecta si quien
+--      efectivamente ocupó la habitación coincide con quien había
+--      sido asignado en la reserva.
 -- =============================================================
 SELECT * FROM vw_preasignacion_vs_checkin
 ORDER BY id_reserva, id_detalle_huesped;

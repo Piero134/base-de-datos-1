@@ -67,20 +67,25 @@ note right: CALL sp_registrar_reserva
 :Detalle de reserva;
 note right
   Breadcrumb dinámico: Cabecera › Detalle
-  › Pago › Pre-asignación (este último
-  solo si tipo_persona = JURIDICA)
+  › Pago › Asignación de huéspedes
+  (aplica a TODA reserva, no solo
+  corporativa)
 end note
 :Agregar línea (repetible);
-note right: CALL sp_agregar_detalle_reserva
+note right
+  CALL sp_agregar_detalle_reserva
+  (rechaza si reserva.pagado = 1)
+end note
 :Botón primario "Continuar a pago"\n(visible, ya no un link perdido);
-if (¿Cliente jurídico?) then (sí)
-  :Pre-asignar huéspedes;
-  note right: CALL sp_agregar_huesped_alojamiento\n(vía detalle_huesped_reserva)
-else (no)
-  :Texto explicando que la\npre-asignación no aplica\n(cliente natural);
-endif
 :Confirmar pago;
 note right: CALL sp_confirmar_pago
+:Asignación de huéspedes\n(tabla por habitación,\ntitular obligatorio por habitación);
+note right
+  INSERT/UPDATE detalle_huesped_reserva
+  (una línea completa a la vez, atómico);
+  editable hasta que esa habitación
+  tenga check-in
+end note
 :Pago (misma pantalla);
 note right
   ✓ redirige de vuelta a Pago:
