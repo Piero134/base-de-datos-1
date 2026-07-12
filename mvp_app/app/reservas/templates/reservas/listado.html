@@ -3,17 +3,39 @@
 {% block content %}
 <div class="page-header">
   <h1>Reservas</h1>
-  <p class="subtitle">{{ reservas|length }} reserva{{ 's' if reservas|length != 1 }} {{ 'pendiente(s) de pago' if solo_pendientes else 'en total' }}.</p>
+  <p class="subtitle">{{ reservas|length }} reserva{{ 's' if reservas|length != 1 }} {{ 'pendiente(s) de pago' if filtros is none else 'encontrada(s)' }}.</p>
 </div>
-{% if session.get('rol') == 'CAJA' %}
-<p class="subtitle">Solo se muestran las reservas pendientes de pago: confirmarlo es responsabilidad de caja.</p>
+{% if filtros is none %}
+<p class="subtitle">Solo se muestran las reservas pendientes de pago.</p>
 {% else %}
-<div class="quick-links">
-  <a href="{{ url_for('reservas.nuevo') }}">+ Nueva reserva</a>
-  <a href="{{ url_for('reservas.listado') }}" class="btn-secondary{{ ' is-current' if not solo_pendientes }}">Todas</a>
-  <a href="{{ url_for('reservas.listado', pagado=0) }}" class="btn-secondary{{ ' is-current' if solo_pendientes }}">Pendientes de pago</a>
-  <a href="{{ url_for('reservas.corporativas') }}" class="btn-secondary">Reservas corporativas</a>
-</div>
+<p class="actions"><a href="{{ url_for('reservas.nuevo') }}" class="btn-primary-link">+ Nueva reserva</a></p>
+<form method="get" class="card card--wide filter-bar">
+  <div>
+    <label for="filtro_tipo_persona">Tipo de reservante</label>
+    <select name="tipo_persona" id="filtro_tipo_persona">
+      <option value="">-- Todos --</option>
+      <option value="NATURAL" {% if filtros.tipo_persona == 'NATURAL' %}selected{% endif %}>Persona natural</option>
+      <option value="JURIDICA" {% if filtros.tipo_persona == 'JURIDICA' %}selected{% endif %}>Persona jurídica</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="filtro_documento">Documento (natural) o RUC (jurídica) <span class="optional">(opcional)</span></label>
+    <input type="text" name="documento" id="filtro_documento" placeholder="Número de documento o RUC" value="{{ filtros.documento }}">
+  </div>
+
+  <div>
+    <label for="filtro_estado">Estado de la reserva</label>
+    <select name="estado" id="filtro_estado">
+      <option value="">-- Todos --</option>
+      {% for e in estados %}
+        <option value="{{ e }}" {% if filtros.estado == e %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <button type="submit">Filtrar</button>
+</form>
 {% endif %}
 
 {% if reservas %}
@@ -21,7 +43,7 @@
 <table>
   <thead>
   <tr>
-    <th>ID</th><th>Reservante</th><th>Hotel</th><th>Estado</th><th>Canal</th>
+    <th>ID</th><th>Reservante</th><th>Documento</th><th>Hotel</th><th>Estado</th><th>Canal</th>
     <th>Check-in</th><th>Check-out</th><th>Noches</th><th>Monto total</th><th>Pagado</th><th></th>
   </tr>
   </thead>
@@ -30,6 +52,7 @@
   <tr>
     <td>#{{ r.id_reserva }}</td>
     <td>{{ r.nombre_reservante }}</td>
+    <td>{{ r.documento }}</td>
     <td>{{ r.hotel }}</td>
     <td><span class="badge {{ r.estado|badge_class }}">{{ r.estado }}</span></td>
     <td>{{ r.canal }}</td>
@@ -46,7 +69,7 @@
 </div>
 {% else %}
 <p class="empty-state">
-  {% if solo_pendientes %}No hay reservas pendientes de pago.{% else %}Todavía no hay reservas registradas.{% endif %}
+  {% if filtros is none %}No hay reservas pendientes de pago.{% else %}Ninguna reserva coincide con los filtros.{% endif %}
 </p>
 {% endif %}
 {% endblock %}

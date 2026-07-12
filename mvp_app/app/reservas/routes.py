@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.auth.routes import requiere_rol
-from app.constants import CANALES
+from app.constants import CANALES, ESTADOS_RESERVA
 from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_reserva
 from app.db import call_procedure, execute_transaction, query
 from app.errors import ejecutar_con_flash
@@ -19,39 +19,58 @@ def _reserva_de_mi_hotel(id_reserva):
     )
 
 
+def _query_reservas(condiciones, parametros, orden):
+    # vw_reservas_detalle no expone tipo_persona/documento del reservante
+    # (solo vw_reservante los tiene), así que en vez de tocar la vista se
+    # arma aquí el mismo resultado uniendo reserva + vw_reservante + hotel
+    # directamente -- una sola query reusada tanto para Caja (fija) como
+    # para Recepción/Administrador (con filtros).
+    return query(
+        f"""
+        SELECT r.id_reserva, v.nombre_reservante, v.tipo_persona, v.documento, ht.nombre AS hotel,
+               r.estado, r.canal, r.fecha_checkin, r.fecha_checkout,
+               fn_calcular_noches(r.fecha_checkin, r.fecha_checkout) AS noches,
+               r.monto_total, r.pagado, r.fecha_pago, r.fecha_limite_pago
+        FROM reserva r
+        JOIN vw_reservante v ON v.id_cliente = r.id_cliente
+        JOIN hotel ht ON ht.id_hotel = r.id_hotel
+        WHERE {' AND '.join(condiciones)}
+        ORDER BY {orden}
+        """,
+        tuple(parametros),
+    )
+
+
 @bp.route("/")
 @requiere_rol("RECEPCION", "CAJA", "ADMINISTRADOR")
 def listado():
-    # CAJA solo confirma pagos: no tiene motivo para ver reservas ya
-    # pagadas ni forma de togglear a "Todas" (a diferencia de RECEPCION).
-    solo_pendientes = session["rol"] == "CAJA" or request.args.get("pagado") == "0"
-    if solo_pendientes:
-        filas = query(
-            "SELECT * FROM vw_reservas_detalle WHERE pagado = 0 AND hotel = %s ORDER BY fecha_limite_pago",
-            (session["nombre_hotel"],),
+    if session["rol"] == "CAJA":
+        # Caja solo confirma pagos: siempre pendientes de pago, sin filtros
+        # (a diferencia de Recepción/Administrador, que sí pueden buscar).
+        filas = _query_reservas(
+            ["ht.nombre = %s", "r.pagado = 0"], [session["nombre_hotel"]], "r.fecha_limite_pago"
         )
-    else:
-        filas = query(
-            "SELECT * FROM vw_reservas_detalle WHERE hotel = %s ORDER BY id_reserva DESC",
-            (session["nombre_hotel"],),
-        )
-    return render_template("reservas/listado.html", reservas=filas, solo_pendientes=solo_pendientes)
+        return render_template("reservas/listado.html", reservas=filas, filtros=None, estados=ESTADOS_RESERVA)
 
-
-@bp.route("/corporativas")
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
-def corporativas():
-    # vw_reservas_corporativas no expone hotel; se resuelve el conjunto de
-    # id_reserva del hotel de la sesión aparte y se filtra en Python.
-    ids_de_mi_hotel = {
-        f["id_reserva"] for f in query("SELECT id_reserva FROM reserva WHERE id_hotel = %s", (session["id_hotel"],))
+    filtros = {
+        "tipo_persona": request.args.get("tipo_persona") or "",
+        "documento": request.args.get("documento") or "",
+        "estado": request.args.get("estado") or "",
     }
-    filas = [
-        f
-        for f in query("SELECT * FROM vw_reservas_corporativas ORDER BY id_reserva")
-        if f["id_reserva"] in ids_de_mi_hotel
-    ]
-    return render_template("reservas/corporativas.html", filas=filas)
+    condiciones = ["ht.nombre = %s"]
+    parametros = [session["nombre_hotel"]]
+    if filtros["tipo_persona"]:
+        condiciones.append("v.tipo_persona = %s")
+        parametros.append(filtros["tipo_persona"])
+    if filtros["documento"]:
+        condiciones.append("v.documento LIKE %s")
+        parametros.append(f"%{filtros['documento']}%")
+    if filtros["estado"]:
+        condiciones.append("r.estado = %s")
+        parametros.append(filtros["estado"])
+
+    filas = _query_reservas(condiciones, parametros, "r.id_reserva DESC")
+    return render_template("reservas/listado.html", reservas=filas, filtros=filtros, estados=ESTADOS_RESERVA)
 
 
 def _contexto_nuevo():

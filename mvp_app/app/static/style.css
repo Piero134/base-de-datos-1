@@ -187,7 +187,9 @@ form.card, .card {
   max-width: 640px;
 }
 .card--readonly { background: var(--color-surface-2); box-shadow: none; }
-.card--wide { max-width: none; }
+form.card.card--wide, .card--wide {
+  max-width: none;
+}
 
 fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); margin: 16px 0 0; padding: 4px 16px 16px; }
 legend { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); padding: 0 6px; }
@@ -228,6 +230,16 @@ button:hover, input[type=submit]:hover { background: var(--color-primary-dark); 
 .inline-form select, .inline-form input { width: auto; margin-top: 0; }
 .inline-form button { margin-top: 0; padding: 6px 12px; font-size: 0.82rem; }
 button:disabled, input[type=submit]:disabled { opacity: .65; cursor: not-allowed; }
+
+/* Barra de filtros horizontal: todos los campos + botón en una sola fila
+   que ocupa el mismo ancho que la tabla de resultados debajo (cada campo
+   se reparte el espacio disponible con flex:1 en vez de tener un ancho
+   fijo, para no forzar el salto a una segunda fila). */
+.filter-bar { display: flex; gap: 4px 16px; align-items: flex-end; }
+.filter-bar > div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.filter-bar label { margin-top: 0; }
+.filter-bar select, .filter-bar input { width: 100%; }
+.filter-bar button { margin-top: 0; flex-shrink: 0; }
 
 .actions a.btn-primary-link {
   display: inline-block;
@@ -380,6 +392,8 @@ button.btn-abrir-modal { margin-bottom: 16px; }
   .content { padding: 18px 14px 36px; }
   form.card, .card { max-width: 100%; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .filter-bar { flex-wrap: wrap; }
+  .filter-bar > div { flex: 1 1 100%; }
 }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
