@@ -14,8 +14,7 @@ incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-B
 
 | Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto / trigger disparado |
 |---|---|---|---|---|
-| Listado de reservas | `GET /reservas/` | Ver reservas (Recepción/Administrador: todas o pendientes de pago, con toggle; Caja: siempre solo pendientes de pago, sin toggle) | `SELECT * FROM vw_reservas_detalle` | — |
-| Reservas corporativas | `GET /reservas/corporativas` | Ver pre-asignaciones corporativas | `SELECT * FROM vw_reservas_corporativas` | — |
+| Listado de reservas | `GET /reservas/` | Recepción/Administrador: filtro por tipo de reservante (natural/jurídica), documento/RUC y estado de la reserva. Caja: siempre solo pendientes de pago, sin filtros | `SELECT` sobre `reserva`+`vw_reservante`+`hotel` directo (no `vw_reservas_detalle`: esa vista no expone `tipo_persona`/`documento` del reservante) | — |
 | Nueva reserva (cabecera) | `GET /reservas/nuevo` | Cargar catálogos (clientes, hoteles, tipos de documento) | `SELECT` sobre `vw_reservante`, `hotel`, `tipo_documento` | — |
 | Crear cliente | `POST /reservas/cliente/nuevo` | Alta de cliente natural o jurídico | `INSERT` en `persona` → `persona_natural`/`persona_juridica` → `cliente` (transacción directa, sin SP) | — |
 | Crear reserva | `POST /reservas/nuevo` | Confirmar cabecera de la reserva | `CALL sp_registrar_reserva(...)` | Crea reserva en estado `PENDIENTE` |

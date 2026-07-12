@@ -5,9 +5,11 @@ contra `hotel_db` real (MySQL) el 2026-07-06; los ítems de reservas/estadía se
 re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
 tabla, de nuevo tras corregir el check-in a individual por huésped, una
 tercera vez el mismo día tras exigir que el titular haga check-in primero y
-retirar el alta de huéspedes desde estadía, y una cuarta vez tras pasar la
-confirmación de pago a ser responsabilidad exclusiva de Caja (ver commits de
-esa fecha). Marcar de nuevo tras cambios importantes.
+retirar el alta de huéspedes desde estadía, una cuarta vez tras pasar la
+confirmación de pago a ser responsabilidad exclusiva de Caja, y una quinta
+tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
+"Reservas corporativas" (ver commits de esa fecha). Marcar de nuevo tras
+cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -23,7 +25,16 @@ esa fecha). Marcar de nuevo tras cambios importantes.
       persona→persona_natural→cliente funcionó y el cliente apareció
       inmediatamente en el combo de `/reservas/nuevo`.
 - [x] **Reserva corporativa (UC-03):** reserva para "Corporación ABC S.A.C."
-      + asignación de huésped, visible luego en `vw_reservas_corporativas`.
+      + asignación de huésped, visible luego en `vw_reservas_corporativas`
+      (la vista se sigue usando por SQL directo; la pantalla web dedicada
+      se retiró el 2026-07-12, reemplazada por el filtro de tipo de
+      reservante en el listado).
+- [x] **Filtros del listado de reservas (2026-07-12):** con reservas de
+      ambos tipos de persona, filtrar por `tipo_persona=JURIDICA` mostró
+      solo las de RUC; filtrar por documento/RUC parcial encontró la
+      reserva correcta; filtrar por `estado` funcionó. `GET
+      /reservas/corporativas` devolvió 404 (ruta eliminada). Caja siguió
+      viendo solo pendientes de pago, sin el formulario de filtro.
 - [x] **Asignación de huéspedes por habitación (UC-03, re-verificado
       2026-07-12):** en una línea "Doble x1" (capacidad 2), guardar la
       habitación sin marcar titular fue rechazado; con titular marcado se
