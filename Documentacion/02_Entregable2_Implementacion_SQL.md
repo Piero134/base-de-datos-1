@@ -84,10 +84,10 @@ los scripts, sin inventar cobertura):
 | Procedimiento | Propósito |
 |---|---|
 | `sp_registrar_reserva` | Crea la cabecera de una reserva (estado inicial `PENDIENTE`) |
-| `sp_agregar_detalle_reserva` | Agrega una línea tipo+plan+cantidad, valida disponibilidad y calcula el subtotal |
+| `sp_agregar_detalle_reserva` | Agrega una línea tipo+plan+cantidad, valida disponibilidad y calcula el subtotal; rechaza si la reserva ya está pagada |
 | `sp_confirmar_pago` | Marca la reserva como pagada y `CONFIRMADA` |
 | `sp_realizar_checkin` | Crea el alojamiento (ocupación real) para una línea de reserva y habitación física, por ocupación real |
-| `sp_agregar_huesped_alojamiento` | Asocia un huésped a un alojamiento, validando capacidad máxima |
+| `sp_agregar_huesped_alojamiento` | Asocia un huésped a un alojamiento, validando capacidad máxima y que el huésped no esté ya activo en otro alojamiento |
 | `sp_realizar_checkin_con_huesped` | Envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento` en una sola transacción: el check-in exige registrar al huésped titular en el mismo paso |
 | `sp_registrar_consumo` | Registra el consumo de un servicio con su precio vigente |
 | `sp_registrar_danio` | Registra un daño en la habitación |
