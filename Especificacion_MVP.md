@@ -97,9 +97,8 @@ asignado a ese empleado:
 - **Flujo principal:** el sistema llama `sp_confirmar_pago(id_reserva)`; la reserva pasa a `CONFIRMADA`.
   La pantalla de pago (`GET /reservas/<id>/pago`) y su confirmación (`POST`) son exclusivas de
   Caja/Administrador a nivel de ruta (`requiere_rol("CAJA", "ADMINISTRADOR")`); Recepción no ve el
-  botón/link que lleva ahí (ni en el detalle de la reserva ni en el paso "Pago" del stepper, que se
-  muestra sin link para ese rol) y si intenta la URL directamente (GET o POST) es redirigida sin
-  llegar a la pantalla.
+  botón/link que lleva ahí en el detalle de la reserva, y si intenta la URL directamente (GET o
+  POST) es redirigida sin llegar a la pantalla.
 - **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada. A partir de aquí, `sp_agregar_detalle_reserva` rechaza cualquier intento de agregar una línea nueva a esta reserva (una reserva pagada ya no cambia de alcance); el CTA "confirmar pago" deja de mostrarse en toda la interfaz para esa reserva.
 - **Consulta relacionada:** vista `vw_reservas_detalle` filtrando `pagado = 0` (reservas pendientes de pago, es además el único listado que ve Caja — sin la opción de ver "Todas" que sí tiene Recepción).
 

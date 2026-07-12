@@ -11,10 +11,11 @@ tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
 "Reservas corporativas", una sexta el mismo día tras rediseñar el listado
 de check-in como tabla plana buscable por titular, una séptima tras
 bloquear también para Recepción el acceso directo a la URL de confirmación
-de pago (antes solo se ocultaba el botón), y una octava tras agregar
-cancelar/no-show de reserva y el bloqueo general de estados finales (ver
-commits de esa fecha). Marcar
-de nuevo tras cambios importantes.
+de pago (antes solo se ocultaba el botón), una octava tras agregar
+cancelar/no-show de reserva y el bloqueo general de estados finales, y una
+novena el mismo día tras quitar el stepper visual de pago/asignación/
+check-in (ver commits de esa fecha). Marcar de nuevo tras cambios
+importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -119,6 +120,16 @@ de nuevo tras cambios importantes.
       confirmación y mensaje final). De paso se quitó el breadcrumb/stepper
       de `reservas/detalle.html` (a pedido del usuario), que ya no
       recibía `pasos` desde `_contexto_detalle`.
+- [x] **Stepper visual retirado de todas las vistas (2026-07-12):** ya no
+      quedaba ningún caller de `construir_pasos_reserva` (se eliminó del
+      código junto con el modo "stepper" de la macro `breadcrumb` y su CSS
+      `.stepper`/`.step*`), así que `pago.html`, `preasignar.html` y
+      `checkin_reserva.html` quedan sin ningún breadcrumb, igual que ya
+      pasaba en `reservas/detalle.html`. Verificado con `test_client`: las
+      tres pantallas responden 200 sin ningún rastro de "stepper" ni
+      "breadcrumb" en el HTML; las pantallas que sí usan el breadcrumb de
+      texto plano (`reservas/nuevo.html`, `caja/cuentas.html`) lo siguen
+      mostrando sin cambios.
 - [x] **Pago bloqueado por completo para Recepción (UC-02, 2026-07-12):**
       antes Recepción solo no veía el botón "Confirmar pago" dentro de
       `/reservas/<id>/pago` (podía igual entrar a la URL en modo lectura).
