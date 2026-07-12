@@ -179,38 +179,7 @@ def _contexto_checkin_reserva(id_reserva):
             """
         ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
-        "datos_cliente_natural": _datos_cliente_natural_de_reserva(id_reserva),
     }
-
-
-def _datos_cliente_natural_de_reserva(id_reserva):
-    """Igual que el atajo 'usar mis datos' de _contexto_ver, pero resuelto
-    desde la reserva (antes de que exista un alojamiento), para poder
-    ofrecerlo ya en la pantalla de check-in."""
-    filas = query(
-        """
-        SELECT p.id_persona, pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
-               pn.fecha_nacimiento, pn.genero, pn.nacionalidad
-        FROM reserva r
-        JOIN cliente c ON c.id_cliente = r.id_cliente
-        JOIN persona p ON p.id_persona = c.id_persona
-        JOIN persona_natural pn ON pn.id_persona = p.id_persona
-        WHERE r.id_reserva = %s AND p.tipo = 'NATURAL'
-        """,
-        (id_reserva,),
-    )
-    if not filas:
-        return None
-    fila = filas[0]
-    # checkin_reserva.html serializa este dict entero con |tojson para
-    # compartirlo entre varios botones "usar mis datos" por JS; el
-    # serializador JSON de Flask formatea date/datetime como fecha HTTP
-    # ("Tue, 02 Apr 1996...") en vez de ISO, lo que <input type="date">
-    # no puede interpretar y deja el campo vacío en silencio. Se convierte
-    # a texto ISO aquí para que el autofill funcione.
-    if fila.get("fecha_nacimiento") is not None:
-        fila["fecha_nacimiento"] = fila["fecha_nacimiento"].isoformat()
-    return fila
 
 
 @bp.route("/checkin/<int:id_reserva>")
@@ -307,24 +276,6 @@ def _contexto_ver(id_alojamiento):
         """,
         (id_alojamiento,),
     )
-    # Si quien reserva/paga es una persona NATURAL, se ofrece un atajo en la
-    # pantalla ("usar mis datos") para no forzar a retipear al huésped cuando
-    # es la misma persona que el cliente. No aplica a clientes JURIDICA (una
-    # empresa no tiene datos personales que copiar a un huésped).
-    datos_cliente_natural = query(
-        """
-        SELECT p.id_persona, pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
-               pn.fecha_nacimiento, pn.genero, pn.nacionalidad
-        FROM alojamiento a
-        JOIN reserva r ON r.id_reserva = a.id_reserva
-        JOIN cliente c ON c.id_cliente = r.id_cliente
-        JOIN persona p ON p.id_persona = c.id_persona
-        JOIN persona_natural pn ON pn.id_persona = p.id_persona
-        WHERE a.id_alojamiento = %s AND p.tipo = 'NATURAL'
-        """,
-        (id_alojamiento,),
-    )
-
     return {
         "aloj": aloj[0],
         "huespedes": huespedes,
@@ -337,7 +288,6 @@ def _contexto_ver(id_alojamiento):
             ORDER BY pn.nombres
             """
         ),
-        "datos_cliente_natural": datos_cliente_natural[0] if datos_cliente_natural else None,
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
         "consumos": query(
             "SELECT * FROM vw_consumos_alojamiento WHERE id_alojamiento = %s ORDER BY fecha_consumo", (id_alojamiento,)

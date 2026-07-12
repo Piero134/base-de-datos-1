@@ -66,13 +66,6 @@
     <fieldset id="hu_nuevo_{{ l.id_detalle_reserva }}" {% if not modo_nuevo %}disabled style="display:none"{% endif %}>
       <legend>Huésped nuevo</legend>
       <div id="nh_campos_reales_{{ l.id_detalle_reserva }}">
-        {% if datos_cliente_natural %}
-        <button type="button" class="btn-secondary" id="btnUsarDatosCliente_{{ l.id_detalle_reserva }}"
-          onclick="usarDatosCliente('{{ l.id_detalle_reserva }}')">
-          Usar los datos de {{ datos_cliente_natural.nombres }} {{ datos_cliente_natural.apellidos }} (cliente)
-        </button>
-        {% endif %}
-        <input type="hidden" name="id_persona" id="nh_id_persona_{{ l.id_detalle_reserva }}" value="">
         <label for="nh_nombres_{{ l.id_detalle_reserva }}">Nombres</label>
         <input type="text" name="nombres" id="nh_nombres_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.nombres if modo_nuevo else '' }}">
         <label for="nh_apellidos_{{ l.id_detalle_reserva }}">Apellidos</label>
@@ -117,8 +110,6 @@
 {% endif %}
 
 <script>
-  var datosClienteNatural = {{ (datos_cliente_natural or {}) | tojson }};
-
   function toggleOrigenHuesped(id, modo) {
     var fsExistente = document.getElementById('hu_existente_' + id);
     var fsNuevo = document.getElementById('hu_nuevo_' + id);
@@ -136,17 +127,6 @@
       var campo = document.getElementById(prefijo + id);
       if (campo) { campo.required = esNuevo; }
     });
-  }
-
-  function usarDatosCliente(id) {
-    document.getElementById('nh_id_persona_' + id).value = datosClienteNatural.id_persona || '';
-    document.getElementById('nh_nombres_' + id).value = datosClienteNatural.nombres || '';
-    document.getElementById('nh_apellidos_' + id).value = datosClienteNatural.apellidos || '';
-    document.getElementById('nh_id_tipo_documento_' + id).value = datosClienteNatural.id_tipo_documento || '';
-    document.getElementById('nh_numero_documento_' + id).value = datosClienteNatural.numero_documento || '';
-    document.getElementById('nh_fecha_nacimiento_' + id).value = datosClienteNatural.fecha_nacimiento || '';
-    document.getElementById('nh_genero_' + id).value = datosClienteNatural.genero || '';
-    document.getElementById('nh_nacionalidad_' + id).value = datosClienteNatural.nacionalidad || '';
   }
 </script>
 {% endblock %}

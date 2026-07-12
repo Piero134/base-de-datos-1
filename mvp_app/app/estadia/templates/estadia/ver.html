@@ -83,20 +83,6 @@
   <form method="post" action="{{ url_for('estadia.huesped_nuevo') }}">
     <input type="hidden" name="id_alojamiento" value="{{ aloj.id_alojamiento }}">
     <div id="nh_campos_reales">
-      {% if datos_cliente_natural %}
-      <button type="button" class="btn-secondary" id="btnUsarDatosCliente"
-        data-id-persona="{{ datos_cliente_natural.id_persona }}"
-        data-nombres="{{ datos_cliente_natural.nombres }}"
-        data-apellidos="{{ datos_cliente_natural.apellidos }}"
-        data-id-tipo-documento="{{ datos_cliente_natural.id_tipo_documento }}"
-        data-numero-documento="{{ datos_cliente_natural.numero_documento }}"
-        data-fecha-nacimiento="{{ datos_cliente_natural.fecha_nacimiento }}"
-        data-genero="{{ datos_cliente_natural.genero }}"
-        data-nacionalidad="{{ datos_cliente_natural.nacionalidad }}">
-        Usar los datos de {{ datos_cliente_natural.nombres }} {{ datos_cliente_natural.apellidos }} (cliente)
-      </button>
-      {% endif %}
-      <input type="hidden" name="id_persona" id="nh_id_persona" value="">
       <label for="nh_nombres">Nombres</label>
       <input type="text" name="nombres" id="nh_nombres" required value="{{ seleccion_huesped.nombres if seleccion_huesped else '' }}">
       <label for="nh_apellidos">Apellidos</label>
@@ -186,21 +172,4 @@
 {% endif %}
 
 <p><a href="{{ url_for('estadia.activos') }}">Volver a alojamientos activos</a></p>
-
-<script>
-  (function () {
-    var boton = document.getElementById('btnUsarDatosCliente');
-    if (!boton) { return; }
-    boton.addEventListener('click', function () {
-      document.getElementById('nh_id_persona').value = boton.dataset.idPersona || '';
-      document.getElementById('nh_nombres').value = boton.dataset.nombres || '';
-      document.getElementById('nh_apellidos').value = boton.dataset.apellidos || '';
-      document.getElementById('nh_id_tipo_documento').value = boton.dataset.idTipoDocumento || '';
-      document.getElementById('nh_numero_documento').value = boton.dataset.numeroDocumento || '';
-      document.getElementById('nh_fecha_nacimiento').value = boton.dataset.fechaNacimiento || '';
-      document.getElementById('nh_genero').value = boton.dataset.genero || '';
-      document.getElementById('nh_nacionalidad').value = boton.dataset.nacionalidad || '';
-    });
-  })();
-</script>
 {% endblock %}
