@@ -324,7 +324,7 @@ def _contexto_preasignar(id_reserva):
 
     return {
         "reserva": reserva[0],
-        "lineas": construir_grid_reserva(id_reserva),
+        "lineas": construir_grid_reserva(id_reserva, con_estado_estadia=True),
         "huespedes": query(
             """
             SELECT h.id_huesped, pn.nombres, pn.apellidos
@@ -365,7 +365,7 @@ def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
         return redirect(url_for("reservas.listado"))
 
     linea = next(
-        (l for l in construir_grid_reserva(id_reserva) if l["id_detalle_reserva"] == id_detalle_reserva),
+        (l for l in construir_grid_reserva(id_reserva, con_estado_estadia=True) if l["id_detalle_reserva"] == id_detalle_reserva),
         None,
     )
     if linea is None:

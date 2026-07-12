@@ -82,6 +82,43 @@ def execute(sql, params=None):
         conn.close()
 
 
+def call_procedures_en_transaccion(fabrica_llamadas):
+    """
+    Ejecuta varias llamadas CALL sp_... en una sola conexión/transacción,
+    mismo espíritu que execute_transaction pero para procedimientos
+    almacenados -- útil cuando una llamada necesita el OUT de la anterior
+    (ej. crear un alojamiento y recién con su id_alojamiento adjuntar
+    varios huéspedes, todo o nada).
+
+    fabrica_llamadas: función que recibe un callable `ejecutar(proc_name,
+    params) -> out_values` y orquesta las llamadas que necesite (puede usar
+    el resultado de una para construir los params de la siguiente). Se hace
+    commit solo si fabrica_llamadas termina sin lanzar; si lanza
+    mysql.connector.Error, se hace rollback completo y se re-lanza.
+
+    Devuelve lo que devuelva fabrica_llamadas.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    def ejecutar(proc_name, params):
+        out_values = cur.callproc(proc_name, params)
+        for rs in cur.stored_results():
+            rs.fetchall()
+        return out_values
+
+    try:
+        resultado = fabrica_llamadas(ejecutar)
+        conn.commit()
+        return resultado
+    except mysql.connector.Error:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 def execute_transaction(statements):
     """
     Ejecuta varias sentencias INSERT/UPDATE dentro de una sola transacción.

@@ -6,100 +6,60 @@
     <a href="{{ url_for('estadia.checkin_listado') }}">Check-in</a> &rsaquo; <span class="current">Reserva #{{ reserva.id_reserva }}</span>
   </div>
   <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}</p>
+  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a>; aquí solo se elige la habitación física y se confirma el check-in de todos a la vez.</p>
 </div>
 
 {% if completo %}
-<p class="alert alert-success">✓ Check-in completo: ya se asignó habitación a todas las líneas de esta reserva.</p>
+<p class="alert alert-success">✓ Check-in completo: ya se hizo check-in de todas las habitaciones de esta reserva.</p>
 {% endif %}
 
 {% for l in lineas %}
 <div class="card">
-  <h2>Línea #{{ l.id_detalle_reserva }} — {{ l.tipo_habitacion }} (x{{ l.cantidad_habitaciones }})</h2>
+  <h2>{{ l.tipo_habitacion }} — {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
 
-  {% if l.asignadas %}
-  <p><strong>Ya asignadas ({{ l.asignadas|length }} de {{ l.cantidad_habitaciones }}):</strong></p>
-  <ul>
-    {% for a in l.asignadas %}
-    <li>N° {{ a.numero }} (piso {{ a.piso }}) — <a href="{{ url_for('estadia.ver', id_alojamiento=a.id_alojamiento) }}">ver alojamiento →</a></li>
+  {% for hab in l.habitaciones %}
+  <div>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th colspan="2">{{ l.tipo_habitacion }} {{ hab.n }}</th></tr></thead>
+    <tbody>
+    {% for slot in hab.slots %}
+    <tr>
+      <td>{{ slot.nombre or 'Sin identificar' }}</td>
+      <td>{{ 'Titular' if slot.es_titular else '' }}</td>
+    </tr>
     {% endfor %}
-  </ul>
-  {% endif %}
+    </tbody>
+  </table>
+  </div>
 
-  {% if l.pendientes > 0 %}
-  {% set habitaciones = habitaciones_por_tipo.get(l.id_detalle_reserva) %}
-  {% set es_draft = draft_id_detalle_reserva and draft_id_detalle_reserva|string == l.id_detalle_reserva|string %}
-  {% set modo_nuevo = es_draft and draft_origen_huesped == 'nuevo' %}
-  <p class="subtitle">Faltan {{ l.pendientes }} habitación(es) de este tipo por asignar.</p>
-  {% if habitaciones %}
-  <form method="post" action="{{ url_for('estadia.checkin_post') }}">
-    <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
-    <input type="hidden" name="id_detalle_reserva" value="{{ l.id_detalle_reserva }}">
-    <label for="id_habitacion_{{ l.id_detalle_reserva }}">Habitación disponible</label>
-    <select name="id_habitacion" id="id_habitacion_{{ l.id_detalle_reserva }}" required data-searchable="Buscar habitación por número o piso…">
-      {% for h in habitaciones %}
-        <option value="{{ h.id_habitacion }}" {% if es_draft and draft_id_habitacion|string == h.id_habitacion|string %}selected{% endif %}>N° {{ h.numero }} (piso {{ h.piso }})</option>
-      {% endfor %}
-    </select>
-
-    <p class="subtitle">El check-in registra a la vez la habitación y el huésped que ocupa — una habitación no puede quedar ocupada sin nadie asociado.</p>
-
-    <div class="huesped-origen-toggle">
-      <label><input type="radio" name="origen_huesped" value="existente" id="ro_existente_{{ l.id_detalle_reserva }}"
-        {% if not modo_nuevo %}checked{% endif %}
-        onchange="toggleOrigenHuesped('{{ l.id_detalle_reserva }}', 'existente')" style="width:auto;display:inline"> Huésped existente</label>
-      <label><input type="radio" name="origen_huesped" value="nuevo" id="ro_nuevo_{{ l.id_detalle_reserva }}"
-        {% if modo_nuevo %}checked{% endif %}
-        onchange="toggleOrigenHuesped('{{ l.id_detalle_reserva }}', 'nuevo')" style="width:auto;display:inline"> Huésped nuevo</label>
-    </div>
-
-    <fieldset id="hu_existente_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}disabled style="display:none"{% endif %}>
-      <legend>Huésped existente</legend>
-      <label for="id_huesped_{{ l.id_detalle_reserva }}">Huésped</label>
-      <select name="id_huesped" id="id_huesped_{{ l.id_detalle_reserva }}" {% if not modo_nuevo %}required{% endif %} data-searchable="Buscar huésped…">
-        {% for h in huespedes_disponibles %}
-          <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos }}</option>
+  {% if hab.checkin_hecho %}
+  <p class="badge badge-good">✓ Check-in hecho — habitación N° {{ hab.slots[0].estadia.numero_habitacion if hab.slots[0].estadia else '' }}
+    (<a href="{{ url_for('estadia.ver', id_alojamiento=hab.id_alojamiento) }}">ver alojamiento →</a>)</p>
+  {% elif not hab.tiene_titular %}
+  <p class="empty-state">Falta asignar un titular a esta habitación. <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Completar asignación →</a></p>
+  {% else %}
+    {% set habitaciones_disponibles = habitaciones_por_tipo.get(l.id_detalle_reserva) %}
+    {% if habitaciones_disponibles %}
+    <form method="post" action="{{ url_for('estadia.checkin_post') }}">
+      <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
+      <input type="hidden" name="id_detalle_reserva" value="{{ l.id_detalle_reserva }}">
+      <input type="hidden" name="n_habitacion" value="{{ hab.n }}">
+      <label for="id_habitacion_{{ l.id_detalle_reserva }}_{{ hab.n }}">Habitación física disponible</label>
+      <select name="id_habitacion" id="id_habitacion_{{ l.id_detalle_reserva }}_{{ hab.n }}" required data-searchable="Buscar habitación por número o piso…">
+        {% for h in habitaciones_disponibles %}
+          <option value="{{ h.id_habitacion }}">N° {{ h.numero }} (piso {{ h.piso }})</option>
         {% endfor %}
       </select>
-    </fieldset>
-
-    <fieldset id="hu_nuevo_{{ l.id_detalle_reserva }}" {% if not modo_nuevo %}disabled style="display:none"{% endif %}>
-      <legend>Huésped nuevo</legend>
-      <div id="nh_campos_reales_{{ l.id_detalle_reserva }}">
-        <label for="nh_nombres_{{ l.id_detalle_reserva }}">Nombres</label>
-        <input type="text" name="nombres" id="nh_nombres_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.nombres if modo_nuevo else '' }}">
-        <label for="nh_apellidos_{{ l.id_detalle_reserva }}">Apellidos</label>
-        <input type="text" name="apellidos" id="nh_apellidos_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.apellidos if modo_nuevo else '' }}">
-        <label for="nh_id_tipo_documento_{{ l.id_detalle_reserva }}">Tipo de documento</label>
-        <select name="id_tipo_documento" id="nh_id_tipo_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %}>
-          {% for td in tipos_documento %}
-            <option value="{{ td.id_tipo_documento }}" {% if modo_nuevo and seleccion_huesped.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
-          {% endfor %}
-        </select>
-        <label for="nh_numero_documento_{{ l.id_detalle_reserva }}">Número de documento</label>
-        <input type="text" name="numero_documento" id="nh_numero_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} placeholder="12345678" value="{{ seleccion_huesped.numero_documento if modo_nuevo else '' }}">
-        <label for="nh_fecha_nacimiento_{{ l.id_detalle_reserva }}">Fecha de nacimiento</label>
-        <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.fecha_nacimiento if modo_nuevo else '' }}">
-        <label for="nh_genero_{{ l.id_detalle_reserva }}">Género</label>
-        <select name="genero" id="nh_genero_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %}>
-          <option value="M" {% if modo_nuevo and seleccion_huesped.genero == 'M' %}selected{% endif %}>Masculino</option>
-          <option value="F" {% if modo_nuevo and seleccion_huesped.genero == 'F' %}selected{% endif %}>Femenino</option>
-          <option value="OTRO" {% if modo_nuevo and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
-        </select>
-        <label for="nh_nacionalidad_{{ l.id_detalle_reserva }}">Nacionalidad</label>
-        <input type="text" name="nacionalidad" id="nh_nacionalidad_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if modo_nuevo else '' }}">
-      </div>
-    </fieldset>
-
-    {# invoca sp_realizar_checkin_con_huesped #}
-    <button type="submit">Realizar check-in</button>
-  </form>
-  {% else %}
-  <p class="empty-state">No hay habitaciones físicas disponibles de este tipo en este momento. Vuelve a intentarlo más tarde o revisa disponibilidad en otro hotel/tipo.</p>
+      {# invoca sp_realizar_checkin + sp_agregar_huesped_alojamiento por cada huésped de la habitación, en una sola transacción #}
+      <button type="submit">Check-in de {{ l.tipo_habitacion }} {{ hab.n }}</button>
+    </form>
+    {% else %}
+    <p class="empty-state">No hay habitaciones físicas disponibles de este tipo en este momento. Vuelve a intentarlo más tarde o revisa disponibilidad en otro hotel/tipo.</p>
+    {% endif %}
   {% endif %}
-  {% else %}
-  <p class="badge badge-good">✓ Línea completa</p>
-  {% endif %}
+  </div>
+  {% endfor %}
 </div>
 {% endfor %}
 
@@ -108,25 +68,4 @@
   <a href="{{ url_for('estadia.activos') }}" class="btn-primary-link">Ir a estadías activas →</a>
 </p>
 {% endif %}
-
-<script>
-  function toggleOrigenHuesped(id, modo) {
-    var fsExistente = document.getElementById('hu_existente_' + id);
-    var fsNuevo = document.getElementById('hu_nuevo_' + id);
-    var selExistente = document.getElementById('id_huesped_' + id);
-    var esNuevo = modo === 'nuevo';
-
-    fsExistente.disabled = esNuevo;
-    fsExistente.style.display = esNuevo ? 'none' : '';
-    fsNuevo.disabled = !esNuevo;
-    fsNuevo.style.display = esNuevo ? '' : 'none';
-
-    if (selExistente) { selExistente.required = !esNuevo; }
-    var requeridos = ['nh_nombres_', 'nh_apellidos_', 'nh_numero_documento_', 'nh_id_tipo_documento_', 'nh_fecha_nacimiento_', 'nh_genero_', 'nh_nacionalidad_'];
-    requeridos.forEach(function (prefijo) {
-      var campo = document.getElementById(prefijo + id);
-      if (campo) { campo.required = esNuevo; }
-    });
-  }
-</script>
 {% endblock %}
