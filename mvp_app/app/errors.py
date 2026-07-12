@@ -22,6 +22,15 @@ _MENSAJES_CHECK = {
 }
 _PATRON_CHECK = re.compile(r"Check constraint '([^']+)' is violated")
 
+# Restricciones UNIQUE (errno ER_DUP_ENTRY) para las que damos un mensaje
+# traducido en vez del "Duplicate entry ... for key ..." crudo de MySQL.
+_MENSAJES_DUPLICADO = {
+    "uq_pnatural_documento": "Ya existe una persona registrada con ese tipo y número de documento.",
+    "uq_pjuridica_ruc": "Ya existe una empresa registrada con ese RUC.",
+    "uq_cliente_persona": "Esta persona ya está registrada como cliente; selecciónala en vez de crearla de nuevo.",
+}
+_PATRON_DUPLICADO = re.compile(r"for key '(?:[\w]+\.)?([\w]+)'")
+
 
 def _mensaje_para_error(err):
     if err.errno == errorcode.ER_CHECK_CONSTRAINT_VIOLATED:
@@ -30,6 +39,10 @@ def _mensaje_para_error(err):
         return _MENSAJES_CHECK.get(
             nombre, "Los datos ingresados no cumplen una regla de validez (revisa los valores relacionados)."
         )
+    if err.errno == errorcode.ER_DUP_ENTRY:
+        coincidencia = _PATRON_DUPLICADO.search(err.msg or "")
+        nombre = coincidencia.group(1) if coincidencia else None
+        return _MENSAJES_DUPLICADO.get(nombre, err.msg)
     return _MENSAJES_DRIVER.get(err.errno, err.msg)
 
 
@@ -41,8 +54,9 @@ def ejecutar_con_flash(func, *args, on_success_msg=None, **kwargs):
       procedimientos/triggers): se muestra el MESSAGE_TEXT tal cual lo
       escribió el SP, sin reinterpretarlo.
     - Errores de driver listados en _MENSAJES_DRIVER (rango/longitud fuera
-      de límite) o restricciones CHECK listadas en _MENSAJES_CHECK: se
-      traducen a un mensaje en español más claro.
+      de límite), restricciones CHECK listadas en _MENSAJES_CHECK, o
+      restricciones UNIQUE listadas en _MENSAJES_DUPLICADO: se traducen a
+      un mensaje en español más claro.
     - Cualquier otro error de driver: se muestra err.msg crudo (comportamiento
       previo, sin cambios).
 
