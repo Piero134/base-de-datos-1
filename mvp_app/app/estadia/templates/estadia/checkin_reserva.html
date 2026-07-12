@@ -5,7 +5,7 @@
 <div class="page-header">
   {{ crumbs.breadcrumb(pasos) }}
   <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a>. El check-in es individual por huésped: el primero que se registra abre la habitación (eligiendo el número físico); los siguientes solo se suman a esa misma habitación.</p>
+  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a> (aquí ya no se agregan huéspedes nuevos). El check-in es individual: el titular debe registrarse primero, eligiendo el número físico de habitación; después, sus compañeros de habitación se suman de a uno.</p>
 </div>
 
 {% if completo %}
@@ -19,7 +19,6 @@
   {% for hab in l.habitaciones %}
   {% set primer_ocupado = hab.slots | selectattr('estadia') | first %}
   {% set habitaciones_disponibles = habitaciones_por_tipo.get(l.id_detalle_reserva) %}
-  {% set puede_registrar = hab.id_alojamiento or (hab.tiene_titular and habitaciones_disponibles) %}
   <div>
   <div class="table-scroll">
   <table>
@@ -37,22 +36,33 @@
         {% elif slot.estadia %}
           <span class="badge badge-good">✓ Registrado</span>
           <a href="{{ url_for('estadia.ver', id_alojamiento=slot.estadia.id_alojamiento) }}">ver →</a>
-        {% elif puede_registrar %}
+        {% elif hab.id_alojamiento %}
+          {# habitación ya abierta: sumar a este huésped no necesita elegir nada más #}
           <form method="post" action="{{ url_for('estadia.checkin_post') }}" class="inline-form">
             <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
             <input type="hidden" name="id_detalle_reserva" value="{{ l.id_detalle_reserva }}">
             <input type="hidden" name="n_habitacion" value="{{ hab.n }}">
             <input type="hidden" name="id_detalle_huesped" value="{{ slot.id_detalle_huesped }}">
-            {% if not hab.id_alojamiento %}
+            {# invoca sp_agregar_huesped_alojamiento #}
+            <button type="submit">Check-in</button>
+          </form>
+        {% elif slot.es_titular and habitaciones_disponibles %}
+          {# primer check-in de la habitación: el titular elige el número físico #}
+          <form method="post" action="{{ url_for('estadia.checkin_post') }}" class="inline-form">
+            <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
+            <input type="hidden" name="id_detalle_reserva" value="{{ l.id_detalle_reserva }}">
+            <input type="hidden" name="n_habitacion" value="{{ hab.n }}">
+            <input type="hidden" name="id_detalle_huesped" value="{{ slot.id_detalle_huesped }}">
             <select name="id_habitacion" required data-searchable="Buscar habitación…">
               {% for h in habitaciones_disponibles %}
                 <option value="{{ h.id_habitacion }}">N° {{ h.numero }} (piso {{ h.piso }})</option>
               {% endfor %}
             </select>
-            {% endif %}
-            {# invoca sp_realizar_checkin (si es el primero de la habitación) + sp_agregar_huesped_alojamiento #}
+            {# invoca sp_realizar_checkin + sp_agregar_huesped_alojamiento #}
             <button type="submit">Check-in</button>
           </form>
+        {% elif not slot.es_titular %}
+          <span class="optional">Se habilita cuando el titular haga check-in</span>
         {% endif %}
       </td>
     </tr>

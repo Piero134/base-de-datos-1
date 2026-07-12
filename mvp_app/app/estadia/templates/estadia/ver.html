@@ -59,62 +59,6 @@
 <p class="empty-state">Todavía no hay huéspedes registrados en este alojamiento.</p>
 {% endif %}
 
-{% if aloj.estado == 'ACTIVO' %}
-<details class="card">
-  <summary>Agregar huésped existente al alojamiento</summary>
-  <div class="details-body">
-  <form method="post" action="{{ url_for('estadia.agregar_huesped', id_alojamiento=aloj.id_alojamiento) }}">
-    <label for="av_id_huesped">Huésped existente</label>
-    <select name="id_huesped" id="av_id_huesped" required data-searchable="Buscar huésped…">
-      {% for h in huespedes_disponibles %}
-        <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos }}</option>
-      {% endfor %}
-    </select>
-    <label><input type="checkbox" name="es_titular" style="width:auto;display:inline"> Es titular</label>
-    {# invoca sp_agregar_huesped_alojamiento #}
-    <button type="submit">Agregar huésped</button>
-  </form>
-  </div>
-</details>
-
-<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgHuespedNuevo">+ Huésped nuevo</button>
-
-<dialog id="dlgHuespedNuevo" class="form-dialog" {% if seleccion_huesped %}data-autoopen{% endif %}>
-  <h2>Huésped nuevo</h2>
-  <form method="post" action="{{ url_for('estadia.huesped_nuevo') }}">
-    <input type="hidden" name="id_alojamiento" value="{{ aloj.id_alojamiento }}">
-    <div id="nh_campos_reales">
-      <label for="nh_nombres">Nombres</label>
-      <input type="text" name="nombres" id="nh_nombres" required value="{{ seleccion_huesped.nombres if seleccion_huesped else '' }}">
-      <label for="nh_apellidos">Apellidos</label>
-      <input type="text" name="apellidos" id="nh_apellidos" required value="{{ seleccion_huesped.apellidos if seleccion_huesped else '' }}">
-      <label for="nh_id_tipo_documento">Tipo de documento</label>
-      <select name="id_tipo_documento" id="nh_id_tipo_documento" required>
-        {% for td in tipos_documento %}
-          <option value="{{ td.id_tipo_documento }}" {% if seleccion_huesped and seleccion_huesped.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
-        {% endfor %}
-      </select>
-      <label for="nh_numero_documento">Número de documento</label>
-      <input type="text" name="numero_documento" id="nh_numero_documento" required placeholder="12345678" value="{{ seleccion_huesped.numero_documento if seleccion_huesped else '' }}">
-      <label for="nh_fecha_nacimiento">Fecha de nacimiento</label>
-      <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento" required value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
-      <label for="nh_genero">Género</label>
-      <select name="genero" id="nh_genero" required>
-        <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>Masculino</option>
-        <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>Femenino</option>
-        <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
-      </select>
-      <label for="nh_nacionalidad">Nacionalidad</label>
-      <input type="text" name="nacionalidad" id="nh_nacionalidad" required placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
-    </div>
-    <div class="dialog-actions">
-      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
-      <button type="submit">Crear huésped</button>
-    </div>
-  </form>
-</dialog>
-{% endif %}
-
 <h2 id="seccion-consumos">Consumos de servicio</h2>
 {% if consumos %}
 <div class="table-scroll">

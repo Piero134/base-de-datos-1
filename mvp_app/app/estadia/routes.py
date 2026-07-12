@@ -4,7 +4,6 @@ from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_res
 from app.auth.routes import requiere_rol
 from app.db import call_procedure, call_procedures_en_transaccion, query
 from app.errors import ejecutar_con_flash
-from app.huespedes import crear_huesped_desde_formulario
 
 bp = Blueprint("estadia", __name__, url_prefix="/estadia", template_folder="templates")
 
@@ -202,6 +201,9 @@ def checkin_post():
         if not hab["tiene_titular"]:
             flash("Esta habitación todavía no tiene un titular asignado; complétalo en la asignación de huéspedes antes del check-in.", "danger")
             return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
+        if not slot["es_titular"]:
+            flash("El titular de la habitación debe hacer check-in primero.", "danger")
+            return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
         id_habitacion = request.form["id_habitacion"]
 
         def orquestar(ejecutar):
@@ -264,21 +266,6 @@ def _contexto_ver(id_alojamiento):
     return {
         "aloj": aloj[0],
         "huespedes": huespedes,
-        "huespedes_disponibles": query(
-            """
-            SELECT h.id_huesped, pn.nombres, pn.apellidos
-            FROM huesped h
-            JOIN persona_natural pn ON pn.id_persona = h.id_persona
-            WHERE h.activo = 1
-              AND NOT EXISTS (
-                  SELECT 1 FROM huesped_alojamiento ha
-                  JOIN alojamiento a ON a.id_alojamiento = ha.id_alojamiento
-                  WHERE ha.id_huesped = h.id_huesped AND a.estado = 'ACTIVO'
-              )
-            ORDER BY pn.nombres
-            """
-        ),
-        "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
         "consumos": query(
             "SELECT * FROM vw_consumos_alojamiento WHERE id_alojamiento = %s ORDER BY fecha_consumo", (id_alojamiento,)
         ),
@@ -315,47 +302,6 @@ def ver(id_alojamiento):
         return redirect(url_for("estadia.activos"))
     total_consumos, total_danios = _totales_ver(contexto)
     return render_template("estadia/ver.html", total_consumos=total_consumos, total_danios=total_danios, **contexto)
-
-
-@bp.route("/<int:id_alojamiento>/huespedes", methods=["POST"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
-def agregar_huesped(id_alojamiento):
-    if not _alojamiento_de_mi_hotel(id_alojamiento):
-        flash("Alojamiento no encontrado.", "danger")
-        return redirect(url_for("estadia.activos"))
-    id_huesped = request.form["id_huesped"]
-    es_titular = 1 if request.form.get("es_titular") else 0
-
-    ok, _ = ejecutar_con_flash(
-        call_procedure,
-        "sp_agregar_huesped_alojamiento",
-        (id_alojamiento, id_huesped, es_titular, None),
-        on_success_msg="Huésped agregado al alojamiento.",
-    )
-    if not ok:
-        contexto = _contexto_ver(id_alojamiento)
-        if contexto is None:
-            return redirect(url_for("estadia.activos"))
-        total_consumos, total_danios = _totales_ver(contexto)
-        return render_template("estadia/ver.html", total_consumos=total_consumos, total_danios=total_danios, **contexto)
-    return redirect(url_for("estadia.ver", id_alojamiento=id_alojamiento))
-
-
-@bp.route("/huesped/nuevo", methods=["POST"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
-def huesped_nuevo():
-    id_alojamiento = request.form["id_alojamiento"]
-    if not _alojamiento_de_mi_hotel(id_alojamiento):
-        flash("Alojamiento no encontrado.", "danger")
-        return redirect(url_for("estadia.activos"))
-    ok, _ = crear_huesped_desde_formulario(request.form)
-    if not ok:
-        contexto = _contexto_ver(id_alojamiento)
-        if contexto is None:
-            return redirect(url_for("estadia.activos"))
-        total_consumos, total_danios = _totales_ver(contexto)
-        return render_template("estadia/ver.html", seleccion_huesped=request.form, total_consumos=total_consumos, total_danios=total_danios, **contexto)
-    return redirect(url_for("estadia.ver", id_alojamiento=id_alojamiento))
 
 
 @bp.route("/<int:id_alojamiento>/consumo", methods=["POST"])
