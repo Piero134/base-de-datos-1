@@ -8,9 +8,11 @@ tercera vez el mismo día tras exigir que el titular haga check-in primero y
 retirar el alta de huéspedes desde estadía, una cuarta vez tras pasar la
 confirmación de pago a ser responsabilidad exclusiva de Caja, una quinta
 tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
-"Reservas corporativas", y una sexta el mismo día tras rediseñar el listado
-de check-in como tabla plana buscable por titular (ver commits de esa
-fecha). Marcar de nuevo tras cambios importantes.
+"Reservas corporativas", una sexta el mismo día tras rediseñar el listado
+de check-in como tabla plana buscable por titular, y una séptima tras
+bloquear también para Recepción el acceso directo a la URL de confirmación
+de pago (antes solo se ocultaba el botón) (ver commits de esa fecha). Marcar
+de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -94,6 +96,17 @@ fecha). Marcar de nuevo tras cambios importantes.
       corrigió de paso un bug visual: el formulario del titular desbordaba
       la fila por falta de la clase `inline-form`, y el aviso de espera
       usaba por error el estilo de bloque `empty-state`).
+- [x] **Pago bloqueado por completo para Recepción (UC-02, 2026-07-12):**
+      antes Recepción solo no veía el botón "Confirmar pago" dentro de
+      `/reservas/<id>/pago` (podía igual entrar a la URL en modo lectura).
+      Ahora, con una reserva sin pagar: en `detalle.html` ya no aparece
+      ningún link hacia `/pago` (se reemplazó por un aviso de solo texto);
+      el paso "Pago" del stepper se muestra sin link para Recepción; y
+      entrar directo por URL (`GET` o `POST /reservas/<id>/pago`) redirige
+      sin mostrar la pantalla, vía `requiere_rol("CAJA", "ADMINISTRADOR")`
+      a nivel de ruta. Caja no se vio afectada: sigue viendo el link, la
+      pantalla completa y el formulario de confirmación. Verificado con
+      `test_client` contra `hotel_db` real.
 - [x] **Listado de check-in como tabla plana buscable (2026-07-12):**
       `GET /estadia/checkin` ahora muestra una fila por habitación pendiente
       (no por reserva), con el titular, su documento y la reserva/reservante
