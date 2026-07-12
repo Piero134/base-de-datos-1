@@ -1,7 +1,3 @@
-{# Dos modos: si cada paso trae "status" (done/current/upcoming), se
-   renderiza como stepper numerado con progreso visual (flujo de reserva);
-   si no, se mantiene el breadcrumb de texto plano original (usos simples
-   tipo "Sección › Pantalla actual"). #}
 {% macro breadcrumb(pasos) -%}
 {%- if pasos and 'status' in pasos[0] %}
 <nav class="stepper" aria-label="Progreso de la reserva">

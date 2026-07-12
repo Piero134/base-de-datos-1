@@ -481,4 +481,31 @@ BEGIN
     END IF;
 END$$
 
+-- ──────────────────────────────────────────────────────────────
+-- T16 (NUEVO). reserva.estado pasa a FINALIZADA automáticamente
+--     cuando termina el último alojamiento ACTIVO de esa reserva
+--     (checkout completo de todas las habitaciones que sí llegaron
+--     a tener check-in). Si la reserva reservó líneas que nunca
+--     tuvieron check-in, no bloquea la finalización: se considera
+--     terminada la estadía, no el cumplimiento de cada línea
+--     reservada.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_reserva_finalizar$$
+CREATE TRIGGER trg_reserva_finalizar
+AFTER UPDATE ON alojamiento
+FOR EACH ROW
+BEGIN
+    DECLARE v_activos INT;
+
+    IF OLD.estado = 'ACTIVO' AND NEW.estado = 'FINALIZADO' THEN
+        SELECT COUNT(*) INTO v_activos
+        FROM alojamiento
+        WHERE id_reserva = NEW.id_reserva AND estado = 'ACTIVO';
+
+        IF v_activos = 0 THEN
+            UPDATE reserva SET estado = 'FINALIZADA' WHERE id_reserva = NEW.id_reserva;
+        END IF;
+    END IF;
+END$$
+
 DELIMITER ;

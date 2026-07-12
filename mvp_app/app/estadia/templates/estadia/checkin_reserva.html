@@ -8,7 +8,9 @@
   <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a> (aquí ya no se agregan huéspedes nuevos). El check-in es individual: el titular debe registrarse primero, eligiendo el número físico de habitación; después, sus compañeros de habitación se suman de a uno.</p>
 </div>
 
-{% if completo %}
+{% if es_terminal %}
+<p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; ya no se puede continuar el check-in.</p>
+{% elif completo %}
 <p class="alert alert-success">✓ Check-in completo: ya se hizo check-in de todos los huéspedes identificados de esta reserva.</p>
 {% endif %}
 
@@ -36,6 +38,8 @@
         {% elif slot.estadia %}
           <span class="badge badge-good">✓ Registrado</span>
           <a href="{{ url_for('estadia.ver', id_alojamiento=slot.estadia.id_alojamiento) }}">ver →</a>
+        {% elif es_terminal %}
+          <span class="optional">No disponible: reserva {{ reserva.estado }}</span>
         {% elif hab.id_alojamiento %}
           {# habitación ya abierta: sumar a este huésped no necesita elegir nada más #}
           <form method="post" action="{{ url_for('estadia.checkin_post') }}" class="inline-form">

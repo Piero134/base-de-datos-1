@@ -8,7 +8,9 @@
   <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación de esta reserva (o resérvale el cupo sin nombre todavía). Cada habitación con al menos un huésped necesita un titular. Se puede editar hasta el check-in; el check-in es individual, así que cada huésped queda fijo apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.</p>
 </div>
 
-{% if not lineas %}
+{% if es_terminal %}
+<p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; ya no se pueden asignar huéspedes.</p>
+{% elif not lineas %}
 <p class="empty-state">Esta reserva todavía no tiene líneas de habitación. <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Agrega una línea primero →</a></p>
 {% endif %}
 
@@ -28,8 +30,8 @@
           <td rowspan="{{ hab.slots|length }}">{{ l.tipo_habitacion }} {{ hab.n }}</td>
           {% endif %}
           <td>{{ loop.index }}</td>
-          {% if slot.estadia %}
-          <td>{{ slot.nombre or '—' }} <span class="badge badge-good">✓ check-in</span></td>
+          {% if slot.estadia or es_terminal %}
+          <td>{{ slot.nombre or '—' }} {% if slot.estadia %}<span class="badge badge-good">✓ check-in</span>{% endif %}</td>
           <td>{{ 'Sí' if slot.es_titular else '' }}</td>
           {% else %}
           <td>
@@ -52,12 +54,16 @@
       </tbody>
     </table>
     </div>
+    {% if not es_terminal %}
     <button type="submit">Guardar asignación de esta línea</button>
+    {% endif %}
   </form>
 </div>
 {% endfor %}
 
+{% if not es_terminal %}
 <button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgHuespedNuevo">+ Huésped nuevo</button>
+{% endif %}
 
 <dialog id="dlgHuespedNuevo" class="form-dialog" {% if seleccion_huesped %}data-autoopen{% endif %}>
   <h2>Huésped nuevo</h2>
@@ -99,7 +105,9 @@
 </dialog>
 
 <p class="actions">
+  {% if not es_terminal %}
   <a href="{{ url_for('estadia.checkin_reserva', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a check-in →</a>
+  {% endif %}
   <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Volver al detalle</a>
 </p>
 {% endblock %}

@@ -82,19 +82,25 @@ BEGIN
     DECLARE v_checkin DATE;
     DECLARE v_checkout DATE;
     DECLARE v_pagado TINYINT;
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
     DECLARE v_disponibles INT;
     DECLARE v_id_plan INT;
     DECLARE v_precio DECIMAL(10,2);
     DECLARE v_noches INT;
     DECLARE v_subtotal DECIMAL(12,2);
 
-    SELECT id_hotel, fecha_checkin, fecha_checkout, pagado
-        INTO v_id_hotel, v_checkin, v_checkout, v_pagado
+    SELECT id_hotel, fecha_checkin, fecha_checkout, pagado, estado
+        INTO v_id_hotel, v_checkin, v_checkout, v_pagado, v_estado
     FROM reserva WHERE id_reserva = p_id_reserva;
 
     IF v_pagado = 1 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'La reserva ya está pagada; no se pueden agregar más líneas.';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva está en un estado final; no se pueden agregar más líneas.';
     END IF;
 
     SET v_disponibles = fn_disponibilidad_tipo_habitacion(
@@ -143,11 +149,17 @@ CREATE PROCEDURE sp_confirmar_pago(
 )
 BEGIN
     DECLARE v_pagado TINYINT;
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
 
-    SELECT pagado INTO v_pagado FROM reserva WHERE id_reserva = p_id_reserva;
+    SELECT pagado, estado INTO v_pagado, v_estado FROM reserva WHERE id_reserva = p_id_reserva;
 
     IF v_pagado = 1 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva ya se encuentra pagada';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva está en un estado final; no se puede confirmar el pago.';
     END IF;
 
     UPDATE reserva
@@ -172,6 +184,14 @@ CREATE PROCEDURE sp_realizar_checkin(
     OUT p_id_alojamiento INT
 )
 BEGIN
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
+
+    SELECT estado INTO v_estado FROM reserva WHERE id_reserva = p_id_reserva;
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva está en un estado final; no se puede hacer check-in.';
+    END IF;
+
     -- La disponibilidad se decide por ocupación real (¿hay un alojamiento
     -- ACTIVO en esta habitación ahora mismo?), no por el campo cacheado
     -- habitacion.estado: ese campo tiene estados (RESERVADA, LIMPIEZA) que
@@ -572,6 +592,84 @@ BEGIN
     FROM habitacion h
     WHERE h.id_hotel = p_id_hotel
     GROUP BY h.estado;
+END$$
+
+-- -------------------------------------------------------------
+-- SP 13: sp_cancelar_reserva
+-- Cancela una reserva que todavía no llegó a un estado final.
+-- No se permite cancelar si hay huéspedes actualmente alojados
+-- (alojamiento ACTIVO): una reserva con gente hospedada ya no es
+-- "cancelable", es una estadía en curso.
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_cancelar_reserva$$
+CREATE PROCEDURE sp_cancelar_reserva(
+    IN p_id_reserva INT
+)
+BEGIN
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
+    DECLARE v_alojados INT;
+
+    SELECT estado INTO v_estado FROM reserva WHERE id_reserva = p_id_reserva;
+    IF v_estado IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reserva no encontrada';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva ya está en un estado final; no se puede cancelar.';
+    END IF;
+
+    SELECT COUNT(*) INTO v_alojados
+    FROM alojamiento WHERE id_reserva = p_id_reserva AND estado = 'ACTIVO';
+
+    IF v_alojados > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'No se puede cancelar: hay huéspedes actualmente alojados en esta reserva.';
+    END IF;
+
+    UPDATE reserva SET estado = 'CANCELADA' WHERE id_reserva = p_id_reserva;
+END$$
+
+-- -------------------------------------------------------------
+-- SP 14: sp_marcar_no_show
+-- Marca una reserva como NO_SHOW: el cliente no se presentó
+-- después de su fecha de check-in prevista. Solo aplica si nunca
+-- llegó a tener ningún check-in real (si ya hubo check-in, no fue
+-- un no-show, es una estadía que ya empezó).
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_marcar_no_show$$
+CREATE PROCEDURE sp_marcar_no_show(
+    IN p_id_reserva INT
+)
+BEGIN
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
+    DECLARE v_checkin DATE;
+    DECLARE v_con_checkin INT;
+
+    SELECT estado, fecha_checkin INTO v_estado, v_checkin FROM reserva WHERE id_reserva = p_id_reserva;
+    IF v_estado IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reserva no encontrada';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva ya está en un estado final; no se puede marcar como no-show.';
+    END IF;
+
+    IF CURDATE() <= v_checkin THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Solo se puede marcar como no-show después de la fecha de check-in prevista.';
+    END IF;
+
+    SELECT COUNT(*) INTO v_con_checkin
+    FROM alojamiento WHERE id_reserva = p_id_reserva;
+
+    IF v_con_checkin > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Esta reserva ya tuvo check-in; no corresponde marcarla como no-show.';
+    END IF;
+
+    UPDATE reserva SET estado = 'NO_SHOW' WHERE id_reserva = p_id_reserva;
 END$$
 
 DELIMITER ;

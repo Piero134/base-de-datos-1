@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.auth.routes import requiere_rol
-from app.constants import CANALES, ESTADOS_RESERVA
+from app.constants import CANALES, ESTADOS_RESERVA, ESTADOS_RESERVA_TERMINALES
 from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_reserva
 from app.db import call_procedure, execute_transaction, query
 from app.errors import ejecutar_con_flash
@@ -256,10 +256,7 @@ def _contexto_detalle(id_reserva):
         "lineas": lineas,
         "tipos": query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre"),
         "planes": query("SELECT id_plan, nombre, es_publico FROM plan_tarifa WHERE activo = 1 ORDER BY nombre"),
-        "pasos": [
-            {"label": "Reservas", "url": url_for("reservas.listado")},
-            {"label": "Detalle", "url": None},
-        ],
+        "es_terminal": reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES,
     }
 
 
@@ -311,6 +308,9 @@ def pago(id_reserva):
         # Ya no hay nada que confirmar en esta pantalla; se salta directo al
         # siguiente paso real del flujo.
         return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+    if reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES:
+        flash("La reserva está en un estado final; ya no se puede confirmar el pago.", "danger")
+        return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
     pasos = construir_pasos_reserva(id_reserva, "pago")
     return render_template("reservas/pago.html", reserva=reserva[0], pasos=pasos)
 
@@ -329,6 +329,36 @@ def confirmar_pago(id_reserva):
     )
     # No a reservas.pago: una vez pagada esa pantalla ya no tiene nada que
     # mostrar y redirige a preasignar, que CAJA no puede ver.
+    return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
+
+
+@bp.route("/<int:id_reserva>/cancelar", methods=["POST"])
+@requiere_rol("RECEPCION", "ADMINISTRADOR")
+def cancelar_reserva(id_reserva):
+    if not _reserva_de_mi_hotel(id_reserva):
+        flash("Reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.listado"))
+    ejecutar_con_flash(
+        call_procedure,
+        "sp_cancelar_reserva",
+        (id_reserva,),
+        on_success_msg="Reserva cancelada.",
+    )
+    return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
+
+
+@bp.route("/<int:id_reserva>/no-show", methods=["POST"])
+@requiere_rol("RECEPCION", "ADMINISTRADOR")
+def marcar_no_show(id_reserva):
+    if not _reserva_de_mi_hotel(id_reserva):
+        flash("Reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.listado"))
+    ejecutar_con_flash(
+        call_procedure,
+        "sp_marcar_no_show",
+        (id_reserva,),
+        on_success_msg="Reserva marcada como no-show.",
+    )
     return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
 
 
@@ -352,6 +382,7 @@ def _contexto_preasignar(id_reserva):
             """
         ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
+        "es_terminal": reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES,
         "pasos": construir_pasos_reserva(id_reserva, "preasignar"),
     }
 
@@ -381,6 +412,11 @@ def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
+
+    reserva = query("SELECT estado FROM reserva WHERE id_reserva = %s", (id_reserva,))
+    if reserva and reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES:
+        flash("La reserva está en un estado final; no se pueden asignar huéspedes.", "danger")
+        return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
 
     linea = next(
         (l for l in construir_grid_reserva(id_reserva, con_estado_estadia=True) if l["id_detalle_reserva"] == id_detalle_reserva),
