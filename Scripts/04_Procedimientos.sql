@@ -81,15 +81,21 @@ BEGIN
     DECLARE v_id_hotel INT;
     DECLARE v_checkin DATE;
     DECLARE v_checkout DATE;
+    DECLARE v_pagado TINYINT;
     DECLARE v_disponibles INT;
     DECLARE v_id_plan INT;
     DECLARE v_precio DECIMAL(10,2);
     DECLARE v_noches INT;
     DECLARE v_subtotal DECIMAL(12,2);
 
-    SELECT id_hotel, fecha_checkin, fecha_checkout
-        INTO v_id_hotel, v_checkin, v_checkout
+    SELECT id_hotel, fecha_checkin, fecha_checkout, pagado
+        INTO v_id_hotel, v_checkin, v_checkout, v_pagado
     FROM reserva WHERE id_reserva = p_id_reserva;
+
+    IF v_pagado = 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva ya está pagada; no se pueden agregar más líneas.';
+    END IF;
 
     SET v_disponibles = fn_disponibilidad_tipo_habitacion(
         v_id_hotel, p_id_tipo_habitacion, v_checkin, v_checkout);
@@ -229,6 +235,22 @@ BEGIN
     IF v_ocupantes_actuales >= v_capacidad THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Se alcanzó la capacidad máxima de huéspedes para esta habitación';
+    END IF;
+
+    -- Un huésped no puede estar activo en dos alojamientos a la vez
+    -- (dos estadías simultáneas de la misma persona). Se excluye el
+    -- propio p_id_alojamiento para no bloquear un reintento sobre el
+    -- mismo alojamiento (esa duplicidad ya la impide la PK compuesta).
+    IF EXISTS (
+        SELECT 1
+        FROM huesped_alojamiento ha
+        JOIN alojamiento a ON a.id_alojamiento = ha.id_alojamiento
+        WHERE ha.id_huesped = p_id_huesped
+          AND a.estado = 'ACTIVO'
+          AND a.id_alojamiento <> p_id_alojamiento
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Este huésped ya está activo en otro alojamiento.';
     END IF;
 
     -- Validación no bloqueante: si se indicó una pre-asignación,
