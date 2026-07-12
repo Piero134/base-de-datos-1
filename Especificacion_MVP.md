@@ -105,17 +105,21 @@ asignado a ese empleado:
 - **Precondición:** reserva `CONFIRMADA`; la habitación (grupo de cupos dentro de una línea, ver
   UC-03) ya tiene su titular asignado; habitación física sin ocupación activa (ver nota de
   disponibilidad más abajo).
-- **Flujo principal:** el check-in se hace por habitación completa, no huésped por huésped: el
-  recepcionista solo elige la habitación física para ese grupo de cupos ya asignado en UC-03.
-  `app/db.py:call_procedures_en_transaccion` orquesta, en una sola transacción,
-  `sp_realizar_checkin(id_reserva, id_detalle_reserva, id_habitacion, id_empleado)` →
-  `id_alojamiento`, seguido de un `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped,
-  es_titular, id_detalle_huesped)` por cada huésped ya asignado a esa habitación (titular incluido).
-  Si falla adjuntar a cualquiera de ellos (p.ej. porque ya está activo en otro alojamiento, ver
-  UC-04b), se revierte todo: nunca queda un `alojamiento` a medio poblar.
-- **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción. Si la habitación (grupo de cupos) todavía no tiene titular, la interfaz ni siquiera ofrece el botón de check-in.
+- **Flujo principal:** el check-in es individual por huésped (igual que la salida en UC-07), no por
+  habitación completa. Por cada huésped ya asignado en UC-03 y todavía sin check-in:
+  - Si es el primero de esa habitación (todavía no existe `alojamiento` para ese grupo de cupos):
+    el recepcionista elige la habitación física, y `app/db.py:call_procedures_en_transaccion`
+    orquesta, en una sola transacción, `sp_realizar_checkin(id_reserva, id_detalle_reserva,
+    id_habitacion, id_empleado)` → `id_alojamiento`, seguido de
+    `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)`
+    para ese huésped (con su `es_titular` real de la asignación, no forzado a 1). Si falla adjuntarlo
+    (p.ej. porque ya está activo en otro alojamiento, ver UC-04b), se revierte todo: nunca queda un
+    `alojamiento` creado sin ningún huésped.
+  - Si la habitación ya tiene `alojamiento` (otro huésped ya hizo check-in ahí): solo se llama
+    `sp_agregar_huesped_alojamiento(...)` para este huésped, sin volver a elegir habitación.
+- **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción. Si la habitación (grupo de cupos) todavía no tiene titular, la interfaz ni siquiera ofrece el botón de check-in para ninguno de sus huéspedes.
 - **Nota de disponibilidad:** la habitación física ofrecida se calcula por ocupación real (¿existe un `alojamiento` `ACTIVO` en ella ahora mismo?), no por el campo cacheado `habitacion.estado` — ese campo (`RESERVADA`/`LIMPIEZA`) requiere una acción manual de un `ADMINISTRADOR` para liberarse y no siempre refleja si la habitación está realmente ocupada.
-- **Postcondición:** habitación pasa a `OCUPADA` (trigger `trg_alojamiento_checkin`); el grupo de cupos correspondiente queda de solo lectura en la pantalla de asignación (UC-03).
+- **Postcondición:** al primer check-in de una habitación, esta pasa a `OCUPADA` (trigger `trg_alojamiento_checkin`); cada cupo individual queda de solo lectura en la pantalla de asignación (UC-03) apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.
 - **Consulta relacionada:** `vw_alojamientos_activos`, `vw_preasignacion_vs_checkin`.
 
 ### UC-04b: Restricción — un huésped no puede estar en dos estadías activas

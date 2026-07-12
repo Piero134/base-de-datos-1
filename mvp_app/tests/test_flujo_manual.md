@@ -3,7 +3,8 @@
 Replica el recorrido de `Diagramas/04_Flujo_MVP_Secuencia.puml`. Verificado
 contra `hotel_db` real (MySQL) el 2026-07-06; los ítems de reservas/estadía se
 re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
-tabla (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
+tabla, y de nuevo el mismo día tras corregir el check-in a individual por
+huésped (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -42,12 +43,20 @@ tabla (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
       la marcó OCUPADA.
 - [x] **Agregar huésped (UC-04):** `sp_agregar_huesped_alojamiento` asoció
       al huésped titular sin exceder la capacidad.
-- [x] **Check-in por habitación completa (UC-04, re-verificado
+- [x] **Check-in individual por huésped (UC-04, re-verificado
       2026-07-12):** con 2 huéspedes ya asignados a una habitación (uno
-      titular), el check-in creó UN `alojamiento` y adjuntó a los 2 en la
-      misma operación (`call_procedures_en_transaccion`); la habitación
-      quedó de solo lectura en la pantalla de asignación. Sin titular
-      asignado, la pantalla de check-in no ofreció el botón.
+      titular), el check-in del primero creó el `alojamiento` con su
+      `es_titular` real (no forzado a 1) y eligió la habitación física; el
+      segundo se registró después con un solo clic, sin volver a elegir
+      habitación. En la pantalla de asignación, el primer cupo quedó de
+      solo lectura mientras el segundo seguía editable (se pudo cambiar de
+      huésped sin tocar al ya registrado). Reintentar el check-in del mismo
+      cupo ya registrado fue rechazado. Sin titular asignado, la pantalla
+      de check-in no ofreció ningún botón para esa habitación.
+- [x] **Reserva pagada salta la pantalla de pago (2026-07-12):**
+      `GET /reservas/<id>/pago` sobre una reserva con `pagado=1` redirige
+      directo a la asignación de huéspedes en vez de mostrar una pantalla
+      de "pago confirmado" sin nada que hacer.
 - [x] **Un huésped no puede estar en dos estadías activas
       (UC-04b, 2026-07-12):** intentar hacer check-in de un huésped ya
       activo en otro alojamiento fue rechazado por
