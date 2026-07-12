@@ -2,7 +2,8 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from app.auth.routes import requiere_rol
 from app.constants import CANALES
-from app.db import call_procedure, execute, execute_transaction, query
+from app.asignacion_huespedes import construir_grid_reserva
+from app.db import call_procedure, execute_transaction, query
 from app.errors import ejecutar_con_flash
 from app.huespedes import crear_huesped_desde_formulario
 
@@ -51,20 +52,17 @@ def corporativas():
     return render_template("reservas/corporativas.html", filas=filas)
 
 
-def _pasos_reserva(id_reserva, tipo_persona, actual):
-    """Breadcrumb dinámico de los pasos del flujo de reserva. 'Pre-asignación'
-    solo aparece si la reserva es corporativa (persona jurídica)."""
-    pasos = [
+def _pasos_reserva(id_reserva, actual):
+    """Breadcrumb dinámico de los pasos del flujo de reserva. La asignación
+    de huéspedes aplica a toda reserva (natural o jurídica), no solo a las
+    corporativas."""
+    return [
         {"label": "Reservas", "url": url_for("reservas.listado")},
         {"label": "Cabecera", "url": None},
         {"label": "Detalle", "url": None if actual == "detalle" else url_for("reservas.detalle", id_reserva=id_reserva)},
         {"label": "Pago", "url": None if actual == "pago" else url_for("reservas.pago", id_reserva=id_reserva)},
+        {"label": "Asignación de huéspedes", "url": None if actual == "preasignar" else url_for("reservas.preasignar", id_reserva=id_reserva)},
     ]
-    if tipo_persona == "JURIDICA":
-        pasos.append(
-            {"label": "Pre-asignación", "url": None if actual == "preasignar" else url_for("reservas.preasignar", id_reserva=id_reserva)}
-        )
-    return pasos
 
 
 def _contexto_nuevo():
@@ -250,7 +248,7 @@ def _contexto_detalle(id_reserva):
         "lineas": lineas,
         "tipos": query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre"),
         "planes": query("SELECT id_plan, nombre, es_publico FROM plan_tarifa WHERE activo = 1 ORDER BY nombre"),
-        "pasos": _pasos_reserva(id_reserva, reserva[0]["tipo_persona"], "detalle"),
+        "pasos": _pasos_reserva(id_reserva, "detalle"),
     }
 
 
@@ -298,7 +296,7 @@ def pago(id_reserva):
     if not reserva:
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
-    pasos = _pasos_reserva(id_reserva, reserva[0]["tipo_persona"], "pago")
+    pasos = _pasos_reserva(id_reserva, "pago")
     return render_template("reservas/pago.html", reserva=reserva[0], pasos=pasos)
 
 
@@ -324,43 +322,20 @@ def _contexto_preasignar(id_reserva):
     if not reserva:
         return None
 
-    lineas = query(
-        """
-        SELECT rd.id_detalle_reserva, th.nombre AS tipo_habitacion, rd.cantidad_habitaciones
-        FROM reserva_detalle rd
-        JOIN tipo_habitacion th ON th.id_tipo_habitacion = rd.id_tipo_habitacion
-        WHERE rd.id_reserva = %s
-        """,
-        (id_reserva,),
-    )
-    huespedes = query(
-        """
-        SELECT h.id_huesped, pn.nombres, pn.apellidos
-        FROM huesped h
-        JOIN persona_natural pn ON pn.id_persona = h.id_persona
-        WHERE h.activo = 1
-        ORDER BY pn.nombres
-        """
-    )
-    preasignados = query(
-        """
-        SELECT dhr.id_detalle_huesped, dhr.id_detalle_reserva, dhr.id_huesped,
-               COALESCE(CONCAT(pn.nombres, ' ', pn.apellidos), 'Sin identificar') AS huesped, dhr.es_titular
-        FROM detalle_huesped_reserva dhr
-        JOIN reserva_detalle rd    ON rd.id_detalle_reserva = dhr.id_detalle_reserva
-        LEFT JOIN huesped h        ON h.id_huesped           = dhr.id_huesped
-        LEFT JOIN persona_natural pn ON pn.id_persona        = h.id_persona
-        WHERE rd.id_reserva = %s
-        """,
-        (id_reserva,),
-    )
     return {
         "reserva": reserva[0],
-        "lineas": lineas,
-        "huespedes": huespedes,
-        "preasignados": preasignados,
+        "lineas": construir_grid_reserva(id_reserva),
+        "huespedes": query(
+            """
+            SELECT h.id_huesped, pn.nombres, pn.apellidos
+            FROM huesped h
+            JOIN persona_natural pn ON pn.id_persona = h.id_persona
+            WHERE h.activo = 1
+            ORDER BY pn.nombres
+            """
+        ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
-        "pasos": _pasos_reserva(id_reserva, reserva[0]["tipo_persona"], "preasignar"),
+        "pasos": _pasos_reserva(id_reserva, "preasignar"),
     }
 
 
@@ -374,59 +349,71 @@ def preasignar(id_reserva):
     return render_template("reservas/preasignar.html", **contexto)
 
 
-@bp.route("/<int:id_reserva>/preasignar", methods=["POST"])
+@bp.route("/<int:id_reserva>/asignacion/<int:id_detalle_reserva>", methods=["POST"])
 @requiere_rol("RECEPCION", "ADMINISTRADOR")
-def preasignar_post(id_reserva):
+def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
+    """Guarda de una vez toda una línea de la tabla de asignación (todas sus
+    habitaciones/cupos): por cada habitación sin check-in todavía, valida
+    que si tiene algún huésped asignado también tenga un titular marcado
+    (obligatorio, una habitación con gente no puede quedar sin titular), y
+    recién si toda la línea es válida guarda los cambios en una sola
+    transacción. Las habitaciones que ya tienen check-in (checkin_hecho)
+    se ignoran por completo: una vez hecho el check-in, quién se hospeda
+    ahí ya no se edita desde esta pantalla."""
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
-    id_detalle_reserva = request.form["id_detalle_reserva"]
-    # Opcional: la empresa puede reservar el cupo sin indicar todavía quién
-    # lo ocupará (id_huesped = NULL) — se resuelve después con la ruta de
-    # abajo (asignar_preasignacion), cuando se conoce el nombre.
-    id_huesped = request.form.get("id_huesped") or None
-    es_titular = 1 if request.form.get("es_titular") else 0
 
-    ok, _ = ejecutar_con_flash(
-        execute,
-        "INSERT INTO detalle_huesped_reserva (id_detalle_reserva, id_huesped, es_titular) VALUES (%s, %s, %s)",
-        (id_detalle_reserva, id_huesped, es_titular),
-        on_success_msg="Cupo pre-asignado. Agrega otro o vuelve al detalle cuando termines.",
+    linea = next(
+        (l for l in construir_grid_reserva(id_reserva) if l["id_detalle_reserva"] == id_detalle_reserva),
+        None,
     )
-    if not ok:
-        contexto = _contexto_preasignar(id_reserva)
-        if contexto is None:
-            return redirect(url_for("reservas.listado"))
-        return render_template("reservas/preasignar.html", seleccion=request.form, **contexto)
-    return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+    if linea is None:
+        flash("Línea de reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
 
+    statements = []
+    for hab in linea["habitaciones"]:
+        if hab["checkin_hecho"]:
+            continue
+        n = hab["n"]
+        nuevos = {}
+        for pos, slot in enumerate(hab["slots"], start=1):
+            valor = request.form.get(f"huesped_{n}_{pos}") or None
+            nuevos[pos] = (slot["id_detalle_huesped"], int(valor) if valor else None)
 
-@bp.route("/<int:id_reserva>/preasignar/<int:id_detalle_huesped>/asignar", methods=["POST"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
-def asignar_preasignacion(id_reserva, id_detalle_huesped):
-    """Resuelve un cupo sin identificar o sustituye al huésped ya asignado
-    (misma operación en los dos casos: un UPDATE sobre la pre-asignación)."""
-    if not _reserva_de_mi_hotel(id_reserva):
-        flash("Reserva no encontrada.", "danger")
-        return redirect(url_for("reservas.listado"))
-    id_huesped = request.form["id_huesped"]
+        titular_pos = request.form.get(f"titular_{n}") or None
+        ocupados = [pos for pos, (_, id_huesped) in nuevos.items() if id_huesped]
 
-    ok, _ = ejecutar_con_flash(
-        execute,
-        """
-        UPDATE detalle_huesped_reserva dhr
-        JOIN reserva_detalle rd ON rd.id_detalle_reserva = dhr.id_detalle_reserva
-        SET dhr.id_huesped = %s
-        WHERE dhr.id_detalle_huesped = %s AND rd.id_reserva = %s
-        """,
-        (id_huesped, id_detalle_huesped, id_reserva),
-        on_success_msg="Cupo asignado.",
-    )
-    if not ok:
-        contexto = _contexto_preasignar(id_reserva)
-        if contexto is None:
-            return redirect(url_for("reservas.listado"))
-        return render_template("reservas/preasignar.html", **contexto)
+        if titular_pos and int(titular_pos) not in ocupados:
+            flash(f"Habitación {n} de {linea['tipo_habitacion']}: el titular marcado no tiene huésped asignado.", "danger")
+            return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+        if ocupados and not titular_pos:
+            flash(f"Habitación {n} de {linea['tipo_habitacion']}: falta marcar un titular.", "danger")
+            return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+
+        for pos, (id_detalle_huesped, id_huesped) in nuevos.items():
+            es_titular = 1 if titular_pos and int(titular_pos) == pos else 0
+            if id_detalle_huesped:
+                statements.append(
+                    (
+                        "UPDATE detalle_huesped_reserva SET id_huesped = %s, es_titular = %s WHERE id_detalle_huesped = %s",
+                        (id_huesped, es_titular, id_detalle_huesped),
+                    )
+                )
+            elif id_huesped:
+                statements.append(
+                    (
+                        "INSERT INTO detalle_huesped_reserva (id_detalle_reserva, id_huesped, es_titular) VALUES (%s, %s, %s)",
+                        (id_detalle_reserva, id_huesped, es_titular),
+                    )
+                )
+
+    if not statements:
+        flash("No hubo cambios para guardar (o la línea ya tiene todas sus habitaciones con check-in).", "warning")
+        return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+
+    ejecutar_con_flash(execute_transaction, statements, on_success_msg="Asignación de huéspedes guardada.")
     return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
 
 

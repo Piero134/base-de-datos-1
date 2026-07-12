@@ -41,16 +41,17 @@
 <p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa el formulario de abajo para agregar la primera antes de poder continuar a pago.</p>
 {% endif %}
 
-{% if reserva.tipo_persona == 'JURIDICA' %}
+{% if lineas %}
 <p class="actions">
-  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Pre-asignar huéspedes (corporativo) →</a>
+  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Asignar huéspedes →</a>
 </p>
-{% else %}
-<p class="subtitle">La pre-asignación de huéspedes solo aplica a reservas corporativas (cliente jurídico); esta reserva es de un cliente natural, así que los huéspedes se registran directamente en el check-in.</p>
 {% endif %}
 <p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
 
 <h2>Agregar línea</h2>
+{% if reserva.pagado %}
+<p class="empty-state">Esta reserva ya está pagada; no se pueden agregar más líneas.</p>
+{% else %}
 <form class="card" method="post" action="{{ url_for('reservas.agregar_detalle', id_reserva=reserva.id_reserva) }}">
   <label for="det_id_tipo_habitacion">Tipo de habitación</label>
   <select name="id_tipo_habitacion" id="det_id_tipo_habitacion" required>
@@ -73,4 +74,5 @@
   {# invoca sp_agregar_detalle_reserva #}
   <button type="submit">Agregar línea</button>
 </form>
+{% endif %}
 {% endblock %}
