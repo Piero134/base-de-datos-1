@@ -3,8 +3,10 @@
 Replica el recorrido de `Diagramas/04_Flujo_MVP_Secuencia.puml`. Verificado
 contra `hotel_db` real (MySQL) el 2026-07-06; los ítems de reservas/estadía se
 re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
-tabla, y de nuevo el mismo día tras corregir el check-in a individual por
-huésped (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
+tabla, de nuevo tras corregir el check-in a individual por huésped, y una
+tercera vez el mismo día tras exigir que el titular haga check-in primero y
+retirar el alta de huéspedes desde estadía (ver commits de esa fecha). Marcar
+de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -57,6 +59,21 @@ huésped (ver commits de esa fecha). Marcar de nuevo tras cambios importantes.
       `GET /reservas/<id>/pago` sobre una reserva con `pagado=1` redirige
       directo a la asignación de huéspedes en vez de mostrar una pantalla
       de "pago confirmado" sin nada que hacer.
+- [x] **El titular hace check-in primero (2026-07-12):** con titular +
+      acompañante asignados, intentar el check-in del acompañante antes que
+      el del titular fue rechazado tanto en la interfaz (sin botón de
+      check-in visible para el acompañante) como en `checkin_post` vía POST
+      directo (*"El titular de la habitación debe hacer check-in
+      primero."*). Verificado visualmente con Playwright: sin el titular
+      registrado, la fila del acompañante muestra el aviso en vez de un
+      control; tras el check-in del titular, la tabla se ve limpia (se
+      corrigió de paso un bug visual: el formulario del titular desbordaba
+      la fila por falta de la clase `inline-form`, y el aviso de espera
+      usaba por error el estilo de bloque `empty-state`).
+- [x] **Alta de huéspedes retirada de estadía (2026-07-12):** `ver.html`
+      (alojamiento activo) ya no muestra "Agregar huésped existente" ni
+      "+ Huésped nuevo"; las rutas `POST /estadia/<id>/huespedes` y
+      `POST /estadia/huesped/nuevo` fueron eliminadas.
 - [x] **Un huésped no puede estar en dos estadías activas
       (UC-04b, 2026-07-12):** intentar hacer check-in de un huésped ya
       activo en otro alojamiento fue rechazado por

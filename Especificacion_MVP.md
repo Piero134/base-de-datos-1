@@ -106,18 +106,23 @@ asignado a ese empleado:
   UC-03) ya tiene su titular asignado; habitación física sin ocupación activa (ver nota de
   disponibilidad más abajo).
 - **Flujo principal:** el check-in es individual por huésped (igual que la salida en UC-07), no por
-  habitación completa. Por cada huésped ya asignado en UC-03 y todavía sin check-in:
+  habitación completa, y el titular debe ser el primero en hacerlo (fuerza que la habitación "se
+  abra" con quien realmente responde por ella). Por cada huésped ya asignado en UC-03 y todavía sin
+  check-in:
   - Si es el primero de esa habitación (todavía no existe `alojamiento` para ese grupo de cupos):
-    el recepcionista elige la habitación física, y `app/db.py:call_procedures_en_transaccion`
-    orquesta, en una sola transacción, `sp_realizar_checkin(id_reserva, id_detalle_reserva,
-    id_habitacion, id_empleado)` → `id_alojamiento`, seguido de
-    `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)`
-    para ese huésped (con su `es_titular` real de la asignación, no forzado a 1). Si falla adjuntarlo
-    (p.ej. porque ya está activo en otro alojamiento, ver UC-04b), se revierte todo: nunca queda un
-    `alojamiento` creado sin ningún huésped.
-  - Si la habitación ya tiene `alojamiento` (otro huésped ya hizo check-in ahí): solo se llama
-    `sp_agregar_huesped_alojamiento(...)` para este huésped, sin volver a elegir habitación.
-- **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción. Si la habitación (grupo de cupos) todavía no tiene titular, la interfaz ni siquiera ofrece el botón de check-in para ninguno de sus huéspedes.
+    solo el titular puede iniciarlo (se rechaza si se intenta con cualquier otro huésped, incluso
+    vía POST directo). El recepcionista elige la habitación física, y
+    `app/db.py:call_procedures_en_transaccion` orquesta, en una sola transacción,
+    `sp_realizar_checkin(id_reserva, id_detalle_reserva, id_habitacion, id_empleado)` →
+    `id_alojamiento`, seguido de `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped,
+    es_titular, id_detalle_huesped)` para el titular. Si falla adjuntarlo (p.ej. porque ya está
+    activo en otro alojamiento, ver UC-04b), se revierte todo: nunca queda un `alojamiento` creado
+    sin ningún huésped.
+  - Si la habitación ya tiene `alojamiento` (el titular ya hizo check-in): los demás huéspedes de esa
+    habitación se registran uno a la vez llamando solo `sp_agregar_huesped_alojamiento(...)`, sin
+    volver a elegir habitación.
+- **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción. Si la habitación (grupo de cupos) todavía no tiene titular, la interfaz ni siquiera ofrece el botón de check-in para ninguno de sus huéspedes; si tiene titular pero la habitación no está abierta todavía, solo el titular ve el botón de check-in.
+- **Nota:** los huéspedes de una reserva se administran únicamente desde la asignación (UC-03); la pantalla de check-in y la de estadía activa (UC-05 en adelante) ya no ofrecen ninguna forma de agregar un huésped nuevo o existente.
 - **Nota de disponibilidad:** la habitación física ofrecida se calcula por ocupación real (¿existe un `alojamiento` `ACTIVO` en ella ahora mismo?), no por el campo cacheado `habitacion.estado` — ese campo (`RESERVADA`/`LIMPIEZA`) requiere una acción manual de un `ADMINISTRADOR` para liberarse y no siempre refleja si la habitación está realmente ocupada.
 - **Postcondición:** al primer check-in de una habitación, esta pasa a `OCUPADA` (trigger `trg_alojamiento_checkin`); cada cupo individual queda de solo lectura en la pantalla de asignación (UC-03) apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.
 - **Consulta relacionada:** `vw_alojamientos_activos`, `vw_preasignacion_vs_checkin`.
@@ -125,8 +130,8 @@ asignado a ese empleado:
 ### UC-04b: Restricción — un huésped no puede estar en dos estadías activas
 - **Regla de negocio:** `sp_agregar_huesped_alojamiento` rechaza asociar un huésped a un
   alojamiento si ese huésped ya figura en `huesped_alojamiento` de otro `alojamiento` con
-  `estado = 'ACTIVO'`. Se refuerza también en la interfaz: los selectores de "huésped existente"
-  (agregar huésped a una estadía activa) excluyen a quien ya esté activo en otro alojamiento.
+  `estado = 'ACTIVO'`, incluso si el intento llega directo al check-in (UC-04) sin pasar por la
+  interfaz.
 
 ### UC-05: Registrar consumo de servicio
 - **Actor:** Cajero o Recepcionista
