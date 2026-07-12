@@ -285,6 +285,17 @@ dialog.confirm-dialog p { margin: 8px 0 18px; color: var(--color-text-muted); fo
 dialog.confirm-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
 dialog.confirm-dialog button { margin-top: 0; }
 
+/* Ventana flotante genérica para registrar personas (cliente/huésped) */
+dialog.form-dialog {
+  border: none; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 22px 24px; max-width: 480px; width: 90vw; max-height: 85vh; overflow-y: auto;
+}
+dialog.form-dialog::backdrop { background: rgba(15, 39, 64, 0.45); }
+dialog.form-dialog h2 { margin-top: 0; }
+dialog.form-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+dialog.form-dialog .dialog-actions button { margin-top: 0; }
+button.btn-abrir-modal { margin-bottom: 16px; }
+
 /* Dashboard KPI cards (auth/dashboard.html) */
 .kpi-grid {
   display: grid;

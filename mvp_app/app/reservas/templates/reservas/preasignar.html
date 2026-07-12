@@ -59,9 +59,10 @@
 </div>
 {% endfor %}
 
-<details class="card" {% if seleccion_huesped %}open{% endif %}>
-  <summary>¿Huésped nuevo?</summary>
-  <div class="details-body">
+<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgHuespedNuevo">+ Huésped nuevo</button>
+
+<dialog id="dlgHuespedNuevo" class="form-dialog" {% if seleccion_huesped %}data-autoopen{% endif %}>
+  <h2>Huésped nuevo</h2>
   <form method="post" action="{{ url_for('reservas.huesped_nuevo') }}">
     <input type="hidden" name="id_reserva" value="{{ reserva.id_reserva }}">
 
@@ -92,10 +93,12 @@
     <label for="h_email">Email <span class="optional">(opcional)</span></label>
     <input type="email" name="email" id="h_email" value="{{ seleccion_huesped.email if seleccion_huesped else '' }}">
 
-    <button type="submit" class="btn-secondary">Crear huésped</button>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Crear huésped</button>
+    </div>
   </form>
-  </div>
-</details>
+</dialog>
 
 <p class="actions">
   <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Volver al detalle</a>

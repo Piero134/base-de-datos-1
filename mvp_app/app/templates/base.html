@@ -138,6 +138,28 @@
         });
       }
 
+      // Ventanas flotantes genéricas (registro de persona: cliente/huésped
+      // nuevo): cualquier botón con data-open-modal="idDelDialog" abre ese
+      // <dialog> con showModal(); cualquier botón data-close-modal dentro
+      // de un <dialog> lo cierra sin enviar el formulario. Si el <dialog>
+      // trae data-autoopen (el POST anterior fue inválido y hay que
+      // mostrar de nuevo los datos tecleados), se abre solo al cargar.
+      document.querySelectorAll('[data-open-modal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var dialog = document.getElementById(btn.dataset.openModal);
+          if (dialog && typeof dialog.showModal === 'function') { dialog.showModal(); }
+        });
+      });
+      document.querySelectorAll('dialog [data-close-modal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var dialog = btn.closest('dialog');
+          if (dialog) { dialog.close(); }
+        });
+      });
+      document.querySelectorAll('dialog[data-autoopen]').forEach(function (dialog) {
+        if (typeof dialog.showModal === 'function') { dialog.showModal(); }
+      });
+
       // Menú compacto en pantallas angostas.
       var toggle = document.getElementById('navToggle');
       var nav = document.getElementById('mainNav');

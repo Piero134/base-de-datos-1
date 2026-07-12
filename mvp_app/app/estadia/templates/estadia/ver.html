@@ -77,9 +77,10 @@
   </div>
 </details>
 
-<details class="card" {% if seleccion_huesped %}open{% endif %}>
-  <summary>¿Huésped nuevo?</summary>
-  <div class="details-body">
+<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgHuespedNuevo">+ Huésped nuevo</button>
+
+<dialog id="dlgHuespedNuevo" class="form-dialog" {% if seleccion_huesped %}data-autoopen{% endif %}>
+  <h2>Huésped nuevo</h2>
   <form method="post" action="{{ url_for('estadia.huesped_nuevo') }}">
     <input type="hidden" name="id_alojamiento" value="{{ aloj.id_alojamiento }}">
     <div id="nh_campos_reales">
@@ -106,10 +107,12 @@
       <label for="nh_nacionalidad">Nacionalidad</label>
       <input type="text" name="nacionalidad" id="nh_nacionalidad" required placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
     </div>
-    <button type="submit" class="btn-secondary">Crear huésped</button>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Crear huésped</button>
+    </div>
   </form>
-  </div>
-</details>
+</dialog>
 {% endif %}
 
 <h2 id="seccion-consumos">Consumos de servicio</h2>

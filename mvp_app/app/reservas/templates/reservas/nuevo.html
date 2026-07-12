@@ -63,9 +63,10 @@
   <button type="submit">Crear reserva</button>
 </form>
 
-<details class="card" {% if seleccion_cliente %}open{% endif %}>
-  <summary>¿Cliente nuevo?</summary>
-  <div class="details-body">
+<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgClienteNuevo">+ Cliente nuevo</button>
+
+<dialog id="dlgClienteNuevo" class="form-dialog" {% if seleccion_cliente %}data-autoopen{% endif %}>
+  <h2>Cliente nuevo</h2>
   <form method="post" action="{{ url_for('reservas.cliente_nuevo') }}" id="formClienteNuevo">
     {# Copia de la cabecera de reserva ya tecleada, para no perderla al crear el cliente a mitad de camino. #}
     <input type="hidden" name="draft_canal">
@@ -129,10 +130,12 @@
     <label for="cliente_observaciones">Observaciones del cliente <span class="optional">(opcional)</span></label>
     <textarea name="observaciones" id="cliente_observaciones">{{ seleccion_cliente.observaciones if seleccion_cliente else '' }}</textarea>
 
-    <button type="submit" class="btn-secondary">Crear cliente</button>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Crear cliente</button>
+    </div>
   </form>
-  </div>
-</details>
+</dialog>
 
 <script>
   (function () {
