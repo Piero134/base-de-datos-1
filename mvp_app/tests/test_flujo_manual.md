@@ -3,10 +3,11 @@
 Replica el recorrido de `Diagramas/04_Flujo_MVP_Secuencia.puml`. Verificado
 contra `hotel_db` real (MySQL) el 2026-07-06; los ítems de reservas/estadía se
 re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
-tabla, de nuevo tras corregir el check-in a individual por huésped, y una
+tabla, de nuevo tras corregir el check-in a individual por huésped, una
 tercera vez el mismo día tras exigir que el titular haga check-in primero y
-retirar el alta de huéspedes desde estadía (ver commits de esa fecha). Marcar
-de nuevo tras cambios importantes.
+retirar el alta de huéspedes desde estadía, y una cuarta vez tras pasar la
+confirmación de pago a ser responsabilidad exclusiva de Caja (ver commits de
+esa fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -40,6 +41,17 @@ de nuevo tras cambios importantes.
       fecha indicada"*.
 - [x] **Confirmación de pago (UC-02):** `sp_confirmar_pago` cambió estado a
       CONFIRMADA; la reserva pasó a aparecer en el listado de check-in.
+- [x] **Confirmación de pago es solo de Caja (UC-02, re-verificado
+      2026-07-12):** con una reserva nueva sin pagar, RECEPCION no vio el
+      botón "Confirmar pago" (solo un aviso de que es tarea de caja) y un
+      `POST /reservas/<id>/pago` directo fue rechazado por rol; CAJA sí vio
+      el botón, confirmó el pago sin errores y el redirect posterior no
+      rebotó por falta de permiso (antes iba a `reservas.pago`, que
+      redirige a `preasignar`, inaccesible para Caja; ahora va a
+      `reservas.detalle`). El listado de CAJA mostró solo reservas
+      pendientes de pago, sin el toggle "Todas" que sí tiene Recepción.
+      `reservas/detalle.html` volvió al breadcrumb de texto simple (sin
+      el stepper, que sigue en pago/asignación/check-in).
 - [x] **Check-in (UC-04):** `sp_realizar_checkin` sobre habitación 301
       (DISPONIBLE) creó el alojamiento y el trigger `trg_alojamiento_checkin`
       la marcó OCUPADA.

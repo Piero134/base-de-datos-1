@@ -14,13 +14,13 @@ incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-B
 
 | Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto / trigger disparado |
 |---|---|---|---|---|
-| Listado de reservas | `GET /reservas/` | Ver reservas (todas o pendientes de pago) | `SELECT * FROM vw_reservas_detalle` | — |
+| Listado de reservas | `GET /reservas/` | Ver reservas (Recepción/Administrador: todas o pendientes de pago, con toggle; Caja: siempre solo pendientes de pago, sin toggle) | `SELECT * FROM vw_reservas_detalle` | — |
 | Reservas corporativas | `GET /reservas/corporativas` | Ver pre-asignaciones corporativas | `SELECT * FROM vw_reservas_corporativas` | — |
 | Nueva reserva (cabecera) | `GET /reservas/nuevo` | Cargar catálogos (clientes, hoteles, tipos de documento) | `SELECT` sobre `vw_reservante`, `hotel`, `tipo_documento` | — |
 | Crear cliente | `POST /reservas/cliente/nuevo` | Alta de cliente natural o jurídico | `INSERT` en `persona` → `persona_natural`/`persona_juridica` → `cliente` (transacción directa, sin SP) | — |
 | Crear reserva | `POST /reservas/nuevo` | Confirmar cabecera de la reserva | `CALL sp_registrar_reserva(...)` | Crea reserva en estado `PENDIENTE` |
 | Detalle de reserva | `GET/POST /reservas/<id>/detalle` | Agregar línea (tipo de habitación) | `CALL sp_agregar_detalle_reserva(...)` (usa `fn_plan_vigente`, `fn_disponibilidad_tipo_habitacion` internamente; rechaza si `reserva.pagado = 1`) | Recalcula `monto_total` |
-| Confirmación de pago | `GET/POST /reservas/<id>/pago` | Confirmar pago de la reserva | `CALL sp_confirmar_pago(id_reserva)` | El propio SP hace `estado = 'CONFIRMADA'` (sin trigger de por medio) |
+| Confirmación de pago | `GET /reservas/<id>/pago` (Recepción/Caja/Administrador) / `POST` (solo Caja/Administrador) | Ver estado de pago; confirmarlo es exclusivo de Caja | `CALL sp_confirmar_pago(id_reserva)` | El propio SP hace `estado = 'CONFIRMADA'` (sin trigger de por medio) |
 | Asignación de huéspedes | `GET /reservas/<id>/preasignar` | Ver la tabla de asignación (toda reserva, no solo corporativa): por línea, subdividida en habitaciones de `capacidad_base` cupos (calculado en Python, ver `app/asignacion_huespedes.py:construir_grid_reserva`) | `SELECT` sobre `reserva_detalle`+`tipo_habitacion`+`detalle_huesped_reserva` | — |
 | Guardar asignación de una línea | `POST /reservas/<id>/asignacion/<id_detalle_reserva>` | Editar en la misma tabla todos los cupos de una línea a la vez (huésped + titular por habitación) | `INSERT`/`UPDATE` sobre `detalle_huesped_reserva` en una sola transacción; valida en Python que cada habitación con huéspedes tenga exactamente un titular antes de guardar | Trigger `trg_valida_cupos_reserva` limita el total de cupos por línea; las habitaciones ya con check-in se ignoran (solo lectura) |
 | Huésped nuevo (desde reservas) | `POST /reservas/huesped/nuevo` | Alta de huésped (siempre identificado) | `INSERT INTO persona` → `persona_natural` → `huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` (o solo `huesped` si ya existe la persona con ese documento) | — |

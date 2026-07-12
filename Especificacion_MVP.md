@@ -34,8 +34,8 @@ asignado a ese empleado:
 
 | Actor | Rol de BD | Qué hace en el MVP |
 |---|---|---|
-| **Recepcionista** | `rol_recepcion` | Reservas, check-in, check-out, pre-asignación corporativa, consulta de disponibilidad |
-| **Cajero/a** | `rol_caja` | Consumos, daños, cuentas por cobrar, pagos |
+| **Recepcionista** | `rol_recepcion` | Reservas, asignación de huéspedes, check-in, check-out, consulta de disponibilidad (ve el estado de pago de una reserva, pero no lo confirma) |
+| **Cajero/a** | `rol_caja` | Confirmar el pago de reservas, consumos, daños, cuentas por cobrar |
 | **Gerente** | `rol_gerencia` | Solo lectura: reportes de ocupación, ingresos, ranking |
 | **Administrador (general)** | `rol_administrador` | `usuario.id_hotel = NULL`: crea/edita hoteles de toda la cadena y gestiona empleados/habitaciones de cualquiera |
 | **Administrador (por hotel)** | `rol_administrador` | `usuario.id_hotel` = un hotel: mantenimiento de catálogos (tipos de habitación, tarifas, servicios, empleados, habitaciones) solo de su propio hotel; no puede crear ni editar hoteles |
@@ -75,10 +75,13 @@ asignado a ese empleado:
 - **Consulta MVP relacionada:** `09_Consultas_MVP.sql` #1b, #1c, #2.
 
 ### UC-02: Confirmar pago de reserva
-- **Actor:** Recepcionista o Caja
+- **Actor:** Caja (Recepcionista puede ver el estado de pago, pero no confirmarlo).
 - **Flujo principal:** el sistema llama `sp_confirmar_pago(id_reserva)`; la reserva pasa a `CONFIRMADA`.
-- **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada. A partir de aquí, `sp_agregar_detalle_reserva` rechaza cualquier intento de agregar una línea nueva a esta reserva (una reserva pagada ya no cambia de alcance).
-- **Consulta relacionada:** vista `vw_reservas_detalle` filtrando `pagado = 0` (reservas pendientes de pago, útil también para mostrar el caso contrario ya resuelto).
+  La pantalla de pago (`GET /reservas/<id>/pago`) es visible para Recepción y Caja, pero el botón
+  "Confirmar pago" solo se muestra (y la ruta `POST` solo se permite) para Caja/Administrador; para
+  Recepción es de solo lectura con un aviso de que debe confirmarlo caja.
+- **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada. A partir de aquí, `sp_agregar_detalle_reserva` rechaza cualquier intento de agregar una línea nueva a esta reserva (una reserva pagada ya no cambia de alcance); el CTA "confirmar pago" deja de mostrarse en toda la interfaz para esa reserva.
+- **Consulta relacionada:** vista `vw_reservas_detalle` filtrando `pagado = 0` (reservas pendientes de pago, es además el único listado que ve Caja — sin la opción de ver "Todas" que sí tiene Recepción).
 
 ### UC-03: Asignar huéspedes a una reserva
 - **Actor:** Recepcionista
