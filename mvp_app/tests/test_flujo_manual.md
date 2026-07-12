@@ -5,7 +5,7 @@ contra `hotel_db` real (MySQL) el 2026-07-06; marcar de nuevo tras cambios
 importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
-      `hotel_db` (13 procedimientos, 6 funciones, 14 vistas, datos de
+      `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
       `08_Carga_Datos.sql`).
 - [x] **Login:** `POST /login` con empleado + rol guarda la sesión y
       redirige según el rol (`auth.landing`).

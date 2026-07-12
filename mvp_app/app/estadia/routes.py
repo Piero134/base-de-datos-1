@@ -145,19 +145,55 @@ def _contexto_checkin_reserva(id_reserva):
         linea["asignadas"] = asignadas_por_linea.get(linea["id_detalle_reserva"], [])
         linea["pendientes"] = linea["cantidad_habitaciones"] - len(linea["asignadas"])
         if linea["pendientes"] > 0:
+            # Disponibilidad por ocupación real (¿hay un alojamiento ACTIVO
+            # en esa habitación ahora?), no por el campo cacheado
+            # habitacion.estado — ver sp_realizar_checkin.
             habitaciones_por_tipo[linea["id_detalle_reserva"]] = query(
                 """
                 SELECT h.id_habitacion, h.numero, h.piso
                 FROM habitacion h
                 JOIN hotel ht ON ht.id_hotel = h.id_hotel
-                WHERE ht.nombre = %s AND h.id_tipo_habitacion = %s AND h.estado = 'DISPONIBLE'
+                WHERE ht.nombre = %s AND h.id_tipo_habitacion = %s
+                  AND NOT EXISTS (
+                      SELECT 1 FROM alojamiento a
+                      WHERE a.id_habitacion = h.id_habitacion AND a.estado = 'ACTIVO'
+                  )
                 ORDER BY h.numero
                 """,
                 (id_hotel, linea["id_tipo_habitacion"]),
             )
 
     completo = bool(lineas) and all(l["pendientes"] <= 0 for l in lineas)
-    return {"reserva": reserva[0], "lineas": lineas, "habitaciones_por_tipo": habitaciones_por_tipo, "completo": completo}
+    return {
+        "reserva": reserva[0],
+        "lineas": lineas,
+        "habitaciones_por_tipo": habitaciones_por_tipo,
+        "completo": completo,
+        "huespedes_disponibles": query(
+            "SELECT id_huesped, nombres, apellidos, es_generico FROM huesped WHERE activo = 1 ORDER BY nombres"
+        ),
+        "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
+        "datos_cliente_natural": _datos_cliente_natural_de_reserva(id_reserva),
+    }
+
+
+def _datos_cliente_natural_de_reserva(id_reserva):
+    """Igual que el atajo 'usar mis datos' de _contexto_ver, pero resuelto
+    desde la reserva (antes de que exista un alojamiento), para poder
+    ofrecerlo ya en la pantalla de check-in."""
+    filas = query(
+        """
+        SELECT pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
+               pn.fecha_nacimiento, pn.genero, pn.nacionalidad
+        FROM reserva r
+        JOIN cliente c ON c.id_cliente = r.id_cliente
+        JOIN persona p ON p.id_persona = c.id_persona
+        JOIN persona_natural pn ON pn.id_persona = p.id_persona
+        WHERE r.id_reserva = %s AND p.tipo = 'NATURAL'
+        """,
+        (id_reserva,),
+    )
+    return filas[0] if filas else None
 
 
 @bp.route("/checkin/<int:id_reserva>")
@@ -179,18 +215,45 @@ def checkin_post():
         return redirect(url_for("estadia.checkin_listado"))
     id_detalle_reserva = request.form["id_detalle_reserva"]
     id_habitacion = request.form["id_habitacion"]
+    origen_huesped = request.form.get("origen_huesped", "existente")
 
+    if origen_huesped == "nuevo":
+        ok_huesped, id_huesped = crear_huesped_desde_formulario(request.form)
+        if not ok_huesped:
+            contexto = _contexto_checkin_reserva(id_reserva)
+            if contexto is None:
+                return redirect(url_for("estadia.checkin_listado"))
+            return render_template(
+                "estadia/checkin_reserva.html",
+                seleccion_huesped=request.form,
+                draft_id_detalle_reserva=id_detalle_reserva,
+                draft_id_habitacion=id_habitacion,
+                draft_origen_huesped="nuevo",
+                **contexto,
+            )
+    else:
+        id_huesped = request.form.get("id_huesped")
+
+    # Check-in y asociación del huésped quedan en un solo paso atómico: una
+    # habitación nunca debe quedar ocupada sin ningún huésped registrado.
     ok, _ = ejecutar_con_flash(
         call_procedure,
-        "sp_realizar_checkin",
-        (id_reserva, id_detalle_reserva, id_habitacion, session["id_empleado"], 0),
-        on_success_msg="Check-in de esa habitación registrado. Continúa con las habitaciones pendientes de esta reserva.",
+        "sp_realizar_checkin_con_huesped",
+        (id_reserva, id_detalle_reserva, id_habitacion, session["id_empleado"], id_huesped, None, 0),
+        on_success_msg="Check-in registrado con el huésped asociado. Continúa con las habitaciones pendientes de esta reserva.",
     )
     contexto = _contexto_checkin_reserva(id_reserva)
     if contexto is None:
         return redirect(url_for("estadia.checkin_listado"))
     if not ok:
-        return render_template("estadia/checkin_reserva.html", **contexto)
+        return render_template(
+            "estadia/checkin_reserva.html",
+            draft_id_detalle_reserva=id_detalle_reserva,
+            draft_id_habitacion=id_habitacion,
+            draft_origen_huesped=origen_huesped,
+            seleccion_huesped=request.form if origen_huesped == "nuevo" else None,
+            **contexto,
+        )
     return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
 
 

@@ -95,7 +95,7 @@ Marcos Lima:
 | # | Criterio | Cómo lo cubre el proyecto |
 |---|---|---|
 | 1 | Logro del producto planificado | Flujo end-to-end completo (reserva → pago → check-in → consumo/daño → salida → cuenta → pago) funcionando sobre datos reales; ver checklist en `mvp_app/tests/test_flujo_manual.md`. |
-| 2 | Aplicación de herramientas para su desarrollo | 26 tablas normalizadas con FK/CHECK/UNIQUE, 6 funciones, 13 procedimientos, 14 vistas, 12 triggers, 4 roles MySQL, y una interfaz Flask que los invoca explícitamente (`CALL sp_...`, `SELECT FROM vw_...`). |
+| 2 | Aplicación de herramientas para su desarrollo | 26 tablas normalizadas con FK/CHECK/UNIQUE, 6 funciones, 14 procedimientos, 14 vistas, 12 triggers, 4 roles MySQL, y una interfaz Flask que los invoca explícitamente (`CALL sp_...`, `SELECT FROM vw_...`). |
 | 3 | Nivel de complejidad del proyecto (alcances) | Supertype/subtype persona natural/jurídica, separación cliente/huésped, huésped genérico, pre-asignación corporativa vs. check-in real, autodetección de tarifa por fecha con reglas de especificidad, salida individual por huésped, cuentas con abonos parciales. |
 | 4 | Cumplimiento de tareas y avances por fase | Los 9 scripts numerados corresponden 1:1 a las fases del curso (creación → integridad → funciones → procedimientos → vistas → triggers → roles → carga → consultas). Fase III (migración) excluida explícitamente por indicación del profesor — ver `Documentacion/04_Nota_Alcance_Fase3.md`. |
 | 5 | Presentación y exposición | Guion de video en `Documentacion/03_Guion_Video_Demo.md`, calcado del diagrama de secuencia `Diagramas/04_Flujo_MVP_Secuencia.puml`. |

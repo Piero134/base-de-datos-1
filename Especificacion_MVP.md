@@ -81,12 +81,13 @@ Estos actores ya están modelados como roles de base de datos en `07_Roles_Permi
 
 ### UC-04: Realizar check-in
 - **Actor:** Recepcionista
-- **Precondición:** reserva `CONFIRMADA`, habitación física disponible.
+- **Precondición:** reserva `CONFIRMADA`, habitación física sin ocupación activa (ver nota de disponibilidad más abajo).
 - **Flujo principal:**
-  1. `sp_realizar_checkin(id_reserva, id_detalle_reserva, id_habitacion, id_empleado)` → `id_alojamiento`.
-  2. Por cada huésped que ocupa la habitación: `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)`.
-     - Si el huésped acompañante aún no tiene nombre, se usa un **huésped genérico** (`es_generico = 1`, ej. "Invitado 1"), a completar después.
+  1. `sp_realizar_checkin_con_huesped(id_reserva, id_detalle_reserva, id_habitacion, id_empleado, id_huesped, id_detalle_huesped)` → `id_alojamiento`. Registra la habitación **y** el huésped titular en un solo paso atómico (envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento`): una habitación nunca queda ocupada sin ningún huésped asociado.
+     - Si el huésped aún no tiene nombre, se usa un **huésped genérico** (`es_generico = 1`, ej. "Invitado 1"), a completar después.
+  2. Para huéspedes adicionales que llegan más tarde a la misma habitación: `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)` (paso aparte y opcional, ya con el alojamiento existente).
 - **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción.
+- **Nota de disponibilidad:** la habitación física ofrecida se calcula por ocupación real (¿existe un `alojamiento` `ACTIVO` en ella ahora mismo?), no por el campo cacheado `habitacion.estado` — ese campo (`RESERVADA`/`LIMPIEZA`) requiere una acción manual de un `ADMINISTRADOR` para liberarse y no siempre refleja si la habitación está realmente ocupada.
 - **Postcondición:** habitación pasa a `OCUPADA` (trigger `trg_alojamiento_checkin`).
 - **Consulta relacionada:** `vw_alojamientos_activos`, `vw_preasignacion_vs_checkin`.
 

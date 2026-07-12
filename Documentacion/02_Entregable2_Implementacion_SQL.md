@@ -18,7 +18,7 @@ ejecución obligatorio (cada script depende del anterior):
 | 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
-| 4 | `04_Procedimientos.sql` | 13 procedimientos (`CREATE PROCEDURE`) |
+| 4 | `04_Procedimientos.sql` | 14 procedimientos (`CREATE PROCEDURE`) |
 | 5 | `05_Vistas.sql` | 14 vistas (`CREATE OR REPLACE VIEW`) |
 | 6 | `06_Triggers.sql` | 12 triggers (`CREATE TRIGGER`) |
 | 7 | `07_Roles_Permisos.sql` | 4 roles MySQL (`CREATE ROLE` + `GRANT`) |
@@ -56,7 +56,7 @@ los scripts, sin inventar cobertura):
 | Función de ventana `RANK() OVER (ORDER BY ...)` | `vw_ranking_clientes` (`05_Vistas.sql:217`), ranking de clientes por monto gastado |
 | `DISTINCT` / `COUNT(DISTINCT ...)` | `fn_disponibilidad_tipo_habitacion`, `vw_ingresos_por_hotel` |
 | `CASE`/`IF` condicional en `SELECT` | `IF(ha.es_titular, 'SÍ', 'NO')` en varias vistas; `IF(fn_saldo_cuenta(...) <= 0, 'PAGADA', 'PENDIENTE')` en `trg_cuenta_actualizar_saldo` |
-| `SIGNAL SQLSTATE` para errores de negocio | Los 13 procedimientos y varios triggers (ver sección 5) |
+| `SIGNAL SQLSTATE` para errores de negocio | Los 14 procedimientos y varios triggers (ver sección 5) |
 | Fechas: `DATEDIFF`, `BETWEEN`, `TIMESTAMPDIFF` | `fn_calcular_noches`, `fn_plan_vigente`, `fn_calcular_edad`, `vw_historial_estadias` |
 
 > Nota de transparencia: no se usa `HAVING` en el proyecto actual (los filtros de agregación que se
@@ -74,15 +74,16 @@ los scripts, sin inventar cobertura):
 | `fn_precio_vigente(tipo, plan, fecha)` | Precio por noche de un plan ya determinado (público o corporativo) |
 | `fn_saldo_cuenta(id_cuenta)` | Saldo pendiente real (auditoría contra el campo `saldo` mantenido por trigger) |
 
-## 5. Catálogo de procedimientos almacenados (13)
+## 5. Catálogo de procedimientos almacenados (14)
 
 | Procedimiento | Propósito |
 |---|---|
 | `sp_registrar_reserva` | Crea la cabecera de una reserva (estado inicial `PENDIENTE`) |
 | `sp_agregar_detalle_reserva` | Agrega una línea tipo+plan+cantidad, valida disponibilidad y calcula el subtotal |
 | `sp_confirmar_pago` | Marca la reserva como pagada y `CONFIRMADA` |
-| `sp_realizar_checkin` | Crea el alojamiento (ocupación real) para una línea de reserva y habitación física |
+| `sp_realizar_checkin` | Crea el alojamiento (ocupación real) para una línea de reserva y habitación física, por ocupación real |
 | `sp_agregar_huesped_alojamiento` | Asocia un huésped a un alojamiento, validando capacidad máxima |
+| `sp_realizar_checkin_con_huesped` | Envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento` en una sola transacción: el check-in exige registrar al huésped titular en el mismo paso |
 | `sp_registrar_consumo` | Registra el consumo de un servicio con su precio vigente |
 | `sp_registrar_danio` | Registra un daño en la habitación |
 | `sp_registrar_salida_huesped` | Salida individual de un huésped; finaliza el alojamiento si era el último pendiente |

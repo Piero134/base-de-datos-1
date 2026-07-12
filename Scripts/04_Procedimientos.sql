@@ -170,11 +170,15 @@ CREATE PROCEDURE sp_realizar_checkin(
     OUT p_id_alojamiento INT
 )
 BEGIN
-    DECLARE v_estado_hab ENUM('DISPONIBLE','RESERVADA','OCUPADA','LIMPIEZA');
-
-    SELECT estado INTO v_estado_hab FROM habitacion WHERE id_habitacion = p_id_habitacion;
-
-    IF v_estado_hab = 'OCUPADA' THEN
+    -- La disponibilidad se decide por ocupación real (¿hay un alojamiento
+    -- ACTIVO en esta habitación ahora mismo?), no por el campo cacheado
+    -- habitacion.estado: ese campo tiene estados (RESERVADA, LIMPIEZA) que
+    -- solo se liberan con una acción manual del ADMINISTRADOR y pueden
+    -- quedar "pegados" aunque la habitación esté realmente libre.
+    IF EXISTS (
+        SELECT 1 FROM alojamiento
+        WHERE id_habitacion = p_id_habitacion AND estado = 'ACTIVO'
+    ) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La habitación ya se encuentra ocupada';
     END IF;
 
@@ -247,6 +251,35 @@ BEGIN
 
     INSERT INTO huesped_alojamiento (id_alojamiento, id_huesped, id_detalle_huesped, es_titular)
     VALUES (p_id_alojamiento, p_id_huesped, p_id_detalle_huesped, p_es_titular);
+END$$
+
+-- -------------------------------------------------------------
+-- SP 5b: sp_realizar_checkin_con_huesped
+-- Envoltorio de sp_realizar_checkin + sp_agregar_huesped_alojamiento
+-- en una sola llamada: un check-in nunca debe dejar una habitación
+-- ocupada sin ningún huésped asociado (si no, no tiene sentido).
+-- Al ser un solo CALL desde la app, ambos INSERT quedan en la misma
+-- transacción — si el segundo falla (ej. capacidad excedida), el
+-- alojamiento recién creado también se revierte.
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_realizar_checkin_con_huesped$$
+CREATE PROCEDURE sp_realizar_checkin_con_huesped(
+    IN  p_id_reserva INT,
+    IN  p_id_detalle_reserva INT,
+    IN  p_id_habitacion INT,
+    IN  p_id_empleado_checkin INT,
+    IN  p_id_huesped INT,
+    IN  p_id_detalle_huesped INT,
+    OUT p_id_alojamiento INT
+)
+BEGIN
+    DECLARE v_id_alojamiento INT;
+
+    CALL sp_realizar_checkin(p_id_reserva, p_id_detalle_reserva, p_id_habitacion,
+                              p_id_empleado_checkin, v_id_alojamiento);
+    CALL sp_agregar_huesped_alojamiento(v_id_alojamiento, p_id_huesped, 1, p_id_detalle_huesped);
+
+    SET p_id_alojamiento = v_id_alojamiento;
 END$$
 
 -- -------------------------------------------------------------

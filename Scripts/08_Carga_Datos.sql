@@ -196,7 +196,7 @@ INSERT INTO habitacion
 (3,  1, 2, 'OCUPADA',    '201', 2, 'Vista a la calle'),
 (4,  1, 2, 'OCUPADA',    '202', 2, 'Vista a la calle'),
 (5,  1, 3, 'DISPONIBLE', '301', 3, 'Vista panorámica'),
-(6,  1, 4, 'OCUPADA',    '401', 4, 'Suite premium, vista ciudad'),
+(6,  1, 4, 'DISPONIBLE', '401', 4, 'Suite premium, vista ciudad'),
 (7,  1, 5, 'DISPONIBLE', '501', 5, 'Habitación familiar, 2 baños'),
 (8,  1, 1, 'RESERVADA',  '103', 1, 'Vista interior'),
 (9,  1, 2, 'RESERVADA',  '203', 2, 'Vista a la calle'),

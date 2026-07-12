@@ -31,15 +31,21 @@ DELIMITER $$
 -- ──────────────────────────────────────────────────────────────
 -- T2. Al hacer CHECK-IN (insertar alojamiento):
 --     → cambia el estado de la habitación a OCUPADA
+--     Solo si la fila nace ACTIVO: una carga de datos histórica
+--     puede insertar un alojamiento ya FINALIZADO/CANCELADO (una
+--     estadía pasada), y en ese caso la habitación no debe quedar
+--     marcada como ocupada por alguien que ya no está.
 -- ──────────────────────────────────────────────────────────────
 DROP TRIGGER IF EXISTS trg_alojamiento_checkin$$
 CREATE TRIGGER trg_alojamiento_checkin
 AFTER INSERT ON alojamiento
 FOR EACH ROW
 BEGIN
-    UPDATE habitacion
-    SET estado = 'OCUPADA'
-    WHERE id_habitacion = NEW.id_habitacion;
+    IF NEW.estado = 'ACTIVO' THEN
+        UPDATE habitacion
+        SET estado = 'OCUPADA'
+        WHERE id_habitacion = NEW.id_habitacion;
+    END IF;
 END$$
 
 -- ──────────────────────────────────────────────────────────────
