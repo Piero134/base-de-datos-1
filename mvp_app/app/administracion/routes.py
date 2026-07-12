@@ -1,4 +1,8 @@
+import re
+import secrets
+
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from werkzeug.security import generate_password_hash
 
 from app.auth.routes import requiere_rol
 from app.db import call_procedure, execute, query
@@ -7,15 +11,57 @@ from app.errors import ejecutar_con_flash
 bp = Blueprint("administracion", __name__, url_prefix="/admin", template_folder="templates")
 
 
+def _primer_hotel_activo():
+    fila = query("SELECT id_hotel FROM hotel WHERE activo = 1 ORDER BY nombre LIMIT 1")
+    return fila[0]["id_hotel"] if fila else None
+
+
+def _username_desde_hotel(nombre_hotel):
+    base = re.sub(r"[^a-z0-9]+", "", nombre_hotel.lower())
+    return f"{base[:20]}admin"
+
+
+def _crear_admin_de_hotel(id_hotel_nuevo, nombre_hotel):
+    """Se llama justo después de crear un hotel (solo alcance general): le
+    da un perfil de administrador propio de inmediato, para que el hotel
+    sea usable desde el día uno sin depender de que alguien se lo cree
+    manualmente después. Encadena 2 INSERT secuenciales (mismo patrón no
+    atómico que reservas.cliente_nuevo() usa para persona -> persona_natural)."""
+    id_cargo_admin = query("SELECT id_cargo FROM cargo_empleado WHERE nombre = 'Administrador de Hotel'")[0]["id_cargo"]
+    ok, id_empleado_nuevo = ejecutar_con_flash(
+        execute,
+        "INSERT INTO empleado (id_hotel, id_cargo, nombres, apellidos, activo) VALUES (%s, %s, 'Administrador', %s, 1)",
+        (id_hotel_nuevo, id_cargo_admin, nombre_hotel),
+    )
+    if not ok:
+        return
+    username = _username_desde_hotel(nombre_hotel)
+    password_temporal = secrets.token_urlsafe(6)
+    ejecutar_con_flash(
+        execute,
+        "INSERT INTO usuario (id_empleado, username, password_hash, rol, id_hotel, activo) VALUES (%s, %s, %s, 'ADMINISTRADOR', %s, 1)",
+        (id_empleado_nuevo, username, generate_password_hash(password_temporal), id_hotel_nuevo),
+        on_success_msg=f"Hotel creado. Usuario administrador: {username} / contraseña temporal: {password_temporal} (anótala, no se vuelve a mostrar).",
+    )
+
+
 # ---------------------------------------------------------------------
 # Hoteles
 # ---------------------------------------------------------------------
 @bp.route("/hoteles", methods=["GET", "POST"])
 @requiere_rol("ADMINISTRADOR")
 def hoteles():
+    es_general = session["id_hotel"] is None
+
+    if not es_general:
+        # Admin de un solo hotel: no tiene sentido que gestione otros —
+        # pantalla de solo lectura del propio.
+        filas = query("SELECT * FROM hotel WHERE id_hotel = %s", (session["id_hotel"],))
+        return render_template("administracion/hoteles.html", filas=filas, es_general=False)
+
     seleccion = None
     if request.method == "POST":
-        ok, _ = ejecutar_con_flash(
+        ok, id_hotel_nuevo = ejecutar_con_flash(
             execute,
             """
             INSERT INTO hotel (nombre, direccion, telefono, email, id_ubigeo, activo)
@@ -26,20 +72,25 @@ def hoteles():
                 request.form.get("telefono") or None, request.form.get("email") or None,
                 request.form["id_ubigeo"],
             ),
-            on_success_msg="Hotel creado correctamente.",
         )
         if ok:
+            _crear_admin_de_hotel(id_hotel_nuevo, request.form["nombre"])
             return redirect(url_for("administracion.hoteles"))
         seleccion = request.form
 
     filas = query("SELECT * FROM hotel ORDER BY nombre")
     ubigeos = query("SELECT id_ubigeo, departamento, provincia, distrito FROM ubigeo ORDER BY departamento")
-    return render_template("administracion/hoteles.html", filas=filas, ubigeos=ubigeos, seleccion=seleccion)
+    return render_template(
+        "administracion/hoteles.html", filas=filas, ubigeos=ubigeos, seleccion=seleccion, es_general=True
+    )
 
 
 @bp.route("/hoteles/<int:id_hotel>/editar", methods=["POST"])
 @requiere_rol("ADMINISTRADOR")
 def hotel_editar(id_hotel):
+    if session["id_hotel"] is not None:
+        flash("No tienes permiso para editar hoteles.", "danger")
+        return redirect(url_for("administracion.hoteles"))
     ejecutar_con_flash(
         execute,
         "UPDATE hotel SET nombre=%s, direccion=%s, telefono=%s, email=%s, activo=%s WHERE id_hotel=%s",
@@ -81,8 +132,12 @@ def tipos_habitacion():
 @bp.route("/habitaciones", methods=["GET", "POST"])
 @requiere_rol("ADMINISTRADOR")
 def habitaciones():
+    es_general = session["id_hotel"] is None
+    id_hotel_filtro = (request.args.get("id_hotel", type=int) or _primer_hotel_activo()) if es_general else session["id_hotel"]
+
     seleccion = None
     if request.method == "POST":
+        id_hotel_nuevo = (request.form.get("id_hotel", type=int) or id_hotel_filtro) if es_general else session["id_hotel"]
         ok, _ = ejecutar_con_flash(
             execute,
             """
@@ -90,14 +145,15 @@ def habitaciones():
             VALUES (%s, %s, %s, %s, %s)
             """,
             (
-                session["id_hotel"], request.form["id_tipo_habitacion"],
+                id_hotel_nuevo, request.form["id_tipo_habitacion"],
                 request.form["numero"], request.form["piso"], request.form.get("descripcion") or None,
             ),
             on_success_msg="Habitación creada.",
         )
         if ok:
-            return redirect(url_for("administracion.habitaciones"))
+            return redirect(url_for("administracion.habitaciones", id_hotel=id_hotel_nuevo))
         seleccion = request.form
+        id_hotel_filtro = id_hotel_nuevo
 
     filas = query(
         """
@@ -108,21 +164,31 @@ def habitaciones():
         WHERE h.id_hotel = %s
         ORDER BY h.numero
         """,
-        (session["id_hotel"],),
+        (id_hotel_filtro,),
     )
     tipos = query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre")
+    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
     return render_template(
-        "administracion/habitaciones.html", filas=filas, tipos=tipos, seleccion=seleccion
+        "administracion/habitaciones.html", filas=filas, tipos=tipos, seleccion=seleccion,
+        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
+    )
+
+
+def _habitacion_en_alcance(id_habitacion):
+    if session["id_hotel"] is None:
+        return bool(query("SELECT 1 FROM habitacion WHERE id_habitacion = %s", (id_habitacion,)))
+    return bool(
+        query(
+            "SELECT 1 FROM habitacion WHERE id_habitacion = %s AND id_hotel = %s",
+            (id_habitacion, session["id_hotel"]),
+        )
     )
 
 
 @bp.route("/habitaciones/<int:id_habitacion>/estado", methods=["POST"])
 @requiere_rol("ADMINISTRADOR", "RECEPCION")
 def habitacion_estado(id_habitacion):
-    pertenece = query(
-        "SELECT 1 FROM habitacion WHERE id_habitacion = %s AND id_hotel = %s", (id_habitacion, session["id_hotel"])
-    )
-    if not pertenece:
+    if not _habitacion_en_alcance(id_habitacion):
         flash("Habitación no encontrada.", "danger")
         return redirect(request.referrer or url_for("administracion.habitaciones"))
     nuevo_estado = request.form["estado"]
@@ -227,12 +293,12 @@ def tarifas():
         ok, _ = ejecutar_con_flash(
             execute,
             """
-            INSERT INTO tarifa_habitacion (id_plan, id_tipo_habitacion, precio_por_noche, capacidad_maxima)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO tarifa_habitacion (id_plan, id_tipo_habitacion, precio_por_noche)
+            VALUES (%s, %s, %s)
             """,
             (
                 request.form["id_plan"], request.form["id_tipo_habitacion"],
-                request.form["precio_por_noche"], request.form["capacidad_maxima"],
+                request.form["precio_por_noche"],
             ),
             on_success_msg="Tarifa creada.",
         )
@@ -243,7 +309,7 @@ def tarifas():
     filas = query(
         """
         SELECT tr.id_tarifa, pt.nombre AS plan, th.nombre AS tipo_habitacion,
-               tr.precio_por_noche, tr.capacidad_maxima
+               tr.precio_por_noche, th.capacidad_base
         FROM tarifa_habitacion tr
         JOIN plan_tarifa pt ON pt.id_plan = tr.id_plan
         JOIN tipo_habitacion th ON th.id_tipo_habitacion = tr.id_tipo_habitacion
@@ -263,15 +329,17 @@ def tarifas():
 @bp.route("/empleados", methods=["GET", "POST"])
 @requiere_rol("ADMINISTRADOR")
 def empleados():
-    # id_hotel es elegible (no fijo a session["id_hotel"]): un hotel recién
-    # creado no tiene empleados propios, así que si esta pantalla solo
-    # dejara gestionar el hotel de la sesión actual, sería imposible darle
-    # su primer empleado (y por lo tanto, imposible iniciar sesión en él).
-    id_hotel_filtro = request.args.get("id_hotel", type=int) or session["id_hotel"]
+    # id_hotel es elegible solo para el admin general (session["id_hotel"]
+    # is None): un hotel recién creado ya nace con su propio admin (ver
+    # _crear_admin_de_hotel), pero el admin general igual debe poder
+    # gestionar empleados de cualquier hotel. Un admin de un solo hotel
+    # queda siempre fijo al suyo — no tiene sentido que gestione otro.
+    es_general = session["id_hotel"] is None
+    id_hotel_filtro = (request.args.get("id_hotel", type=int) or _primer_hotel_activo()) if es_general else session["id_hotel"]
 
     seleccion = None
     if request.method == "POST":
-        id_hotel_nuevo = request.form.get("id_hotel", type=int) or session["id_hotel"]
+        id_hotel_nuevo = (request.form.get("id_hotel", type=int) or id_hotel_filtro) if es_general else session["id_hotel"]
         ok, _ = ejecutar_con_flash(
             execute,
             """
@@ -298,8 +366,8 @@ def empleados():
         (id_hotel_filtro,),
     )
     cargos = query("SELECT id_cargo, nombre FROM cargo_empleado ORDER BY nombre")
-    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre")
+    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
     return render_template(
         "administracion/empleados.html", filas=filas, cargos=cargos, seleccion=seleccion,
-        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro,
+        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
     )

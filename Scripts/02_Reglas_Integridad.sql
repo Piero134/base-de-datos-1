@@ -32,6 +32,15 @@ ALTER TABLE empleado
         FOREIGN KEY (id_cargo)   REFERENCES cargo_empleado (id_cargo)
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
+-- ── usuario ──────────────────────────────────────────────────
+ALTER TABLE usuario
+    ADD CONSTRAINT fk_usuario_empleado
+        FOREIGN KEY (id_empleado) REFERENCES empleado (id_empleado)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    ADD CONSTRAINT fk_usuario_hotel
+        FOREIGN KEY (id_hotel)    REFERENCES hotel (id_hotel)
+        ON UPDATE CASCADE ON DELETE RESTRICT;
+
 -- ── persona ───────────────────────────────────────────────────
 ALTER TABLE persona
     ADD CONSTRAINT fk_persona_ubigeo
@@ -60,9 +69,15 @@ ALTER TABLE cliente
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
 -- ── huesped ───────────────────────────────────────────────────
+-- id_persona referencia persona_natural (no persona): la propia FK
+-- garantiza a nivel de esquema que el ocupante sea siempre una persona
+-- natural, sin necesitar un trigger de validación. ON DELETE RESTRICT
+-- porque la columna es NOT NULL (mismo patrón que fk_cliente_persona).
+-- No es UNIQUE: la misma persona puede volver a hospedarse y generar
+-- otra fila de huésped en otra estadía distinta.
 ALTER TABLE huesped
-    ADD CONSTRAINT fk_huesped_tipo_doc
-        FOREIGN KEY (id_tipo_documento)  REFERENCES tipo_documento (id_tipo_documento)
+    ADD CONSTRAINT fk_huesped_persona
+        FOREIGN KEY (id_persona)         REFERENCES persona_natural (id_persona)
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
 -- ── habitacion ────────────────────────────────────────────────
@@ -210,14 +225,6 @@ ALTER TABLE persona_natural
 ALTER TABLE persona_juridica
     ADD CONSTRAINT uq_pjuridica_ruc UNIQUE (ruc);
 
--- Un huésped identificado (no genérico) no puede duplicarse por documento.
--- No se declara UNIQUE simple porque los huéspedes genéricos comparten
--- numero_documento = NULL; MySQL permite múltiples NULL en una UNIQUE,
--- por lo que la restricción solo aplica quando el documento está presente.
-ALTER TABLE huesped
-    ADD CONSTRAINT uq_huesped_documento
-        UNIQUE (id_tipo_documento, numero_documento);
-
 -- El número de habitación debe ser único dentro de cada hotel.
 ALTER TABLE habitacion
     ADD CONSTRAINT uq_habitacion_hotel_numero
@@ -226,6 +233,10 @@ ALTER TABLE habitacion
 -- El nombre de un tipo de habitación no debe repetirse.
 ALTER TABLE tipo_habitacion
     ADD CONSTRAINT uq_tipo_habitacion_nombre UNIQUE (nombre);
+
+-- El username de acceso no debe repetirse.
+ALTER TABLE usuario
+    ADD CONSTRAINT uq_usuario_username UNIQUE (username);
 
 -- Un mismo tipo de habitación no puede tener dos tarifas activas
 -- para el mismo plan (evita ambigüedad de precio).
@@ -248,6 +259,30 @@ ALTER TABLE categoria_servicio
 -- El correo de un hotel, si se registra, debe ser único.
 ALTER TABLE hotel
     ADD CONSTRAINT uq_hotel_email UNIQUE (email);
+
+-- No puede haber más de una cuenta por cobrar para el mismo alojamiento
+-- (evita que sp_generar_cuenta_cobrar duplique la facturación si se
+-- invoca dos veces sobre el mismo alojamiento).
+ALTER TABLE cuenta_cobrar
+    ADD CONSTRAINT uq_cuenta_alojamiento UNIQUE (id_alojamiento);
+
+-- Una persona no puede tener dos registros de cliente distintos.
+ALTER TABLE cliente
+    ADD CONSTRAINT uq_cliente_persona UNIQUE (id_persona);
+
+-- El código INEI de un ubigeo no debe repetirse.
+ALTER TABLE ubigeo
+    ADD CONSTRAINT uq_ubigeo_codigo UNIQUE (codigo);
+
+-- Los nombres de tipo de documento no deben repetirse (mismo patrón que
+-- el resto de catálogos de este archivo).
+ALTER TABLE tipo_documento
+    ADD CONSTRAINT uq_tipo_documento_nombre UNIQUE (nombre);
+
+-- Un mismo huésped no puede quedar pre-asignado dos veces a la misma
+-- línea de reserva.
+ALTER TABLE detalle_huesped_reserva
+    ADD CONSTRAINT uq_detalle_huesped_reserva UNIQUE (id_detalle_reserva, id_huesped);
 
 
 -- =============================================================
@@ -328,7 +363,7 @@ ALTER TABLE danio
 -- El precio por noche en tarifas debe ser > 0
 ALTER TABLE tarifa_habitacion
     ADD CONSTRAINT chk_tarifa_precio
-        CHECK (precio_por_noche > 0 AND capacidad_maxima > 0);
+        CHECK (precio_por_noche > 0);
 
 -- La vigencia del plan debe ser coherente
 ALTER TABLE plan_tarifa
@@ -345,21 +380,8 @@ ALTER TABLE pago_cuenta_cobrar
     ADD CONSTRAINT chk_pago_monto
         CHECK (monto > 0);
 
--- Un huésped no genérico (es_generico = 0) debe tener documento
--- y nombres reales; para huéspedes genéricos se permite NULL
--- temporalmente hasta que se identifiquen (ver 06_Triggers.sql,
--- trigger trg_huesped_validar_datos, para la validación completa
--- que MySQL CHECK no puede expresar de forma condicional simple
--- entre columnas de forma legible aquí, y para el mensaje de error).
 -- La salida individual de un huésped no puede ser anterior a su
 -- registro en la habitación (coherencia de fechas por huésped).
 ALTER TABLE huesped_alojamiento
     ADD CONSTRAINT chk_haloj_fecha_salida
         CHECK (fecha_salida_real IS NULL OR fecha_salida_real >= fecha_registro);
-
-ALTER TABLE huesped
-    ADD CONSTRAINT chk_huesped_generico
-        CHECK (
-            (es_generico = 1)
-            OR (es_generico = 0 AND numero_documento IS NOT NULL AND apellidos IS NOT NULL)
-        );

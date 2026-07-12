@@ -38,7 +38,7 @@ base de datos compartida entre sedes:
 | RF-02 | Autodetectar la tarifa pública vigente según la fecha de check-in (regular vs. temporada alta), permitiendo también indicar explícitamente una tarifa corporativa negociada. |
 | RF-03 | Confirmar el pago de una reserva y pasarla al estado CONFIRMADA. |
 | RF-04 | Pre-asignar huéspedes a una reserva corporativa antes del check-in, y poder comparar luego esa pre-asignación contra quién hizo el check-in real. |
-| RF-05 | Registrar el check-in asignando una habitación física disponible, y agregar uno o más huéspedes (reales o "genéricos", cuando aún no se conoce el nombre). |
+| RF-05 | Registrar el check-in asignando una habitación física disponible, y agregar uno o más huéspedes ya identificados (la ocupación real nunca queda sin identidad completa; el "todavía no sé quién" solo existe antes del check-in, como cupo sin resolver en la pre-asignación). |
 | RF-06 | Validar que no se exceda la capacidad máxima de huéspedes de una habitación. |
 | RF-07 | Registrar consumos de servicios y daños durante la estadía. |
 | RF-08 | Registrar la salida individual de un huésped (sin cerrar la habitación si quedan otros huéspedes presentes) y el check-out completo de la habitación. |
@@ -74,8 +74,12 @@ Entidades principales y su razón de ser:
   habitación. Esta separación (decisión tomada tras la asesoría del profesor: *"cliente = quien
   paga/factura; huésped = quien duerme"*) permite modelar reservas corporativas donde la empresa
   paga pero sus empleados son quienes se hospedan.
-- **`huesped`** admite un huésped **genérico** (`es_generico = 1`) como placeholder cuando se
-  reserva sin conocer aún el nombre de todos los ocupantes.
+- **`huesped`** es un rol de ocupación, no una identidad propia: no tiene columnas de
+  nombre/documento — siempre referencia a una `persona_natural` ya existente. La incertidumbre de
+  "quién" en una reserva corporativa (N habitaciones reservadas sin saber aún quién las ocupará)
+  vive en `detalle_huesped_reserva.id_huesped` (nulable = cupo sin identificar), nunca en `huesped`:
+  por exigencia legal (registro de huéspedes, normativa MINCETUR) una ocupación real
+  (`huesped_alojamiento`) nunca puede existir sin identidad completa.
 - **`reserva`** → **`reserva_detalle`**: una reserva puede combinar varias líneas de tipo de
   habitación + plan tarifario + cantidad (ej. 2 simples + 1 doble en la misma reserva).
 - **`detalle_huesped_reserva`**: pre-asignación de huéspedes a una línea de reserva, usada en el
@@ -92,17 +96,67 @@ Entidades principales y su razón de ser:
 Ver `Diagramas/Diagrama de Base de Datos/02_Modelo_Logico.png` (fuente: `02_Modelo_Logico.puml`),
 que corresponde 1:1 con `Scripts/01_Creacion_Tablas.sql` + `Scripts/02_Reglas_Integridad.sql`.
 
-26 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
+27 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
 destacables del esquema relacional:
 
 - Todas las claves primarias son `INT AUTO_INCREMENT`, excepto `huesped_alojamiento` que usa clave
   compuesta (`id_alojamiento`, `id_huesped`) porque modela una relación N:M con atributos propios
-  (`es_titular`, `fecha_salida_real`).
+  (`es_titular`, `fecha_salida_real`), y `usuario`, que usa `id_empleado` como PK y FK a la vez
+  (subtipo 1:1, mismo patrón que `persona_natural`/`persona_juridica`).
 - `reserva.monto_total` y `reserva_detalle.subtotal`/`precio_unitario` se **congelan** al momento
   de crear la reserva (no se recalculan si la tarifa cambia después), preservando el histórico de
   lo efectivamente cobrado.
 - `plan_tarifa.es_publico` distingue tarifas autodetectables por fecha (público) de tarifas
   negociadas que solo se aplican si el operador las elige explícitamente (corporativo).
+- **`empleado` vs. `usuario`: identidad separada de autorización.** `empleado` es el registro de
+  RR.HH. (siempre existe, nunca se borra, atado a un hotel). `usuario` es un subtipo opcional
+  — no todo empleado necesita iniciar sesión — con las credenciales (`username`,
+  `password_hash`), el rol (`RECEPCION`/`CAJA`/`GERENCIA`/`ADMINISTRADOR`) y el alcance
+  (`id_hotel`, nulable: `NULL` solo tiene sentido para `ADMINISTRADOR` y significa "toda la
+  cadena"). Se evaluó y descartó una tabla adicional de otorgamientos (`usuario_rol`, uno o más
+  roles por empleado): ningún dato real del proyecto necesita que un mismo empleado tenga más de
+  un rol a la vez, así que esa generalidad se descartó por el mismo motivo que ya se aplicó a
+  `cargo_empleado` — no diseñar estructura para casos sin uso real (`cargo_empleado` incluye
+  "Camarero/a", un valor que nunca se referencia en ninguna consulta ni lógica de negocio; sirve
+  como recordatorio de no repetir el patrón). Mantener `usuario` como tabla aparte de `empleado`
+  (en vez de agregarle columnas) sí se justifica técnicamente: distinto disparador de cambio
+  (RR.HH. vs. seguridad), aislamiento de `password_hash` frente a consultas `SELECT *` sobre
+  `empleado` (la app corre con `debug=True`, que expone variables locales en cualquier traceback
+  no capturado), y ciclo de vida independiente (`empleado` nunca se borra por el historial que
+  referencia; el acceso sí debe poder revocarse al instante).
+- **`huesped` es un rol puro sobre `persona_natural` (no un subtipo con datos propios).** Una
+  primera corrección (auditoría de normalización) agregó `huesped.id_persona` como vínculo
+  *opcional* y dos triggers de sincronización para mantener las columnas duplicadas de `huesped`
+  (nombres, documento, fecha de nacimiento, etc.) al día con `persona_natural` — una solución válida
+  pero que atacaba el síntoma, no la causa: la duplicación seguía existiendo, solo quedaba
+  sincronizada. La corrección de raíz, motivada por una regla de negocio real (en una reserva
+  corporativa la empresa reserva N habitaciones sin saber aún quién las ocupará — se conoce la
+  cantidad, no las personas; los nombres se resuelven después, vía lista de la empresa o recién en
+  el check-in), fue eliminar las columnas de `huesped` por completo y dejar `id_persona` como
+  **`NOT NULL`**, referenciando **`persona_natural`** (no `persona`): el propio FK garantiza a nivel
+  de esquema que el ocupante sea siempre una persona natural, sin necesitar un trigger de
+  validación. `huesped` no es 1:1 con `persona_natural` (no lleva `UNIQUE`): la misma persona puede
+  volver a hospedarse y generar otra fila de huésped en otra estadía — es un rol repetible, no un
+  subtipo. La incertidumbre de "quién" se trasladó donde realmente vive: `detalle_huesped_reserva.
+  id_huesped`, que pasó a ser nulable (`trg_valida_cupos_reserva` limita el total de cupos —
+  identificados o no — de una línea a `cantidad_habitaciones × capacidad_base`). Esto también
+  eliminó de raíz el antiguo "huésped genérico" (`es_generico`): la propia carga de datos ya
+  demostraba que ese diseño no funcionaba en la práctica — la app prometía "se completa después"
+  pero ningún código actualizaba jamás un huésped genérico con datos reales.
+- **Columna eliminada: `tarifa_habitacion.capacidad_maxima`.** La misma auditoría encontró que esta
+  columna nunca se leía en ningún procedimiento/trigger/vista (la capacidad siempre se valida contra
+  `tipo_habitacion.capacidad_base`) y en los datos de prueba siempre coincidía con ese valor — era
+  redundancia sin ningún caso de uso real, no una regla de negocio. Se eliminó en vez de mantenerla
+  sin sentido.
+- **Reglas de negocio reforzadas a nivel de motor tras la auditoría de normalización:** además de
+  los dos puntos anteriores, se agregaron triggers para que `reserva.monto_total` y
+  `cuenta_cobrar.subtotal/total/saldo` nunca puedan desincronizarse de sus líneas de detalle (antes
+  solo se mantenían por disciplina de los procedimientos, no por una regla que el motor garantizara
+  ante un `INSERT`/`UPDATE`/`DELETE` directo), una restricción `UNIQUE(id_alojamiento)` en
+  `cuenta_cobrar` más un guard en `sp_generar_cuenta_cobrar` para impedir doble facturación, un
+  trigger que exige que el alcance de un `usuario` operativo coincida con el hotel donde trabaja su
+  `empleado`, y `UNIQUE` faltantes en `cliente.id_persona`, `ubigeo.codigo`, `tipo_documento.nombre`
+  y `detalle_huesped_reserva(id_detalle_reserva, id_huesped)`.
 
 ## 5. Modelo físico
 
@@ -113,11 +167,11 @@ el DDL ejecutable en `Scripts/01_Creacion_Tablas.sql` (creación) y `Scripts/02_
 Decisiones de implementación física en MySQL 8.0:
 
 - Charset `utf8mb4` / collation `utf8mb4_spanish_ci` a nivel de base de datos completa.
-- `ENUM` para dominios cerrados y estables (`estado` de reserva/habitación/alojamiento/daño/cuenta,
-  `canal`, `metodo_pago`, `genero`, `tipo` de persona) en vez de tablas catálogo adicionales,
-  cuando el dominio es fijo y no requiere atributos propios; se usan tablas catálogo
-  (`estado_reserva`, `tipo_documento`, `cargo_empleado`, `categoria_servicio`) cuando el dominio sí
-  necesita nombre descriptivo administrable sin migración de esquema.
+- `ENUM` para dominios cerrados y estables (`estado` de habitación/alojamiento/daño/cuenta, `canal`,
+  `metodo_pago`, `genero`, `tipo` de persona) en vez de tablas catálogo adicionales, cuando el
+  dominio es fijo y no requiere atributos propios; se usan tablas catálogo (`estado_reserva`,
+  `tipo_documento`, `cargo_empleado`, `categoria_servicio`) cuando el dominio sí necesita nombre
+  descriptivo administrable sin migración de esquema.
 - Claves foráneas declaradas explícitamente en `02_Reglas_Integridad.sql`, separadas del DDL base,
   para poder crear primero todas las tablas sin preocuparse por el orden de dependencias y luego
   cerrar la integridad referencial en un segundo paso auditable.

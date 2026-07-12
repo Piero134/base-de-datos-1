@@ -4,7 +4,7 @@
 
 Según lo indicado por el profesor en la asesoría: **"el proyecto final no va a ser la aplicación al 100% desarrollada, sino centrarnos en cómo hacer un MVP que use todas las consultas que estamos viendo"**, y su exigencia explícita fue: *"la aplicación tiene que ser la interfase... puede no estar construida en un milímetro, no tan fino, pero sí tiene que haber conectividad a la base de datos, tiene que haber usado una serie de instrucciones SQL"*.
 
-Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 25 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
+Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 27 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
 
 ### Qué SÍ entra en el MVP
 - Una interfaz (web, escritorio o incluso consola con menú) con conectividad real a `hotel_db`.
@@ -17,20 +17,28 @@ Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es 
 - Pasarela de pago real (se simula el registro del pago, no se integra Visa/Culqi/etc.).
 - Notificaciones por correo/SMS, app móvil, multi-idioma.
 - Módulo de facturación electrónica SUNAT (se calcula IGV, pero no se emite comprobante real).
-- Autenticación robusta (basta un login simple que determine el rol: Recepción/Caja/Gerencia/Admin).
+- Autenticación robusta *(nota: se implementó de todas formas — login real con usuario/contraseña
+  respaldado por la tabla `usuario`, ver sección 2 — porque terminó siendo una mejora de bajo costo
+  una vez que se necesitó distinguir administrador general de administrador por hotel; sigue sin
+  ser el foco del MVP: no hay recuperación de contraseña, 2FA, ni sesiones persistentes más allá de
+  la cookie de Flask)*.
 
 ---
 
 ## 2. Actores del sistema
 
-Estos actores ya están modelados como roles de base de datos en `07_Roles_Permisos.sql`, así que el MVP simplemente necesita un login que determine cuál rol usa cada sesión:
+Estos actores ya están modelados como roles de base de datos en `07_Roles_Permisos.sql`. El login
+real (tabla `usuario`, ver `Documentacion/01_Entregable1_Diseno_BD.md` sección 4) determina el rol
+y el alcance de cada sesión — el rol de `usuario.rol` no es un valor libre, es el que quedó
+asignado a ese empleado:
 
 | Actor | Rol de BD | Qué hace en el MVP |
 |---|---|---|
 | **Recepcionista** | `rol_recepcion` | Reservas, check-in, check-out, pre-asignación corporativa, consulta de disponibilidad |
 | **Cajero/a** | `rol_caja` | Consumos, daños, cuentas por cobrar, pagos |
 | **Gerente** | `rol_gerencia` | Solo lectura: reportes de ocupación, ingresos, ranking |
-| **Administrador** | `rol_administrador` | Mantenimiento de catálogos (hoteles, tipos de habitación, tarifas, servicios, empleados) |
+| **Administrador (general)** | `rol_administrador` | `usuario.id_hotel = NULL`: crea/edita hoteles de toda la cadena y gestiona empleados/habitaciones de cualquiera |
+| **Administrador (por hotel)** | `rol_administrador` | `usuario.id_hotel` = un hotel: mantenimiento de catálogos (tipos de habitación, tarifas, servicios, empleados, habitaciones) solo de su propio hotel; no puede crear ni editar hoteles |
 
 ---
 
@@ -75,16 +83,20 @@ Estos actores ya están modelados como roles de base de datos en `07_Roles_Permi
 ### UC-03: Pre-asignar huéspedes (reserva corporativa)
 - **Actor:** Recepcionista
 - **Precondición:** reserva con detalle ya creado, cliente de tipo `JURIDICA`.
-- **Flujo principal:** para cada línea de reserva, se registra qué huésped (empleado de la empresa) ocupará esa habitación, insertando en `detalle_huesped_reserva`.
-- **Postcondición:** pre-asignación registrada, disponible para comparar luego contra el check-in real.
-- **Consulta relacionada:** `vw_reservas_corporativas`.
+- **Flujo principal:** para cada línea de reserva, se reserva un cupo insertando en
+  `detalle_huesped_reserva`, indicando qué huésped (empleado de la empresa) lo ocupará **o
+  dejándolo sin nombre todavía** (`id_huesped = NULL`) si la empresa aún no lo sabe — se resuelve
+  después con un `UPDATE` (misma operación para identificar un cupo por primera vez o para
+  sustituir a último momento a quien ya estaba asignado).
+- **Postcondición:** pre-asignación (identificada o no) registrada, disponible para comparar luego
+  contra el check-in real.
+- **Consulta relacionada:** `vw_reservas_corporativas`, `vw_preasignacion_vs_checkin`.
 
 ### UC-04: Realizar check-in
 - **Actor:** Recepcionista
 - **Precondición:** reserva `CONFIRMADA`, habitación física sin ocupación activa (ver nota de disponibilidad más abajo).
 - **Flujo principal:**
-  1. `sp_realizar_checkin_con_huesped(id_reserva, id_detalle_reserva, id_habitacion, id_empleado, id_huesped, id_detalle_huesped)` → `id_alojamiento`. Registra la habitación **y** el huésped titular en un solo paso atómico (envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento`): una habitación nunca queda ocupada sin ningún huésped asociado.
-     - Si el huésped aún no tiene nombre, se usa un **huésped genérico** (`es_generico = 1`, ej. "Invitado 1"), a completar después.
+  1. `sp_realizar_checkin_con_huesped(id_reserva, id_detalle_reserva, id_habitacion, id_empleado, id_huesped, id_detalle_huesped)` → `id_alojamiento`. Registra la habitación **y** el huésped titular en un solo paso atómico (envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento`): una habitación nunca queda ocupada sin ningún huésped asociado, y `id_huesped` siempre debe ser un huésped ya identificado (nunca `NULL`) — por exigencia legal, la incertidumbre de "quién" solo puede existir antes del check-in (en `detalle_huesped_reserva`), nunca en la ocupación real.
   2. Para huéspedes adicionales que llegan más tarde a la misma habitación: `sp_agregar_huesped_alojamiento(id_alojamiento, id_huesped, es_titular, id_detalle_huesped)` (paso aparte y opcional, ya con el alojamiento existente).
 - **Flujo alterno:** si se excede la capacidad del tipo de habitación, `trg_huesped_alojamiento_capacidad` rechaza la inserción.
 - **Nota de disponibilidad:** la habitación física ofrecida se calcula por ocupación real (¿existe un `alojamiento` `ACTIVO` en ella ahora mismo?), no por el campo cacheado `habitacion.estado` — ese campo (`RESERVADA`/`LIMPIEZA`) requiere una acción manual de un `ADMINISTRADOR` para liberarse y no siempre refleja si la habitación está realmente ocupada.
@@ -134,8 +146,18 @@ Estos actores ya están modelados como roles de base de datos en `07_Roles_Permi
 - **Flujo principal:** pantallas de solo lectura sobre `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel`, y `sp_resumen_ocupacion_hotel(id_hotel)`.
 
 ### UC-13: Mantenimiento de catálogos
-- **Actor:** Administrador
+- **Actor:** Administrador (general o por hotel, ver sección 2)
 - **Flujo principal:** CRUD simple (INSERT/UPDATE) sobre `hotel`, `tipo_habitacion`, `habitacion`, `categoria_servicio`, `servicio`, `plan_tarifa`, `tarifa_habitacion`, `empleado`. No requiere procedimientos especiales; son operaciones directas de mantenimiento.
+- **Alcance:** `tipo_habitacion`/`categoria_servicio`/`servicio`/`plan_tarifa`/`tarifa_habitacion`
+  son catálogos de toda la cadena (sin `id_hotel`), así que cualquier administrador los gestiona
+  igual. `hotel`, `habitacion` y `empleado` sí son propios de un hotel: solo el administrador
+  general crea/edita hoteles y puede elegir cualquier hotel al gestionar empleados/habitaciones; un
+  administrador de un solo hotel queda fijo al suyo.
+- **Alta de hotel (solo administrador general):** crear un hotel encadena automáticamente un
+  `empleado` (cargo "Administrador de Hotel") + `usuario` (con `rol='ADMINISTRADOR'`,
+  `id_hotel` = el nuevo hotel, username generado del nombre del hotel y contraseña temporal
+  aleatoria mostrada una sola vez) — el hotel queda usable desde el día uno sin depender de que
+  alguien le cree un empleado manualmente después.
 
 ---
 
@@ -168,7 +190,7 @@ En cualquier caso, la interfaz debe limitarse a **llamar** los procedimientos/fu
 | **3. Nivel de complejidad del proyecto (alcances)** | Supertype/subtype de persona, pre-asignación corporativa vs. check-in real, autodetección de tarifa por fecha, salida individual por huésped, cuentas con abonos parciales — casos que van más allá de un CRUD básico. |
 | **4. Cumplimiento de tareas y avances por fase** | Los 9 scripts numerados corresponden 1:1 a las fases del curso (creación → integridad → funciones → procedimientos → vistas → triggers → roles → carga → consultas MVP). |
 | **5. Presentación y exposición** | El diagrama de secuencia (`04_Flujo_MVP_Secuencia.puml`) sirve como guion de la demo en vivo: cada paso de la exposición corresponde a una línea del diagrama. |
-| **6. Aportes, recomendaciones, experiencias** | Documentar en la sustentación las decisiones tomadas a partir de la asesoría del profesor (separación cliente/huésped, huésped genérico, stock por fecha vs. contador, plan público vs. corporativo) como "aportes" propios justificados. |
+| **6. Aportes, recomendaciones, experiencias** | Documentar en la sustentación las decisiones tomadas a partir de la asesoría del profesor (separación cliente/huésped, cupos sin identificar vs. ocupación real siempre identificada, stock por fecha vs. contador, plan público vs. corporativo) como "aportes" propios justificados. |
 | **7. Respuestas a consultas finales** | Tener a la mano los `.sql` y los diagramas (conceptual/lógico/físico) para responder preguntas puntuales sobre cualquier tabla, procedimiento o regla de negocio durante la sustentación. |
 
 ---

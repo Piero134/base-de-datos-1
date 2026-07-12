@@ -38,6 +38,14 @@ entity Empleado {
   * apellidos
 }
 
+' ---------- Autenticación y autorización ----------
+entity Usuario {
+  * username
+  * password_hash
+  * rol (RECEPCION / CAJA / GERENCIA / ADMINISTRADOR)
+  * alcance (un hotel, o general si es ADMINISTRADOR)
+}
+
 ' ---------- Personas (facturación) ----------
 entity TipoDocumento {
   * nombre
@@ -63,11 +71,12 @@ entity Cliente {
   * observaciones
 }
 
-' ---------- Huésped (quien se aloja) ----------
+' ---------- Huésped (rol de ocupación, no identidad propia) ----------
+' La incertidumbre de "quién" ocupará una habitación vive en
+' DetalleHuespedReserva (cupo reservado sin nombre todavía, típico en
+' una reserva corporativa); Huesped nunca es "genérico" — solo existe
+' cuando ya se conoce a la persona natural que ocupa la habitación.
 entity Huesped {
-  * nombres
-  * numero_documento
-  * es_generico
 }
 
 ' ---------- Habitaciones y tarifas ----------
@@ -171,6 +180,8 @@ Ubigeo ||--o{ Persona             : reside en
 
 Hotel  ||--o{ Empleado            : emplea
 CargoEmpleado ||--o{ Empleado     : clasifica
+Empleado ||--o| Usuario           : tiene acceso
+Hotel  |o--o{ Usuario             : alcance (vacío = general)
 
 Hotel  ||--o{ Habitacion          : posee
 TipoHabitacion ||--o{ Habitacion  : clasifica
@@ -181,7 +192,6 @@ PlanTarifa ||--o{ TarifaHabitacion     : define
 Persona <|-- PersonaNatural
 Persona <|-- PersonaJuridica
 TipoDocumento ||--o{ PersonaNatural : identifica
-TipoDocumento ||--o{ Huesped        : identifica
 
 Persona ||--o{ Cliente            : es
 
@@ -196,7 +206,7 @@ TipoHabitacion ||--o{ ReservaDetalle : especifica
 PlanTarifa ||--o{ ReservaDetalle  : aplica a
 
 ReservaDetalle ||--o{ DetalleHuespedReserva : preasigna
-Huesped ||--o{ DetalleHuespedReserva        : es preasignado en
+Huesped |o--o{ DetalleHuespedReserva        : es preasignado en (opcional — el cupo puede no tener huésped identificado todavía)
 
 Reserva ||--o{ Alojamiento        : origina
 ReservaDetalle ||--o{ Alojamiento : concreta
@@ -206,6 +216,7 @@ Empleado ||--o{ Alojamiento       : hace check-in / check-out
 Alojamiento ||--o{ HuespedAlojamiento : hospeda
 Huesped ||--o{ HuespedAlojamiento     : ocupa
 DetalleHuespedReserva |o..o{ HuespedAlojamiento : trazabilidad (opcional)
+PersonaNatural ||--o{ Huesped : se aloja como (siempre persona natural — nunca una empresa)
 
 Alojamiento ||--o{ ConsumoServicio : genera
 Servicio ||--o{ ConsumoServicio    : es consumido en

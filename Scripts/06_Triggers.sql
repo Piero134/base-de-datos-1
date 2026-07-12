@@ -274,4 +274,211 @@ BEGIN
     END IF;
 END$$
 
+-- ──────────────────────────────────────────────────────────────
+-- T11 (NUEVO). reserva.monto_total siempre igual a
+--     SUM(reserva_detalle.subtotal): antes solo lo mantenía
+--     sp_agregar_detalle_reserva con un UPDATE manual, así que un
+--     INSERT/UPDATE/DELETE directo sobre reserva_detalle (como hace
+--     la propia carga de datos) lo dejaba desincronizado.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_reserva_detalle_monto_ai$$
+CREATE TRIGGER trg_reserva_detalle_monto_ai
+AFTER INSERT ON reserva_detalle
+FOR EACH ROW
+BEGIN
+    UPDATE reserva
+    SET monto_total = (SELECT COALESCE(SUM(subtotal), 0) FROM reserva_detalle WHERE id_reserva = NEW.id_reserva)
+    WHERE id_reserva = NEW.id_reserva;
+END$$
+
+DROP TRIGGER IF EXISTS trg_reserva_detalle_monto_au$$
+CREATE TRIGGER trg_reserva_detalle_monto_au
+AFTER UPDATE ON reserva_detalle
+FOR EACH ROW
+BEGIN
+    UPDATE reserva
+    SET monto_total = (SELECT COALESCE(SUM(subtotal), 0) FROM reserva_detalle WHERE id_reserva = NEW.id_reserva)
+    WHERE id_reserva = NEW.id_reserva;
+END$$
+
+DROP TRIGGER IF EXISTS trg_reserva_detalle_monto_ad$$
+CREATE TRIGGER trg_reserva_detalle_monto_ad
+AFTER DELETE ON reserva_detalle
+FOR EACH ROW
+BEGIN
+    UPDATE reserva
+    SET monto_total = (SELECT COALESCE(SUM(subtotal), 0) FROM reserva_detalle WHERE id_reserva = OLD.id_reserva)
+    WHERE id_reserva = OLD.id_reserva;
+END$$
+
+-- ──────────────────────────────────────────────────────────────
+-- T12 (NUEVO). cuenta_cobrar.subtotal/impuestos/total siempre
+--     iguales a SUM(cuenta_cobrar_detalle.subtotal) + IGV 18%:
+--     antes solo se calculaban una vez al generar la cuenta
+--     (sp_generar_cuenta_cobrar) y nada los recalculaba si el
+--     detalle cambiaba después.
+-- ──────────────────────────────────────────────────────────────
+-- saldo también se recalcula aquí (total - pagos ya registrados), no solo
+-- en trg_cuenta_actualizar_saldo: si el detalle cambia, el saldo pendiente
+-- cambia con él, y chk_cuenta_saldo (saldo <= total) exige que ambos
+-- columnas se muevan juntas dentro del mismo UPDATE.
+DROP TRIGGER IF EXISTS trg_cuenta_detalle_total_ai$$
+CREATE TRIGGER trg_cuenta_detalle_total_ai
+AFTER INSERT ON cuenta_cobrar_detalle
+FOR EACH ROW
+BEGIN
+    DECLARE v_subtotal DECIMAL(12,2);
+    DECLARE v_total DECIMAL(12,2);
+    DECLARE v_pagado DECIMAL(12,2);
+
+    SELECT COALESCE(SUM(subtotal), 0) INTO v_subtotal FROM cuenta_cobrar_detalle WHERE id_cuenta = NEW.id_cuenta;
+    SET v_total = ROUND(v_subtotal * 1.18, 2);
+    SELECT COALESCE(SUM(monto), 0) INTO v_pagado FROM pago_cuenta_cobrar WHERE id_cuenta = NEW.id_cuenta;
+
+    UPDATE cuenta_cobrar
+    SET subtotal = v_subtotal,
+        impuestos = ROUND(v_subtotal * 0.18, 2),
+        total = v_total,
+        saldo = v_total - v_pagado
+    WHERE id_cuenta = NEW.id_cuenta;
+END$$
+
+DROP TRIGGER IF EXISTS trg_cuenta_detalle_total_au$$
+CREATE TRIGGER trg_cuenta_detalle_total_au
+AFTER UPDATE ON cuenta_cobrar_detalle
+FOR EACH ROW
+BEGIN
+    DECLARE v_subtotal DECIMAL(12,2);
+    DECLARE v_total DECIMAL(12,2);
+    DECLARE v_pagado DECIMAL(12,2);
+
+    SELECT COALESCE(SUM(subtotal), 0) INTO v_subtotal FROM cuenta_cobrar_detalle WHERE id_cuenta = NEW.id_cuenta;
+    SET v_total = ROUND(v_subtotal * 1.18, 2);
+    SELECT COALESCE(SUM(monto), 0) INTO v_pagado FROM pago_cuenta_cobrar WHERE id_cuenta = NEW.id_cuenta;
+
+    UPDATE cuenta_cobrar
+    SET subtotal = v_subtotal,
+        impuestos = ROUND(v_subtotal * 0.18, 2),
+        total = v_total,
+        saldo = v_total - v_pagado
+    WHERE id_cuenta = NEW.id_cuenta;
+END$$
+
+DROP TRIGGER IF EXISTS trg_cuenta_detalle_total_ad$$
+CREATE TRIGGER trg_cuenta_detalle_total_ad
+AFTER DELETE ON cuenta_cobrar_detalle
+FOR EACH ROW
+BEGIN
+    DECLARE v_subtotal DECIMAL(12,2);
+    DECLARE v_total DECIMAL(12,2);
+    DECLARE v_pagado DECIMAL(12,2);
+
+    SELECT COALESCE(SUM(subtotal), 0) INTO v_subtotal FROM cuenta_cobrar_detalle WHERE id_cuenta = OLD.id_cuenta;
+    SET v_total = ROUND(v_subtotal * 1.18, 2);
+    SELECT COALESCE(SUM(monto), 0) INTO v_pagado FROM pago_cuenta_cobrar WHERE id_cuenta = OLD.id_cuenta;
+
+    UPDATE cuenta_cobrar
+    SET subtotal = v_subtotal,
+        impuestos = ROUND(v_subtotal * 0.18, 2),
+        total = v_total,
+        saldo = v_total - v_pagado
+    WHERE id_cuenta = OLD.id_cuenta;
+END$$
+
+-- ──────────────────────────────────────────────────────────────
+-- T13 (NUEVO). trg_cuenta_actualizar_saldo (T8) solo recalculaba el
+--     saldo cuando se INSERTABA un pago; un pago corregido o
+--     eliminado (operación real de caja) dejaba el saldo
+--     desactualizado. Se agregan los mismos efectos para
+--     UPDATE/DELETE sobre pago_cuenta_cobrar.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_cuenta_actualizar_saldo_au$$
+CREATE TRIGGER trg_cuenta_actualizar_saldo_au
+AFTER UPDATE ON pago_cuenta_cobrar
+FOR EACH ROW
+BEGIN
+    UPDATE cuenta_cobrar
+    SET saldo = fn_saldo_cuenta(NEW.id_cuenta),
+        estado = IF(fn_saldo_cuenta(NEW.id_cuenta) <= 0, 'PAGADA', 'PENDIENTE')
+    WHERE id_cuenta = NEW.id_cuenta;
+END$$
+
+DROP TRIGGER IF EXISTS trg_cuenta_actualizar_saldo_ad$$
+CREATE TRIGGER trg_cuenta_actualizar_saldo_ad
+AFTER DELETE ON pago_cuenta_cobrar
+FOR EACH ROW
+BEGIN
+    UPDATE cuenta_cobrar
+    SET saldo = fn_saldo_cuenta(OLD.id_cuenta),
+        estado = IF(fn_saldo_cuenta(OLD.id_cuenta) <= 0, 'PAGADA', 'PENDIENTE')
+    WHERE id_cuenta = OLD.id_cuenta;
+END$$
+
+-- ──────────────────────────────────────────────────────────────
+-- T14 (NUEVO). El alcance de un usuario (usuario.id_hotel) debe
+--     coincidir con el hotel de empleo, salvo para ADMINISTRADOR
+--     (que puede ser general, id_hotel NULL, o estar asignado a un
+--     hotel distinto del de empleo). Antes nada impedía que un
+--     RECEPCION/CAJA/GERENCIA quedara con un alcance que no
+--     correspondía a donde realmente trabaja.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_usuario_validar_alcance_bi$$
+CREATE TRIGGER trg_usuario_validar_alcance_bi
+BEFORE INSERT ON usuario
+FOR EACH ROW
+BEGIN
+    DECLARE v_id_hotel_empleado INT;
+    SELECT id_hotel INTO v_id_hotel_empleado FROM empleado WHERE id_empleado = NEW.id_empleado;
+    IF NEW.rol <> 'ADMINISTRADOR' AND (NEW.id_hotel IS NULL OR NEW.id_hotel <> v_id_hotel_empleado) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'El alcance de este rol debe ser el mismo hotel donde trabaja el empleado';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trg_usuario_validar_alcance_bu$$
+CREATE TRIGGER trg_usuario_validar_alcance_bu
+BEFORE UPDATE ON usuario
+FOR EACH ROW
+BEGIN
+    DECLARE v_id_hotel_empleado INT;
+    SELECT id_hotel INTO v_id_hotel_empleado FROM empleado WHERE id_empleado = NEW.id_empleado;
+    IF NEW.rol <> 'ADMINISTRADOR' AND (NEW.id_hotel IS NULL OR NEW.id_hotel <> v_id_hotel_empleado) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'El alcance de este rol debe ser el mismo hotel donde trabaja el empleado';
+    END IF;
+END$$
+
+-- ──────────────────────────────────────────────────────────────
+-- T15 (NUEVO). trg_valida_cupos_reserva — una línea de reserva
+--     (reserva_detalle) reserva cantidad_habitaciones habitaciones
+--     de un tipo con capacidad_base huéspedes cada una; el total de
+--     cupos (identificados o no) en detalle_huesped_reserva para esa
+--     línea nunca puede superar cantidad_habitaciones × capacidad_base.
+--     Antes de este trigger nada limitaba cuántas filas se insertaban
+--     por línea (hallazgo de la auditoría de app: reservas/routes.py
+--     no validaba esto en ningún punto).
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_valida_cupos_reserva$$
+CREATE TRIGGER trg_valida_cupos_reserva
+BEFORE INSERT ON detalle_huesped_reserva
+FOR EACH ROW
+BEGIN
+    DECLARE v_max INT;
+    DECLARE v_actual INT;
+
+    SELECT rd.cantidad_habitaciones * th.capacidad_base INTO v_max
+    FROM reserva_detalle rd
+    JOIN tipo_habitacion th ON th.id_tipo_habitacion = rd.id_tipo_habitacion
+    WHERE rd.id_detalle_reserva = NEW.id_detalle_reserva;
+
+    SELECT COUNT(*) INTO v_actual
+    FROM detalle_huesped_reserva
+    WHERE id_detalle_reserva = NEW.id_detalle_reserva;
+
+    IF v_actual >= v_max THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Se excede la capacidad de la línea de reserva.';
+    END IF;
+END$$
+
 DELIMITER ;

@@ -170,7 +170,13 @@ def _contexto_checkin_reserva(id_reserva):
         "habitaciones_por_tipo": habitaciones_por_tipo,
         "completo": completo,
         "huespedes_disponibles": query(
-            "SELECT id_huesped, nombres, apellidos, es_generico FROM huesped WHERE activo = 1 ORDER BY nombres"
+            """
+            SELECT h.id_huesped, pn.nombres, pn.apellidos
+            FROM huesped h
+            JOIN persona_natural pn ON pn.id_persona = h.id_persona
+            WHERE h.activo = 1
+            ORDER BY pn.nombres
+            """
         ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
         "datos_cliente_natural": _datos_cliente_natural_de_reserva(id_reserva),
@@ -183,7 +189,7 @@ def _datos_cliente_natural_de_reserva(id_reserva):
     ofrecerlo ya en la pantalla de check-in."""
     filas = query(
         """
-        SELECT pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
+        SELECT p.id_persona, pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
                pn.fecha_nacimiento, pn.genero, pn.nacionalidad
         FROM reserva r
         JOIN cliente c ON c.id_cliente = r.id_cliente
@@ -193,7 +199,18 @@ def _datos_cliente_natural_de_reserva(id_reserva):
         """,
         (id_reserva,),
     )
-    return filas[0] if filas else None
+    if not filas:
+        return None
+    fila = filas[0]
+    # checkin_reserva.html serializa este dict entero con |tojson para
+    # compartirlo entre varios botones "usar mis datos" por JS; el
+    # serializador JSON de Flask formatea date/datetime como fecha HTTP
+    # ("Tue, 02 Apr 1996...") en vez de ISO, lo que <input type="date">
+    # no puede interpretar y deja el campo vacío en silencio. Se convierte
+    # a texto ISO aquí para que el autofill funcione.
+    if fila.get("fecha_nacimiento") is not None:
+        fila["fecha_nacimiento"] = fila["fecha_nacimiento"].isoformat()
+    return fila
 
 
 @bp.route("/checkin/<int:id_reserva>")
@@ -280,10 +297,11 @@ def _contexto_ver(id_alojamiento):
 
     huespedes = query(
         """
-        SELECT ha.id_huesped, CONCAT(h.nombres, ' ', COALESCE(h.apellidos, '')) AS huesped,
+        SELECT ha.id_huesped, CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
                ha.es_titular, ha.fecha_registro, ha.fecha_salida_real
         FROM huesped_alojamiento ha
         JOIN huesped h ON h.id_huesped = ha.id_huesped
+        JOIN persona_natural pn ON pn.id_persona = h.id_persona
         WHERE ha.id_alojamiento = %s
         ORDER BY ha.fecha_salida_real IS NOT NULL, ha.fecha_registro
         """,
@@ -295,7 +313,7 @@ def _contexto_ver(id_alojamiento):
     # empresa no tiene datos personales que copiar a un huésped).
     datos_cliente_natural = query(
         """
-        SELECT pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
+        SELECT p.id_persona, pn.nombres, pn.apellidos, pn.id_tipo_documento, pn.numero_documento,
                pn.fecha_nacimiento, pn.genero, pn.nacionalidad
         FROM alojamiento a
         JOIN reserva r ON r.id_reserva = a.id_reserva
@@ -311,7 +329,13 @@ def _contexto_ver(id_alojamiento):
         "aloj": aloj[0],
         "huespedes": huespedes,
         "huespedes_disponibles": query(
-            "SELECT id_huesped, nombres, apellidos, es_generico FROM huesped WHERE activo = 1 ORDER BY nombres"
+            """
+            SELECT h.id_huesped, pn.nombres, pn.apellidos
+            FROM huesped h
+            JOIN persona_natural pn ON pn.id_persona = h.id_persona
+            WHERE h.activo = 1
+            ORDER BY pn.nombres
+            """
         ),
         "datos_cliente_natural": datos_cliente_natural[0] if datos_cliente_natural else None,
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),

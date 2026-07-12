@@ -60,6 +60,17 @@ CREATE TABLE empleado (
     CONSTRAINT pk_empleado PRIMARY KEY (id_empleado)
 ) COMMENT = 'Personal del hotel';
 
+-- usuario: subtipo 1:1 de empleado (separación identidad / autorización)
+CREATE TABLE usuario (
+    id_empleado    INT           NOT NULL,
+    username       VARCHAR(50)   NOT NULL,
+    password_hash  VARCHAR(255)  NOT NULL,
+    rol            ENUM('RECEPCION','CAJA','GERENCIA','ADMINISTRADOR') NOT NULL,
+    id_hotel       INT           NULL,
+    activo         TINYINT(1)    NOT NULL DEFAULT 1,
+    CONSTRAINT pk_usuario PRIMARY KEY (id_empleado)
+) COMMENT = 'Credenciales + rol + alcance de un empleado con acceso al sistema. id_hotel NULL solo tiene sentido para rol ADMINISTRADOR (alcance general); los demás roles siempre llevan un hotel.';
+
 -- -------------------------------------------------------------
 --  3. PERSONA — supertype / subtipos (facturación / reservantes)
 --     Separa a quien FACTURA (persona/cliente)
@@ -112,30 +123,21 @@ CREATE TABLE cliente (
 ) COMMENT = 'Entidad que reserva y/o paga (puede ser natural o jurídica)';
 
 -- -------------------------------------------------------------
---  4. HUESPED — persona que se aloja físicamente.
---     Separada de CLIENTE por indicación del profesor:
+--  4. HUESPED: rol de ocupación, no identidad propia.
 --     "cliente = quien paga/factura; huésped = quien duerme".
---     Soporta huéspedes GENÉRICOS (placeholder) cuando el
---     titular reserva sin conocer aún los nombres de todos los
---     ocupantes. Se completan los datos reales antes
---     o durante el check-in.
+--     La incertidumbre de "quién" en una reserva corporativa
+--     (N habitaciones reservadas sin saber aún los nombres) vive
+--     en DETALLE_HUESPED_RESERVA (id_huesped nulable = cupo sin
+--     identificar), nunca aquí: por exigencia legal (registro de
+--     una ocupación real nunca existe sin identidad completa)
 -- -------------------------------------------------------------
 CREATE TABLE huesped (
-    id_huesped        INT           NOT NULL AUTO_INCREMENT,
-    id_tipo_documento INT           NULL,
-    numero_documento  VARCHAR(20)   NULL,
-    nombres           VARCHAR(100)  NOT NULL,
-    apellidos         VARCHAR(100)  NULL,
-    fecha_nacimiento  DATE          NULL,
-    genero            ENUM('M','F','OTRO') NULL,
-    nacionalidad      VARCHAR(60)   NULL,
-    telefono          VARCHAR(20)   NULL,
-    email             VARCHAR(100)  NULL,
-    es_generico       TINYINT(1)    NOT NULL DEFAULT 0
-        COMMENT '1 = huésped placeholder pendiente de identificar',
-    activo            TINYINT(1)    NOT NULL DEFAULT 1,
+    id_huesped   INT           NOT NULL AUTO_INCREMENT,
+    id_persona   INT           NOT NULL
+        COMMENT 'FK a persona_natural. Identidad vive en persona_natural.',
+    activo       TINYINT(1)    NOT NULL DEFAULT 1,
     CONSTRAINT pk_huesped PRIMARY KEY (id_huesped)
-) COMMENT = 'Persona física que ocupa la habitación. Distinto de CLIENTE.';
+) COMMENT = 'Rol: persona física identificada que ocupa una habitación.';
 
 -- -------------------------------------------------------------
 --  5. HABITACIONES
@@ -180,9 +182,8 @@ CREATE TABLE tarifa_habitacion (
     id_plan             INT             NOT NULL,
     id_tipo_habitacion  INT             NOT NULL,
     precio_por_noche    DECIMAL(10,2)   NOT NULL,
-    capacidad_maxima    TINYINT         NOT NULL,
     CONSTRAINT pk_tarifa_habitacion PRIMARY KEY (id_tarifa)
-) COMMENT = 'Precio por noche según plan y tipo de habitación';
+) COMMENT = 'Precio por noche según plan y tipo de habitación.';
 
 -- -------------------------------------------------------------
 --  7. RESERVA
@@ -233,7 +234,7 @@ CREATE TABLE reserva_detalle (
 CREATE TABLE detalle_huesped_reserva (
     id_detalle_huesped  INT           NOT NULL AUTO_INCREMENT,
     id_detalle_reserva  INT           NOT NULL,
-    id_huesped          INT           NOT NULL COMMENT 'Quién se alojará (puede ser un huésped genérico)',
+    id_huesped          INT           NULL COMMENT 'NULL = cupo reservado sin identificar todavía',
     es_titular          TINYINT(1)    NOT NULL DEFAULT 0,
     CONSTRAINT pk_detalle_huesped_reserva PRIMARY KEY (id_detalle_huesped)
 ) COMMENT = 'Pre-asignación de huéspedes a líneas de reserva.';

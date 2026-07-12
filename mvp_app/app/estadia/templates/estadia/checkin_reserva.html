@@ -50,7 +50,7 @@
         onchange="toggleOrigenHuesped('{{ l.id_detalle_reserva }}', 'existente')" style="width:auto;display:inline"> Huésped existente</label>
       <label><input type="radio" name="origen_huesped" value="nuevo" id="ro_nuevo_{{ l.id_detalle_reserva }}"
         {% if modo_nuevo %}checked{% endif %}
-        onchange="toggleOrigenHuesped('{{ l.id_detalle_reserva }}', 'nuevo')" style="width:auto;display:inline"> Huésped nuevo / genérico</label>
+        onchange="toggleOrigenHuesped('{{ l.id_detalle_reserva }}', 'nuevo')" style="width:auto;display:inline"> Huésped nuevo</label>
     </div>
 
     <fieldset id="hu_existente_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}disabled style="display:none"{% endif %}>
@@ -58,48 +58,43 @@
       <label for="id_huesped_{{ l.id_detalle_reserva }}">Huésped</label>
       <select name="id_huesped" id="id_huesped_{{ l.id_detalle_reserva }}" {% if not modo_nuevo %}required{% endif %} data-searchable="Buscar huésped…">
         {% for h in huespedes_disponibles %}
-          <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos or '' }}{{ ' (genérico)' if h.es_generico else '' }}</option>
+          <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos }}</option>
         {% endfor %}
       </select>
     </fieldset>
 
     <fieldset id="hu_nuevo_{{ l.id_detalle_reserva }}" {% if not modo_nuevo %}disabled style="display:none"{% endif %}>
-      <legend>Huésped nuevo / genérico</legend>
-      <label>
-        <input type="checkbox" name="es_generico" id="nh_es_generico_{{ l.id_detalle_reserva }}" style="width:auto;display:inline"
-          {% if modo_nuevo and seleccion_huesped.es_generico %}checked{% endif %}
-          onchange="toggleGenerico('{{ l.id_detalle_reserva }}')">
-        Huésped genérico (nombre pendiente, se completa después)
-      </label>
-      <div id="nh_campos_reales_{{ l.id_detalle_reserva }}" {% if modo_nuevo and seleccion_huesped.es_generico %}style="display:none"{% endif %}>
+      <legend>Huésped nuevo</legend>
+      <div id="nh_campos_reales_{{ l.id_detalle_reserva }}">
         {% if datos_cliente_natural %}
         <button type="button" class="btn-secondary" id="btnUsarDatosCliente_{{ l.id_detalle_reserva }}"
           onclick="usarDatosCliente('{{ l.id_detalle_reserva }}')">
           Usar los datos de {{ datos_cliente_natural.nombres }} {{ datos_cliente_natural.apellidos }} (cliente)
         </button>
         {% endif %}
+        <input type="hidden" name="id_persona" id="nh_id_persona_{{ l.id_detalle_reserva }}" value="">
         <label for="nh_nombres_{{ l.id_detalle_reserva }}">Nombres</label>
-        <input type="text" name="nombres" id="nh_nombres_{{ l.id_detalle_reserva }}" {% if modo_nuevo and not seleccion_huesped.es_generico %}required{% endif %} value="{{ seleccion_huesped.nombres if modo_nuevo else '' }}">
+        <input type="text" name="nombres" id="nh_nombres_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.nombres if modo_nuevo else '' }}">
         <label for="nh_apellidos_{{ l.id_detalle_reserva }}">Apellidos</label>
-        <input type="text" name="apellidos" id="nh_apellidos_{{ l.id_detalle_reserva }}" {% if modo_nuevo and not seleccion_huesped.es_generico %}required{% endif %} value="{{ seleccion_huesped.apellidos if modo_nuevo else '' }}">
+        <input type="text" name="apellidos" id="nh_apellidos_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.apellidos if modo_nuevo else '' }}">
         <label for="nh_id_tipo_documento_{{ l.id_detalle_reserva }}">Tipo de documento</label>
-        <select name="id_tipo_documento" id="nh_id_tipo_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo and not seleccion_huesped.es_generico %}required{% endif %}>
+        <select name="id_tipo_documento" id="nh_id_tipo_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %}>
           {% for td in tipos_documento %}
             <option value="{{ td.id_tipo_documento }}" {% if modo_nuevo and seleccion_huesped.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
           {% endfor %}
         </select>
         <label for="nh_numero_documento_{{ l.id_detalle_reserva }}">Número de documento</label>
-        <input type="text" name="numero_documento" id="nh_numero_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo and not seleccion_huesped.es_generico %}required{% endif %} placeholder="12345678" value="{{ seleccion_huesped.numero_documento if modo_nuevo else '' }}">
+        <input type="text" name="numero_documento" id="nh_numero_documento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} placeholder="12345678" value="{{ seleccion_huesped.numero_documento if modo_nuevo else '' }}">
         <label for="nh_fecha_nacimiento_{{ l.id_detalle_reserva }}">Fecha de nacimiento</label>
-        <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento_{{ l.id_detalle_reserva }}" value="{{ seleccion_huesped.fecha_nacimiento if modo_nuevo else '' }}">
+        <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} value="{{ seleccion_huesped.fecha_nacimiento if modo_nuevo else '' }}">
         <label for="nh_genero_{{ l.id_detalle_reserva }}">Género</label>
-        <select name="genero" id="nh_genero_{{ l.id_detalle_reserva }}">
+        <select name="genero" id="nh_genero_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %}>
           <option value="M" {% if modo_nuevo and seleccion_huesped.genero == 'M' %}selected{% endif %}>Masculino</option>
           <option value="F" {% if modo_nuevo and seleccion_huesped.genero == 'F' %}selected{% endif %}>Femenino</option>
           <option value="OTRO" {% if modo_nuevo and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
         </select>
         <label for="nh_nacionalidad_{{ l.id_detalle_reserva }}">Nacionalidad</label>
-        <input type="text" name="nacionalidad" id="nh_nacionalidad_{{ l.id_detalle_reserva }}" placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if modo_nuevo else '' }}">
+        <input type="text" name="nacionalidad" id="nh_nacionalidad_{{ l.id_detalle_reserva }}" {% if modo_nuevo %}required{% endif %} placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if modo_nuevo else '' }}">
       </div>
     </fieldset>
 
@@ -136,23 +131,15 @@
     fsNuevo.style.display = esNuevo ? '' : 'none';
 
     if (selExistente) { selExistente.required = !esNuevo; }
-    toggleGenerico(id);
-  }
-
-  function toggleGenerico(id) {
-    var esGenerico = document.getElementById('nh_es_generico_' + id).checked;
-    var esNuevoActivo = !document.getElementById('hu_nuevo_' + id).disabled;
-    document.getElementById('nh_campos_reales_' + id).style.display = esGenerico ? 'none' : 'block';
-    var requeridos = ['nh_nombres_', 'nh_apellidos_', 'nh_numero_documento_', 'nh_id_tipo_documento_'];
+    var requeridos = ['nh_nombres_', 'nh_apellidos_', 'nh_numero_documento_', 'nh_id_tipo_documento_', 'nh_fecha_nacimiento_', 'nh_genero_', 'nh_nacionalidad_'];
     requeridos.forEach(function (prefijo) {
       var campo = document.getElementById(prefijo + id);
-      if (campo) { campo.required = esNuevoActivo && !esGenerico; }
+      if (campo) { campo.required = esNuevo; }
     });
   }
 
   function usarDatosCliente(id) {
-    document.getElementById('nh_es_generico_' + id).checked = false;
-    toggleGenerico(id);
+    document.getElementById('nh_id_persona_' + id).value = datosClienteNatural.id_persona || '';
     document.getElementById('nh_nombres_' + id).value = datosClienteNatural.nombres || '';
     document.getElementById('nh_apellidos_' + id).value = datosClienteNatural.apellidos || '';
     document.getElementById('nh_id_tipo_documento_' + id).value = datosClienteNatural.id_tipo_documento || '';

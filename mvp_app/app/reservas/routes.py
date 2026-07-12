@@ -310,15 +310,22 @@ def _contexto_preasignar(id_reserva):
         (id_reserva,),
     )
     huespedes = query(
-        "SELECT id_huesped, nombres, apellidos, es_generico FROM huesped WHERE activo = 1 ORDER BY nombres"
+        """
+        SELECT h.id_huesped, pn.nombres, pn.apellidos
+        FROM huesped h
+        JOIN persona_natural pn ON pn.id_persona = h.id_persona
+        WHERE h.activo = 1
+        ORDER BY pn.nombres
+        """
     )
     preasignados = query(
         """
-        SELECT dhr.id_detalle_huesped, dhr.id_detalle_reserva,
-               CONCAT(h.nombres, ' ', COALESCE(h.apellidos, '')) AS huesped, dhr.es_titular
+        SELECT dhr.id_detalle_huesped, dhr.id_detalle_reserva, dhr.id_huesped,
+               COALESCE(CONCAT(pn.nombres, ' ', pn.apellidos), 'Sin identificar') AS huesped, dhr.es_titular
         FROM detalle_huesped_reserva dhr
-        JOIN reserva_detalle rd ON rd.id_detalle_reserva = dhr.id_detalle_reserva
-        JOIN huesped h ON h.id_huesped = dhr.id_huesped
+        JOIN reserva_detalle rd    ON rd.id_detalle_reserva = dhr.id_detalle_reserva
+        LEFT JOIN huesped h        ON h.id_huesped           = dhr.id_huesped
+        LEFT JOIN persona_natural pn ON pn.id_persona        = h.id_persona
         WHERE rd.id_reserva = %s
         """,
         (id_reserva,),
@@ -350,20 +357,52 @@ def preasignar_post(id_reserva):
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
     id_detalle_reserva = request.form["id_detalle_reserva"]
-    id_huesped = request.form["id_huesped"]
+    # Opcional: la empresa puede reservar el cupo sin indicar todavía quién
+    # lo ocupará (id_huesped = NULL) — se resuelve después con la ruta de
+    # abajo (asignar_preasignacion), cuando se conoce el nombre.
+    id_huesped = request.form.get("id_huesped") or None
     es_titular = 1 if request.form.get("es_titular") else 0
 
     ok, _ = ejecutar_con_flash(
         execute,
         "INSERT INTO detalle_huesped_reserva (id_detalle_reserva, id_huesped, es_titular) VALUES (%s, %s, %s)",
         (id_detalle_reserva, id_huesped, es_titular),
-        on_success_msg="Huésped pre-asignado. Agrega otro o vuelve al detalle cuando termines.",
+        on_success_msg="Cupo pre-asignado. Agrega otro o vuelve al detalle cuando termines.",
     )
     if not ok:
         contexto = _contexto_preasignar(id_reserva)
         if contexto is None:
             return redirect(url_for("reservas.listado"))
         return render_template("reservas/preasignar.html", seleccion=request.form, **contexto)
+    return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+
+
+@bp.route("/<int:id_reserva>/preasignar/<int:id_detalle_huesped>/asignar", methods=["POST"])
+@requiere_rol("RECEPCION", "ADMINISTRADOR")
+def asignar_preasignacion(id_reserva, id_detalle_huesped):
+    """Resuelve un cupo sin identificar o sustituye al huésped ya asignado
+    (misma operación en los dos casos: un UPDATE sobre la pre-asignación)."""
+    if not _reserva_de_mi_hotel(id_reserva):
+        flash("Reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.listado"))
+    id_huesped = request.form["id_huesped"]
+
+    ok, _ = ejecutar_con_flash(
+        execute,
+        """
+        UPDATE detalle_huesped_reserva dhr
+        JOIN reserva_detalle rd ON rd.id_detalle_reserva = dhr.id_detalle_reserva
+        SET dhr.id_huesped = %s
+        WHERE dhr.id_detalle_huesped = %s AND rd.id_reserva = %s
+        """,
+        (id_huesped, id_detalle_huesped, id_reserva),
+        on_success_msg="Cupo asignado.",
+    )
+    if not ok:
+        contexto = _contexto_preasignar(id_reserva)
+        if contexto is None:
+            return redirect(url_for("reservas.listado"))
+        return render_template("reservas/preasignar.html", **contexto)
     return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
 
 

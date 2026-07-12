@@ -52,6 +52,16 @@ entity "empleado" as empleado {
   activo : TINYINT(1)
 }
 
+entity "usuario" as usuario {
+  * id_empleado : INT <<PK>> <<FK>>
+  --
+  username : VARCHAR(50) <<UNIQUE>>
+  password_hash : VARCHAR(255)
+  rol : ENUM('RECEPCION','CAJA','GERENCIA','ADMINISTRADOR')
+  # id_hotel : INT <<FK>> (NULL)
+  activo : TINYINT(1)
+}
+
 entity "tipo_documento" as tipo_documento {
   * id_tipo_documento : INT <<PK>>
   --
@@ -101,16 +111,7 @@ entity "cliente" as cliente {
 entity "huesped" as huesped {
   * id_huesped : INT <<PK>>
   --
-  # id_tipo_documento : INT <<FK>> (NULL)
-  numero_documento : VARCHAR(20) (NULL)
-  nombres : VARCHAR(100)
-  apellidos : VARCHAR(100) (NULL)
-  fecha_nacimiento : DATE (NULL)
-  genero : ENUM('M','F','OTRO') (NULL)
-  nacionalidad : VARCHAR(60) (NULL)
-  telefono : VARCHAR(20)
-  email : VARCHAR(100)
-  es_generico : TINYINT(1)
+  # id_persona : INT <<FK>>
   activo : TINYINT(1)
 }
 
@@ -150,7 +151,6 @@ entity "tarifa_habitacion" as tarifa_habitacion {
   # id_plan : INT <<FK>>
   # id_tipo_habitacion : INT <<FK>>
   precio_por_noche : DECIMAL(10,2)
-  capacidad_maxima : TINYINT
 }
 
 entity "estado_reserva" as estado_reserva {
@@ -193,7 +193,7 @@ entity "detalle_huesped_reserva" as detalle_huesped_reserva {
   * id_detalle_huesped : INT <<PK>>
   --
   # id_detalle_reserva : INT <<FK>>
-  # id_huesped : INT <<FK>>
+  # id_huesped : INT <<FK>> (NULL)
   es_titular : TINYINT(1)
 }
 
@@ -297,6 +297,8 @@ ubigeo          ||--o{ persona                  : id_ubigeo
 
 hotel           ||--o{ empleado                 : id_hotel
 cargo_empleado  ||--o{ empleado                 : id_cargo
+empleado        |o--o| usuario                  : id_empleado
+hotel           |o--o{ usuario                  : id_hotel (nulable)
 
 hotel           ||--o{ habitacion               : id_hotel
 tipo_habitacion ||--o{ habitacion               : id_tipo_habitacion
@@ -306,7 +308,7 @@ plan_tarifa     ||--o{ tarifa_habitacion        : id_plan
 persona         ||--o{ persona_natural          : id_persona (1:1)
 persona         ||--o{ persona_juridica         : id_persona (1:1)
 tipo_documento  ||--o{ persona_natural          : id_tipo_documento
-tipo_documento  ||--o{ huesped                  : id_tipo_documento
+persona_natural ||--o{ huesped                  : id_persona (siempre NATURAL)
 persona         ||--o{ cliente                  : id_persona
 
 hotel           ||--o{ reserva                  : id_hotel
@@ -320,7 +322,7 @@ tipo_habitacion ||--o{ reserva_detalle          : id_tipo_habitacion
 plan_tarifa     ||--o{ reserva_detalle          : id_plan
 
 reserva_detalle ||--o{ detalle_huesped_reserva  : id_detalle_reserva
-huesped         ||--o{ detalle_huesped_reserva  : id_huesped
+huesped         |o--o{ detalle_huesped_reserva  : id_huesped (nulable)
 
 reserva         ||--o{ alojamiento              : id_reserva
 reserva_detalle ||--o{ alojamiento              : id_detalle_reserva

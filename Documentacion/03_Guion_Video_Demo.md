@@ -22,8 +22,8 @@ efecto en la base de datos cuando se mencione un trigger.
 
 - Mostrar `Diagramas/Diagrama de Base de Datos/01_Modelo_Conceptual.png`: explicar brevemente
   persona (natural/jurídica), cliente vs. huésped, y por qué están separados.
-- Mostrar `02_Modelo_Logico.png` → `03_Modelo_Fisico.png`: mencionar 25 tablas, tipos ENUM para
-  estados, huésped genérico, plan público vs. corporativo.
+- Mostrar `02_Modelo_Logico.png` → `03_Modelo_Fisico.png`: mencionar 27 tablas, tipos ENUM para
+  estados, cupos sin identificar en reservas corporativas, plan público vs. corporativo.
 - Un vistazo rápido a `Scripts/01_Creacion_Tablas.sql` y `02_Reglas_Integridad.sql` en el editor
   (no leer todo, solo mostrar que existe y está versionado).
 
@@ -63,7 +63,8 @@ trigger se dispara en cada paso:
 
 Mencionar 2–3 decisiones de diseño no obviamente triviales, como aporte propio justificado:
 
-- Separación cliente/huésped y huésped genérico.
+- Separación cliente/huésped, y cupos sin identificar en reservas corporativas (la incertidumbre
+  de "quién" vive en la reserva, nunca en la ocupación real).
 - Plan público (autodetectado) vs. corporativo (elegido explícitamente), con reglas de
   especificidad cuando dos planes públicos se solapan en fecha.
 - Salida individual por huésped vs. checkout conjunto de la habitación.

@@ -52,16 +52,7 @@
     </nav>
     <div class="session-info">
       {% if session.get('rol') %}
-        <span>{{ session.get('nombre_empleado') }} — {{ session.get('nombre_hotel') }}</span>
-        <form method="post" action="{{ url_for('auth.cambiar_rol') }}" class="inline-form role-switch">
-          <label for="rolSwitch" class="sr-only">Cambiar rol activo</label>
-          <select name="rol" id="rolSwitch">
-            {% for r in roles_disponibles %}
-              <option value="{{ r }}" {% if r == session.get('rol') %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn-secondary">Cambiar rol</button>
-        </form>
+        <span>{{ session.get('nombre_empleado') }} — {{ session.get('nombre_hotel') or 'Administración general' }}</span>
         <a href="{{ url_for('auth.logout') }}">Salir</a>
       {% else %}
         <a href="{{ url_for('auth.login') }}">Ingresar</a>

@@ -53,6 +53,16 @@ entity "empleado" as empleado {
   activo : TINYINT(1)
 }
 
+entity "usuario" as usuario {
+  * id_empleado : INT <<PK,FK>>
+  --
+  username : VARCHAR(50) <<UNIQUE>>
+  password_hash : VARCHAR(255)
+  rol : ENUM('RECEPCION','CAJA','GERENCIA','ADMINISTRADOR')
+  # id_hotel : INT <<FK>> (NULL)
+  activo : TINYINT(1)
+}
+
 entity "persona_natural" as persona_natural {
   * id_persona : INT <<PK,FK>>
   --
@@ -71,12 +81,18 @@ entity "persona_juridica" as persona_juridica {
 entity "huesped" as huesped {
   * id_huesped : INT <<PK>> [AUTO_INCREMENT]
   --
-  # id_tipo_documento : INT <<FK>> (NULL)
-  numero_documento : VARCHAR(20) (NULL)
-  es_generico : TINYINT(1)
-  ..
-  <<UNIQUE>> uq_huesped_documento (id_tipo_documento, numero_documento)
+  # id_persona : INT <<FK>>
+  activo : TINYINT(1)
 }
+note right of huesped
+  Rol de ocupación, no identidad propia: sin columnas de
+  nombre/documento/nacionalidad — todas viven en
+  persona/persona_natural. id_persona referencia
+  persona_natural (no persona) para que el propio FK
+  garantice que el ocupante sea siempre una persona natural.
+  No es 1:1 con persona_natural — la misma persona puede
+  volver a hospedarse y generar otra fila en otra estadía.
+end note
 
 entity "tipo_habitacion" as tipo_habitacion {
   * id_tipo_habitacion : INT <<PK>> [AUTO_INCREMENT]
@@ -153,8 +169,15 @@ entity "detalle_huesped_reserva" as detalle_huesped_reserva {
   * id_detalle_huesped : INT <<PK>> [AUTO_INCREMENT]
   --
   # id_detalle_reserva : INT <<FK>>
-  # id_huesped : INT <<FK>>
+  # id_huesped : INT <<FK>> (NULL)
 }
+note right of detalle_huesped_reserva
+  id_huesped NULL = cupo reservado sin identificar todavía
+  (reserva corporativa: N habitaciones reservadas sin saber
+  aún quién las ocupará). trg_valida_cupos_reserva limita el
+  total de cupos por línea a cantidad_habitaciones ×
+  capacidad_base del tipo de habitación.
+end note
 
 entity "alojamiento" as alojamiento {
   * id_alojamiento : INT <<PK>> [AUTO_INCREMENT]
@@ -237,14 +260,16 @@ entity "pago_cuenta_cobrar" as pago_cuenta_cobrar {
 '  completo de cardinalidad de cada FK)
 ' =============================================================
 hotel           ||--o{ empleado
+empleado        |o--o| usuario
+hotel           |o--o{ usuario
 hotel           ||--o{ habitacion
 tipo_habitacion ||--o{ habitacion
 tipo_habitacion ||--o{ tarifa_habitacion
-persona_natural ||..|| huesped                  : (misma persona física\nno enlazada aún — ver nota)
+persona_natural ||--o{ huesped                 : id_persona (siempre NATURAL)
 hotel           ||--o{ reserva
 reserva         ||--o{ reserva_detalle
 reserva_detalle ||--o{ detalle_huesped_reserva
-huesped         ||--o{ detalle_huesped_reserva
+huesped         |o--o{ detalle_huesped_reserva  : id_huesped (nulable)
 reserva         ||--o{ alojamiento
 habitacion      ||--o{ alojamiento
 alojamiento     ||--o{ huesped_alojamiento

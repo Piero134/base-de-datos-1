@@ -86,8 +86,7 @@ SELECT
     h.numero AS habitacion,
     h.piso,
     th.nombre AS tipo,
-    CONCAT(hu.nombres, ' ', COALESCE(hu.apellidos, '')) AS huesped,
-    hu.es_generico,
+    CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
     IF(ha.es_titular, 'SÍ', 'NO') AS es_titular,
     a.fecha_checkin_real,
     v.nombre_reservante AS cliente_pagador
@@ -98,6 +97,7 @@ JOIN tipo_habitacion th      ON th.id_tipo_habitacion = h.id_tipo_habitacion
 JOIN huesped_alojamiento ha  ON ha.id_alojamiento     = a.id_alojamiento
                              AND ha.fecha_salida_real  IS NULL
 JOIN huesped hu              ON hu.id_huesped         = ha.id_huesped
+JOIN persona_natural pn      ON pn.id_persona         = hu.id_persona
 JOIN reserva r                ON r.id_reserva          = a.id_reserva
 JOIN vw_reservante v          ON v.id_cliente          = r.id_cliente
 WHERE a.estado = 'ACTIVO';
@@ -113,7 +113,7 @@ WHERE a.estado = 'ACTIVO';
 CREATE OR REPLACE VIEW vw_historial_estadias AS
 SELECT
     hu.id_huesped,
-    CONCAT(hu.nombres, ' ', COALESCE(hu.apellidos, '')) AS huesped,
+    CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
     ht.nombre AS hotel,
     h.numero AS habitacion,
     th.nombre AS tipo,
@@ -124,6 +124,7 @@ SELECT
     a.estado
 FROM huesped_alojamiento ha
 JOIN huesped hu          ON hu.id_huesped         = ha.id_huesped
+JOIN persona_natural pn  ON pn.id_persona         = hu.id_persona
 JOIN alojamiento a       ON a.id_alojamiento      = ha.id_alojamiento
 JOIN habitacion h        ON h.id_habitacion       = a.id_habitacion
 JOIN hotel ht            ON ht.id_hotel           = h.id_hotel
@@ -255,14 +256,15 @@ SELECT
     pj.razon_social AS empresa,
     th.nombre AS tipo_habitacion,
     rd.cantidad_habitaciones,
-    CONCAT(hu.nombres, ' ', COALESCE(hu.apellidos, '')) AS huesped_asignado,
-    hu.numero_documento,
+    COALESCE(CONCAT(pn.nombres, ' ', pn.apellidos), 'Sin identificar') AS huesped_asignado,
+    pn.numero_documento,
     IF(dhr.es_titular, 'SÍ', 'NO') AS es_titular
 FROM detalle_huesped_reserva dhr
 JOIN reserva_detalle  rd  ON rd.id_detalle_reserva = dhr.id_detalle_reserva
 JOIN reserva          r   ON r.id_reserva          = rd.id_reserva
 JOIN tipo_habitacion  th  ON th.id_tipo_habitacion = rd.id_tipo_habitacion
-JOIN huesped          hu  ON hu.id_huesped         = dhr.id_huesped
+LEFT JOIN huesped         hu  ON hu.id_huesped         = dhr.id_huesped
+LEFT JOIN persona_natural pn  ON pn.id_persona         = hu.id_persona
 JOIN cliente          c   ON c.id_cliente          = r.id_cliente
 JOIN persona          p   ON p.id_persona          = c.id_persona
 JOIN persona_juridica pj  ON pj.id_persona         = p.id_persona;
@@ -281,17 +283,19 @@ SELECT
     dhr.id_detalle_huesped,
     r.id_reserva,
     th.nombre AS tipo_habitacion,
-    CONCAT(hu_pre.nombres, ' ', COALESCE(hu_pre.apellidos, '')) AS huesped_preasignado,
+    COALESCE(CONCAT(pn_pre.nombres, ' ', pn_pre.apellidos), 'Sin identificar') AS huesped_preasignado,
     ha.id_alojamiento,
-    CONCAT(hu_real.nombres, ' ', COALESCE(hu_real.apellidos, '')) AS huesped_checkin_real,
+    CONCAT(pn_real.nombres, ' ', pn_real.apellidos) AS huesped_checkin_real,
     IF(dhr.id_huesped = ha.id_huesped, 'COINCIDE', 'DIFERENTE') AS coincidencia
 FROM detalle_huesped_reserva dhr
 JOIN reserva_detalle rd ON rd.id_detalle_reserva = dhr.id_detalle_reserva
 JOIN reserva r          ON r.id_reserva          = rd.id_reserva
 JOIN tipo_habitacion th ON th.id_tipo_habitacion = rd.id_tipo_habitacion
-JOIN huesped hu_pre     ON hu_pre.id_huesped      = dhr.id_huesped
-LEFT JOIN huesped_alojamiento ha ON ha.id_detalle_huesped = dhr.id_detalle_huesped
-LEFT JOIN huesped hu_real        ON hu_real.id_huesped    = ha.id_huesped;
+LEFT JOIN huesped hu_pre          ON hu_pre.id_huesped     = dhr.id_huesped
+LEFT JOIN persona_natural pn_pre  ON pn_pre.id_persona     = hu_pre.id_persona
+LEFT JOIN huesped_alojamiento ha  ON ha.id_detalle_huesped = dhr.id_detalle_huesped
+LEFT JOIN huesped hu_real         ON hu_real.id_huesped    = ha.id_huesped
+LEFT JOIN persona_natural pn_real ON pn_real.id_persona    = hu_real.id_persona;
 
 -- -------------------------------------------------------------
 -- V13. vw_checkouts_pendientes

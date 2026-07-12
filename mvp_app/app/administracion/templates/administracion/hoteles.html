@@ -23,6 +23,10 @@
 <p class="empty-state">Todavía no hay hoteles registrados.</p>
 {% endif %}
 
+{% if not es_general %}
+<p class="subtitle">Solo el administrador general puede crear o editar hoteles. Aquí ves los datos
+de tu propio hotel.</p>
+{% else %}
 <h2>Nuevo hotel</h2>
 <form class="card" method="post">
   <label for="h_nombre">Nombre</label>
@@ -50,4 +54,5 @@
   </select>
   <button type="submit">Crear hotel</button>
 </form>
+{% endif %}
 {% endblock %}

@@ -67,7 +67,7 @@
     <label for="av_id_huesped">Huésped existente</label>
     <select name="id_huesped" id="av_id_huesped" required data-searchable="Buscar huésped…">
       {% for h in huespedes_disponibles %}
-        <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos or '' }}{{ ' (genérico)' if h.es_generico else '' }}</option>
+        <option value="{{ h.id_huesped }}">{{ h.nombres }} {{ h.apellidos }}</option>
       {% endfor %}
     </select>
     <label><input type="checkbox" name="es_titular" style="width:auto;display:inline"> Es titular</label>
@@ -82,15 +82,10 @@
   <div class="details-body">
   <form method="post" action="{{ url_for('estadia.huesped_nuevo') }}">
     <input type="hidden" name="id_alojamiento" value="{{ aloj.id_alojamiento }}">
-    <label>
-      <input type="checkbox" name="es_generico" id="nh_es_generico" style="width:auto;display:inline"
-        {% if seleccion_huesped and seleccion_huesped.es_generico %}checked{% endif %}
-        onchange="document.getElementById('nh_campos_reales').style.display = this.checked ? 'none' : 'block';">
-      Huésped genérico (nombre pendiente, se completa después)
-    </label>
-    <div id="nh_campos_reales" {% if seleccion_huesped and seleccion_huesped.es_generico %}style="display:none"{% endif %}>
+    <div id="nh_campos_reales">
       {% if datos_cliente_natural %}
       <button type="button" class="btn-secondary" id="btnUsarDatosCliente"
+        data-id-persona="{{ datos_cliente_natural.id_persona }}"
         data-nombres="{{ datos_cliente_natural.nombres }}"
         data-apellidos="{{ datos_cliente_natural.apellidos }}"
         data-id-tipo-documento="{{ datos_cliente_natural.id_tipo_documento }}"
@@ -101,6 +96,7 @@
         Usar los datos de {{ datos_cliente_natural.nombres }} {{ datos_cliente_natural.apellidos }} (cliente)
       </button>
       {% endif %}
+      <input type="hidden" name="id_persona" id="nh_id_persona" value="">
       <label for="nh_nombres">Nombres</label>
       <input type="text" name="nombres" id="nh_nombres" required value="{{ seleccion_huesped.nombres if seleccion_huesped else '' }}">
       <label for="nh_apellidos">Apellidos</label>
@@ -114,15 +110,15 @@
       <label for="nh_numero_documento">Número de documento</label>
       <input type="text" name="numero_documento" id="nh_numero_documento" required placeholder="12345678" value="{{ seleccion_huesped.numero_documento if seleccion_huesped else '' }}">
       <label for="nh_fecha_nacimiento">Fecha de nacimiento</label>
-      <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento" value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
+      <input type="date" name="fecha_nacimiento" id="nh_fecha_nacimiento" required value="{{ seleccion_huesped.fecha_nacimiento if seleccion_huesped else '' }}">
       <label for="nh_genero">Género</label>
-      <select name="genero" id="nh_genero">
+      <select name="genero" id="nh_genero" required>
         <option value="M" {% if seleccion_huesped and seleccion_huesped.genero == 'M' %}selected{% endif %}>Masculino</option>
         <option value="F" {% if seleccion_huesped and seleccion_huesped.genero == 'F' %}selected{% endif %}>Femenino</option>
         <option value="OTRO" {% if seleccion_huesped and seleccion_huesped.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
       </select>
       <label for="nh_nacionalidad">Nacionalidad</label>
-      <input type="text" name="nacionalidad" id="nh_nacionalidad" placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
+      <input type="text" name="nacionalidad" id="nh_nacionalidad" required placeholder="Peruana" value="{{ seleccion_huesped.nacionalidad if seleccion_huesped else '' }}">
     </div>
     <button type="submit" class="btn-secondary">Crear huésped</button>
   </form>
@@ -196,8 +192,7 @@
     var boton = document.getElementById('btnUsarDatosCliente');
     if (!boton) { return; }
     boton.addEventListener('click', function () {
-      document.getElementById('nh_es_generico').checked = false;
-      document.getElementById('nh_campos_reales').style.display = 'block';
+      document.getElementById('nh_id_persona').value = boton.dataset.idPersona || '';
       document.getElementById('nh_nombres').value = boton.dataset.nombres || '';
       document.getElementById('nh_apellidos').value = boton.dataset.apellidos || '';
       document.getElementById('nh_id_tipo_documento').value = boton.dataset.idTipoDocumento || '';

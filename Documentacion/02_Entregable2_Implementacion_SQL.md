@@ -15,15 +15,20 @@ ejecución obligatorio (cada script depende del anterior):
 
 | Orden | Script | Contenido |
 |---|---|---|
-| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
+| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 27 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
 | 4 | `04_Procedimientos.sql` | 14 procedimientos (`CREATE PROCEDURE`) |
 | 5 | `05_Vistas.sql` | 14 vistas (`CREATE OR REPLACE VIEW`) |
-| 6 | `06_Triggers.sql` | 12 triggers (`CREATE TRIGGER`) |
+| 6 | `06_Triggers.sql` | 23 triggers (`CREATE TRIGGER`) |
 | 7 | `07_Roles_Permisos.sql` | 4 roles MySQL (`CREATE ROLE` + `GRANT`) |
 | 8 | `08_Carga_Datos.sql` | Datos de prueba (`INSERT`) que recorren todos los escenarios |
 | 9 | `09_Consultas_MVP.sql` | Consultas de demostración sobre vistas/funciones/procedimientos |
+
+> `Scripts/10_Ejemplo_Flujo_Huespedes.sql` es opcional, fuera del pipeline obligatorio 01→09:
+> demuestra el flujo completo de una reserva corporativa con cupos sin identificar
+> (`detalle_huesped_reserva.id_huesped = NULL`), su resolución, una sustitución de último momento y
+> el check-in final.
 
 ## 2. Operaciones CRUD
 
@@ -106,18 +111,27 @@ muestra tal cual, sin reinterpretarla (`mvp_app/app/errors.py`).
 `vw_reservas_corporativas`, `vw_preasignacion_vs_checkin`, `vw_checkouts_pendientes` — detalle de
 cada una y su propósito en `Scripts/05_Vistas.sql` (comentado línea por línea).
 
-## 7. Triggers (12) y roles (4)
+## 7. Triggers (23) y roles (4)
 
 - **Triggers** (`Scripts/06_Triggers.sql`): sincronizan el estado de la habitación con el ciclo de
   vida del alojamiento (`trg_alojamiento_checkin/checkout/cancelar`), validan que no se finalice un
   alojamiento con huéspedes pendientes de salida, inicializan y recalculan el saldo de una cuenta
   por cobrar, validan fechas de check-in/checkout, validan capacidad máxima de huéspedes, y
-  garantizan consistencia del discriminador `persona.tipo` frente a sus subtipos.
+  garantizan consistencia del discriminador `persona.tipo` frente a sus subtipos. A partir de una
+  auditoría explícita de normalización de la base de datos se agregaron triggers que mantienen
+  `reserva.monto_total` y `cuenta_cobrar.subtotal/total/saldo` siempre sincronizados con sus líneas
+  de detalle y pagos (antes solo se mantenían por disciplina de los procedimientos, no por una regla
+  garantizada por el motor) y exigen que el alcance de un `usuario` operativo coincida con el hotel
+  de su `empleado`. Un rediseño posterior de `huesped` (ver `01_Entregable1_Diseno_BD.md` sección 4)
+  eliminó dos triggers de sincronización que ya no hacían falta (`huesped` dejó de duplicar columnas
+  de `persona_natural`) y agregó `trg_valida_cupos_reserva`, que limita el total de cupos —
+  identificados o no — de una línea de reserva a `cantidad_habitaciones × capacidad_base`.
 - **Roles MySQL** (`Scripts/07_Roles_Permisos.sql`): `rol_administrador` (control total),
   `rol_recepcion`, `rol_caja` (cada uno con `GRANT` de `SELECT` global + `INSERT`/`UPDATE` y
   `EXECUTE` solo sobre las tablas/procedimientos que su función requiere) y `rol_gerencia`
-  (solo lectura). La app Flask usa un login simple que fija un rol de sesión equivalente (ver
-  `mvp_app/app/auth/routes.py`), sin necesidad de credenciales MySQL distintas por rol para el MVP.
+  (solo lectura). La app Flask usa autenticación real (usuario + contraseña, tabla `usuario`) que
+  fija el rol y el alcance de la sesión (ver `mvp_app/app/auth/routes.py`), sin necesidad de
+  credenciales MySQL distintas por rol para el MVP.
 
 ## 8. Evidencia de pruebas CRUD
 

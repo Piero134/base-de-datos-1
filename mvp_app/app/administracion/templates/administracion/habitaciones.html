@@ -2,9 +2,22 @@
 {% block title %}Habitaciones{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Habitaciones — {{ session.get('nombre_hotel') }}</h1>
+  <h1>Habitaciones{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
   <p class="subtitle">{{ filas|length }} habitación{{ 'es' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
 </div>
+
+{% if es_general %}
+<form class="card" method="get">
+  <label for="filtro_id_hotel">Hotel</label>
+  <select name="id_hotel" id="filtro_id_hotel" required data-searchable="Buscar hotel…">
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}" {% if h.id_hotel == id_hotel_filtro %}selected{% endif %}>{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Ver habitaciones de este hotel</button>
+</form>
+{% endif %}
+
 {% if filas %}
 <div class="table-scroll">
 <table>
@@ -40,6 +53,14 @@
 
 <h2>Nueva habitación</h2>
 <form class="card" method="post">
+  {% if es_general %}
+  <label for="hab_id_hotel">Hotel</label>
+  <select name="id_hotel" id="hab_id_hotel" required data-searchable="Buscar hotel…">
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}" {% if (seleccion.id_hotel|string if seleccion else id_hotel_filtro|string) == h.id_hotel|string %}selected{% endif %}>{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
   <label for="hab_id_tipo_habitacion">Tipo</label>
   <select name="id_tipo_habitacion" id="hab_id_tipo_habitacion" required>
     {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}

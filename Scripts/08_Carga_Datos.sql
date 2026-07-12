@@ -57,7 +57,8 @@ INSERT INTO cargo_empleado (id_cargo, nombre) VALUES
 (3, 'Camarero/a'),
 (4, 'Jefe de Reservas'),
 (5, 'Conserje'),
-(6, 'Cajero/a');
+(6, 'Cajero/a'),
+(7, 'Administrador de Hotel');
 
 -- =============================================================
 --  4. EMPLEADO
@@ -74,6 +75,21 @@ INSERT INTO empleado (id_empleado, id_hotel, id_cargo, nombres, apellidos, activ
 (9,  3, 6, 'Fernando', 'Aguilar Meza',    1),
 (10, 4, 1, 'Katherine','Zúñiga Prado',    1),
 (11, 4, 2, 'Sergio',   'Mamani Choque',   1);
+
+-- =============================================================
+--  4b. USUARIO
+-- =============================================================
+-- Credenciales de demo (contraseña real para las 4: "demo1234"); el hash
+-- se generó una vez con werkzeug.security.generate_password_hash (la
+-- misma librería que usa la app para verificarlo) y se pega aquí como
+-- literal, igual que cualquier seed de credenciales reales. Solo los
+-- empleados que realmente necesitan acceso al sistema tienen fila aquí
+-- (de los 11 empleados, solo estos 4 — el resto no tiene login).
+INSERT INTO usuario (id_empleado, username, password_hash, rol, id_hotel, activo) VALUES
+(1, 'mtorres',  'scrypt:32768:8:1$J1Lk7LyQ0BB7pku6$ce52d9df5cba3b63ca165391fd53100ec4810988106f9f52a1e6ea4b8ba2d7b265039e47233d55f6988e3c76b1833d2189cef8d2dc50069c7b3b09057e3cafee', 'RECEPCION', 1, 1),
+(2, 'rhuanca',  'scrypt:32768:8:1$gGpy4V31JdF7tpU2$ca0cdd40637705421fe28e9bd3c652161af9c12a1f78519859b417e7fb06fe1391500db48694c949b1dd2c32a940ab5b92523516dd97d5228798f211e82175e2', 'GERENCIA',  1, 1),
+(3, 'lparedes', 'scrypt:32768:8:1$v4Ec2XuRVDqz0Za1$4a75efb3388210970b80f4ab9e8df8712dd3a8f81ee6495532a009153b4e4e3427adcfcc8758f2b84552aa6298287539f88934316ed1b33e2950af239f511d1f', 'ADMINISTRADOR', NULL, 1),
+(5, 'grojas',   'scrypt:32768:8:1$TUd4gcnVUuRl2SLp$25ed3013a8f5194271a6526aed84a2cdafcf40f261cf2c6a85c0d06ca23fd37fe142c29b83794eb09051886353d79e182249e2969fb8d40bfd8c2d27fc08b4f9', 'CAJA', 1, 1);
 
 -- =============================================================
 --  5. TIPO DE DOCUMENTO
@@ -100,7 +116,18 @@ INSERT INTO persona (id_persona, tipo, telefono, email, id_ubigeo, activo) VALUE
 -- Personas jurídicas (empresas)
 (9,  'JURIDICA', '01-6001000', 'contacto@corporacionabc.pe',   3, 1),
 (10, 'JURIDICA', '01-5002000', 'admin@tecnoandes.com.pe',      1, 1),
-(11, 'JURIDICA', '01-7003000', 'reservas@mineraaltiplano.pe',  9, 1);
+(11, 'JURIDICA', '01-7003000', 'reservas@mineraaltiplano.pe',  9, 1),
+-- Personas naturales que solo son HUESPED (nunca reservan/pagan, por
+-- eso no tienen fila en cliente): empleados de empresas con convenio
+-- corporativo y el acompañante de Pedro Villar. huesped.id_persona es
+-- NOT NULL, así que toda persona que se aloja necesita su propia fila
+-- aquí, aunque nunca actúe como cliente.
+(12, 'NATURAL',  '999111222',  'rsalas@corporacionabc.pe',     2, 1),
+(13, 'NATURAL',  '999333444',  'pnunez@corporacionabc.pe',     2, 1),
+(14, 'NATURAL',  '999555666',  'equispe@tecnoandes.com',       2, 1),
+(15, 'NATURAL',  '933221144',  'sofia.chavez@outlook.com',     1, 1),
+(16, 'NATURAL',  '933221145',  'diego.chavez@outlook.com',     1, 1),
+(17, 'NATURAL',  NULL,         NULL,                           2, 1);
 
 -- =============================================================
 --  7. PERSONA_NATURAL
@@ -115,7 +142,20 @@ INSERT INTO persona_natural
 (5, 1, '44112233', 'Pedro',     'Villar Sánchez',   '1985-05-18', 'M', 'Peruana'),
 (6, 4, 'CE998877',  'Sofía',    'Chávez (extr.)',   '1991-09-09', 'F', 'Chilena'),
 (7, 1, '43321122', 'Martín',    'Ríos Fernández',   '1987-12-25', 'M', 'Peruana'),
-(8, 3, 'PZ445566',  'Daniela',  'Paz Guerrero',     '1996-04-02', 'F', 'Ecuatoriana');
+(8, 3, 'PZ445566',  'Daniela',  'Paz Guerrero',     '1996-04-02', 'F', 'Ecuatoriana'),
+-- Personas naturales que solo son HUESPED (ver comentario en PERSONA).
+(12, 1, '43210987', 'Ricardo', 'Salas Cueva',       '1985-06-10', 'M', 'Peruana'),
+(13, 1, '41098765', 'Patricia','Nuñez Apaza',       '1992-09-28', 'F', 'Peruana'),
+(14, 1, '48765432', 'Eduardo', 'Quispe Llanos',     '1987-02-14', 'M', 'Peruana'),
+-- Homónima de persona_natural id=6 (documento y nacionalidad
+-- distintos) — no es la misma persona física, por eso tiene su
+-- propia fila en vez de reutilizar la id=6.
+(15, 1, '46001122', 'Sofía',   'Chávez Gutiérrez',  '1994-02-20', 'F', 'Peruana'),
+(16, 1, '47002233', 'Diego',   'Chávez Gutiérrez',  '1996-08-11', 'M', 'Peruana'),
+-- Acompañante de Pedro Villar en la doble del Hotel Arequipa (antes
+-- modelado como huésped GENÉRICO sin identidad; ya no es posible con
+-- el nuevo diseño, así que se identifica igual que cualquier otro).
+(17, 1, '49001133', 'Rosa Elena', 'Bravo Salinas',  '1990-01-15', 'F', 'Peruana');
 
 -- =============================================================
 --  8. PERSONA_JURIDICA
@@ -145,34 +185,33 @@ INSERT INTO cliente (id_cliente, id_persona, observaciones) VALUES
 
 -- =============================================================
 --  10. HUESPED
---      Personas que físicamente se alojan. Pueden coincidir o no
---      con los clientes. Incluye un huésped GENÉRICO (es_generico=1)
---      para el caso discutido en asesoría: "resérvame, luego te
---      doy los nombres".
+--      Rol de ocupación (nunca datos propios): toda persona que se
+--      aloja ya tiene su fila en persona/persona_natural, creada más
+--      arriba. Pueden coincidir o no con los clientes.
 -- =============================================================
-INSERT INTO huesped
-    (id_huesped, id_tipo_documento, numero_documento,
-     nombres, apellidos, fecha_nacimiento, genero,
-     nacionalidad, telefono, email, es_generico, activo) VALUES
--- Huéspedes individuales (corresponden a clientes 1..8)
-(1,  1, '45123678', 'José Luis', 'García Ríos',    '1990-03-15', 'M', 'Peruana',    '987654321', 'jose.garcia@gmail.com',   0, 1),
-(2,  1, '47892341', 'Ana María', 'López Castillo', '1995-07-22', 'F', 'Peruana',    '912345678', 'ana.lopez@hotmail.com',   0, 1),
-(3,  3, 'AB123456', 'Carlos',    'Mendoza Ruiz',   '1988-11-05', 'M', 'Colombiana', '965432187', 'carlos.mendoza@yahoo.com',0, 1),
-(4,  1, '46778812', 'Lucía',     'Ramos Delgado',  '1993-01-30', 'F', 'Peruana',    '955112233', 'lucia.ramos@gmail.com',   0, 1),
-(5,  1, '44112233', 'Pedro',     'Villar Sánchez', '1985-05-18', 'M', 'Peruana',    '944556677', 'pedro.villar@gmail.com',  0, 1),
-(6,  1, '43321122', 'Martín',    'Ríos Fernández', '1987-12-25', 'M', 'Peruana',    '922334455', 'martin.rios@gmail.com',   0, 1),
--- Huéspedes corporativos (empleados de Corporación ABC)
-(7,  1, '43210987', 'Ricardo',   'Salas Cueva',    '1985-06-10', 'M', 'Peruana',    '999111222', 'rsalas@corporacionabc.pe',0, 1),
-(8,  1, '41098765', 'Patricia',  'Nuñez Apaza',    '1992-09-28', 'F', 'Peruana',    '999333444', 'pnunez@corporacionabc.pe',0, 1),
-(9,  1, '48765432', 'Eduardo',   'Quispe Llanos',  '1987-02-14', 'M', 'Peruana',    '999555666', 'equispe@tecnoandes.com',  0, 1),
--- Huésped GENÉRICO: reserva del cliente 5 (Pedro Villar) aún sin
--- nombre del acompañante en la habitación doble.
-(10, NULL, NULL, 'Invitado 1', NULL, NULL, NULL, NULL, NULL, NULL, 1, 1),
--- Huéspedes para el caso H (salida individual): Sofía viaja con
--- su hermano Diego a una doble en Ica; Diego se retira dos días
--- antes que Sofía, quien continúa hospedada.
-(11, 1, '46001122', 'Sofía', 'Chávez Gutiérrez', '1994-02-20', 'F', 'Peruana', '933221144', 'sofia.chavez@outlook.com', 0, 1),
-(12, 1, '47002233', 'Diego', 'Chávez Gutiérrez', '1996-08-11', 'M', 'Peruana', '933221145', 'diego.chavez@outlook.com', 0, 1);
+INSERT INTO huesped (id_huesped, id_persona, activo) VALUES
+-- Huéspedes individuales (corresponden a clientes 1..8) — la misma
+-- persona física reservó y se aloja.
+(1,  1,  1),
+(2,  2,  1),
+(3,  3,  1),
+(4,  4,  1),
+(5,  5,  1),
+(6,  7,  1),
+-- Huéspedes corporativos (empleados de Corporación ABC / TecnoAndes):
+-- personas naturales sin fila en cliente (la empresa es la que
+-- factura, ver comentario en PERSONA) — caso normal y esperado, no
+-- todo huésped corresponde a un cliente.
+(7,  12, 1),
+(8,  13, 1),
+(9,  14, 1),
+-- Huéspedes para el caso H (salida individual): Sofía viaja con su
+-- hermano Diego a una doble en Ica; Diego se retira dos días antes
+-- que Sofía, quien continúa hospedada.
+(10, 15, 1),
+(11, 16, 1),
+-- Acompañante de Pedro Villar (antes modelado como huésped GENÉRICO).
+(12, 17, 1);
 
 -- =============================================================
 --  11. TIPO_HABITACION
@@ -229,30 +268,30 @@ INSERT INTO plan_tarifa
 --  14. TARIFA_HABITACION
 -- =============================================================
 INSERT INTO tarifa_habitacion
-    (id_tarifa, id_plan, id_tipo_habitacion, precio_por_noche, capacidad_maxima) VALUES
+    (id_tarifa, id_plan, id_tipo_habitacion, precio_por_noche) VALUES
 -- Plan Regular 2025
-(1,  1, 1, 150.00, 1),
-(2,  1, 2, 220.00, 2),
-(3,  1, 3, 250.00, 2),
-(4,  1, 4, 480.00, 2),
-(5,  1, 5, 350.00, 4),
+(1,  1, 1, 150.00),
+(2,  1, 2, 220.00),
+(3,  1, 3, 250.00),
+(4,  1, 4, 480.00),
+(5,  1, 5, 350.00),
 -- Plan Temporada Alta 2025
-(6,  2, 1, 200.00, 1),
-(7,  2, 2, 300.00, 2),
-(8,  2, 3, 340.00, 2),
-(9,  2, 4, 650.00, 2),
-(10, 2, 5, 480.00, 4),
+(6,  2, 1, 200.00),
+(7,  2, 2, 300.00),
+(8,  2, 3, 340.00),
+(9,  2, 4, 650.00),
+(10, 2, 5, 480.00),
 -- Plan Corporativo ABC
-(11, 3, 1, 130.00, 1),
-(12, 3, 2, 190.00, 2),
-(13, 3, 3, 210.00, 2),
-(14, 3, 4, 400.00, 2),
+(11, 3, 1, 130.00),
+(12, 3, 2, 190.00),
+(13, 3, 3, 210.00),
+(14, 3, 4, 400.00),
 -- Plan Regular 2026
-(15, 4, 1, 160.00, 1),
-(16, 4, 2, 235.00, 2),
-(17, 4, 3, 265.00, 2),
-(18, 4, 4, 510.00, 2),
-(19, 4, 5, 370.00, 4);
+(15, 4, 1, 160.00),
+(16, 4, 2, 235.00),
+(17, 4, 3, 265.00),
+(18, 4, 4, 510.00),
+(19, 4, 5, 370.00);
 
 -- =============================================================
 --  15. ESTADO_RESERVA
@@ -293,7 +332,7 @@ INSERT INTO servicio (id_servicio, nombre, id_categoria, precio_unitario, activo
 --  D: Lucía Ramos (cliente 4) — CANCELADA
 --  E: Martín Ríos (cliente 7) — NO_SHOW
 --  F: Carlos Mendoza (cliente 3) — FINALIZADA (histórico, con cuenta pagada)
---  G: Pedro Villar (cliente 5) — CONFIRMADA con huésped genérico
+--  G: Pedro Villar (cliente 5) — CONFIRMADA, con acompañante
 -- =============================================================
 INSERT INTO reserva
     (id_reserva, id_cliente, id_hotel, id_estado_reserva,
@@ -383,18 +422,25 @@ INSERT INTO reserva_detalle
 -- =============================================================
 -- id_cliente ya no se guarda aquí: el pagador de toda la reserva
 -- (Corporación ABC, cliente 9) está en reserva.id_cliente.
+-- La doble (detalle 3, capacidad_base 2) tiene un segundo cupo sin
+-- identificar todavía (id_huesped = NULL): la empresa reservó el
+-- espacio para un acompañante de Eduardo, pero aún no envió el
+-- nombre — se resuelve más adelante con un UPDATE (ver
+-- Scripts/10_Ejemplo_Flujo_Huespedes.sql para el flujo completo).
 INSERT INTO detalle_huesped_reserva
     (id_detalle_huesped, id_detalle_reserva, id_huesped, es_titular) VALUES
-(1, 2, 7, 1),   -- Ricardo Salas → titular (una de las 2 simples)
-(2, 2, 8, 0),   -- Patricia Nuñez (otra simple)
-(3, 3, 9, 1);   -- Eduardo Quispe → titular de la doble
+(1, 2, 7,    1),   -- Ricardo Salas → titular (una de las 2 simples)
+(2, 2, 8,    0),   -- Patricia Nuñez (otra simple)
+(3, 3, 9,    1),   -- Eduardo Quispe → titular de la doble
+(4, 3, NULL, 0);   -- cupo sin identificar (acompañante de Eduardo)
 
 -- =============================================================
 --  20. ALOJAMIENTO
 --      A (reserva 1): ACTIVO, en curso.
 --      F (reserva 6): FINALIZADO, histórico.
---      G (reserva 7): ACTIVO, con huésped genérico pendiente de
---                     identificar.
+--      G (reserva 7): ACTIVO, titular + acompañante (ambos
+--                     identificados; ya no existe el concepto de
+--                     huésped genérico — ver HUESPED_ALOJAMIENTO).
 -- =============================================================
 INSERT INTO alojamiento
     (id_alojamiento, id_reserva, id_detalle_reserva,
@@ -430,9 +476,9 @@ INSERT INTO huesped_alojamiento
 (1, 1,  NULL, 1, '2026-06-10 14:30:00', NULL),                    -- José García, solo, en la doble (activo)
 (2, 3,  NULL, 1, '2026-04-10 13:00:00', '2026-04-13 11:00:00'),   -- Carlos Mendoza, estadía finalizada
 (3, 5,  NULL, 1, '2026-06-20 15:30:00', NULL),                    -- Pedro Villar, titular (aún presente)
-(3, 10, NULL, 0, '2026-06-20 15:30:00', NULL),                    -- Invitado 1 (genérico), aún presente
-(4, 11, NULL, 1, '2026-06-19 15:00:00', NULL),                    -- Sofía, titular, continúa hospedada
-(4, 12, NULL, 0, '2026-06-19 15:00:00', '2026-06-21 09:30:00'),   -- Diego, se retiró antes; la habitación NO se libera todavía
+(3, 12, NULL, 0, '2026-06-20 15:30:00', NULL),                    -- Rosa Elena Bravo, acompañante identificada, aún presente
+(4, 10, NULL, 1, '2026-06-19 15:00:00', NULL),                    -- Sofía, titular, continúa hospedada
+(4, 11, NULL, 0, '2026-06-19 15:00:00', '2026-06-21 09:30:00'),   -- Diego, se retiró antes; la habitación NO se libera todavía
 -- Escenario I: check-in real de la reserva corporativa. Ricardo y
 -- Patricia hacen check-in tal como fueron pre-asignados
 -- (COINCIDE); en la doble, en cambio, llega Patricia y no Eduardo

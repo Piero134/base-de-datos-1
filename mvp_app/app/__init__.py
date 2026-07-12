@@ -2,17 +2,12 @@ from flask import Flask, render_template
 
 from app.badges import badge_class
 from app.config import Config
-from app.constants import ROLES
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.jinja_env.filters["badge_class"] = badge_class
-
-    @app.context_processor
-    def inject_roles():
-        return {"roles_disponibles": ROLES}
 
     from app.auth.routes import bp as auth_bp
     from app.disponibilidad.routes import bp as disponibilidad_bp

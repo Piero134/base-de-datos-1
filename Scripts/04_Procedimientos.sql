@@ -124,9 +124,6 @@ BEGIN
         p_cantidad_habitaciones, v_precio, v_subtotal
     );
 
-    UPDATE reserva
-    SET monto_total = monto_total + v_subtotal
-    WHERE id_reserva = p_id_reserva;
 END$$
 
 -- -------------------------------------------------------------
@@ -195,10 +192,11 @@ END$$
 
 -- -------------------------------------------------------------
 -- SP 5: sp_agregar_huesped_alojamiento
--- Asocia un huésped (real o genérico) a un alojamiento activo,
--- validando que no se exceda la capacidad máxima del tipo de
--- habitación (regla de negocio comentada por el profesor: "no
--- puedes meter más de dos en una doble").
+-- Asocia un huésped (siempre identificado — nunca hay ocupación real
+-- sin identidad completa) a un alojamiento activo, validando que no
+-- se exceda la capacidad máxima del tipo de habitación (regla de
+-- negocio comentada por el profesor: "no puedes meter más de dos en
+-- una doble").
 --
 -- p_id_detalle_huesped es OPCIONAL: si la línea de reserva tuvo
 -- una pre-asignación corporativa (detalle_huesped_reserva), se
@@ -239,14 +237,18 @@ BEGIN
     -- se deja constancia en el detalle de la reserva (observación)
     -- en vez de impedir el check-in, porque en la práctica sí puede
     -- cambiar quién ocupa la habitación a último momento.
+    -- La existencia de la fila y su resolución se comprueban por
+    -- separado: una pre-asignación real puede tener id_huesped NULL
+    -- (cupo corporativo aún sin identificar), así que "no encontré
+    -- valor" ya no sirve como señal de "la fila no existe".
     IF p_id_detalle_huesped IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM detalle_huesped_reserva WHERE id_detalle_huesped = p_id_detalle_huesped) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La pre-asignación indicada no existe';
+        END IF;
+
         SELECT id_huesped INTO v_id_huesped_preasignado
         FROM detalle_huesped_reserva
         WHERE id_detalle_huesped = p_id_detalle_huesped;
-
-        IF v_id_huesped_preasignado IS NULL THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La pre-asignación indicada no existe';
-        END IF;
     END IF;
 
     INSERT INTO huesped_alojamiento (id_alojamiento, id_huesped, id_detalle_huesped, es_titular)
@@ -443,6 +445,11 @@ BEGIN
     DECLARE v_subtotal DECIMAL(12,2) DEFAULT 0;
     DECLARE v_impuestos DECIMAL(12,2) DEFAULT 0;
     DECLARE v_total DECIMAL(12,2) DEFAULT 0;
+
+    IF EXISTS (SELECT 1 FROM cuenta_cobrar WHERE id_alojamiento = p_id_alojamiento) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Ya existe una cuenta por cobrar para este alojamiento';
+    END IF;
 
     SELECT COALESCE(SUM(subtotal), 0) INTO v_subtotal
     FROM consumo_servicio WHERE id_alojamiento = p_id_alojamiento;

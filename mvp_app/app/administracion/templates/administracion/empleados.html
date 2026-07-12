@@ -2,10 +2,11 @@
 {% block title %}Empleados{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Empleados</h1>
+  <h1>Empleados{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
   <p class="subtitle">{{ filas|length }} empleado{{ 's' if filas|length != 1 }} registrado{{ 's' if filas|length != 1 }}.</p>
 </div>
 
+{% if es_general %}
 <form class="card" method="get">
   <label for="filtro_id_hotel">Hotel</label>
   <select name="id_hotel" id="filtro_id_hotel" required data-searchable="Buscar hotel…">
@@ -15,6 +16,7 @@
   </select>
   <button type="submit" class="btn-secondary">Ver empleados de este hotel</button>
 </form>
+{% endif %}
 
 {% if filas %}
 <div class="table-scroll">
@@ -33,12 +35,14 @@
 
 <h2>Nuevo empleado</h2>
 <form class="card" method="post">
+  {% if es_general %}
   <label for="emp_id_hotel">Hotel</label>
   <select name="id_hotel" id="emp_id_hotel" required data-searchable="Buscar hotel…">
     {% for h in hoteles %}
       <option value="{{ h.id_hotel }}" {% if (seleccion.id_hotel|string if seleccion else id_hotel_filtro|string) == h.id_hotel|string %}selected{% endif %}>{{ h.nombre }}</option>
     {% endfor %}
   </select>
+  {% endif %}
   <label for="emp_nombres">Nombres</label>
   <input type="text" name="nombres" id="emp_nombres" required value="{{ seleccion.nombres if seleccion else '' }}">
   <label for="emp_apellidos">Apellidos</label>

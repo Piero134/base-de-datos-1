@@ -21,8 +21,9 @@ incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-B
 | Crear reserva | `POST /reservas/nuevo` | Confirmar cabecera de la reserva | `CALL sp_registrar_reserva(...)` | Crea reserva en estado `PENDIENTE` |
 | Detalle de reserva | `GET/POST /reservas/<id>/detalle` | Agregar línea (tipo de habitación) | `CALL sp_agregar_detalle_reserva(...)` (usa `fn_plan_vigente`, `fn_disponibilidad_tipo_habitacion` internamente) | Recalcula `monto_total` |
 | Confirmación de pago | `GET/POST /reservas/<id>/pago` | Confirmar pago de la reserva | `CALL sp_confirmar_pago(id_reserva)` | Trigger `trg_reserva_confirmar` → estado pasa a `CONFIRMADA` |
-| Pre-asignación corporativa | `GET/POST /reservas/<id>/preasignar` | Asignar huésped a una línea | `INSERT INTO detalle_huesped_reserva` (directo, sin SP) | — |
-| Huésped nuevo (desde reservas) | `POST /reservas/huesped/nuevo` | Alta de huésped real o genérico | `INSERT INTO huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` | — |
+| Pre-asignación corporativa | `GET/POST /reservas/<id>/preasignar` | Reservar un cupo, con huésped o sin nombre todavía | `INSERT INTO detalle_huesped_reserva` (directo, sin SP; `id_huesped` opcional) | Trigger `trg_valida_cupos_reserva` limita el total de cupos por línea |
+| Asignar / reasignar cupo | `POST /reservas/<id>/preasignar/<id_detalle_huesped>/asignar` | Identificar un cupo sin nombre, o sustituir al huésped ya asignado | `UPDATE detalle_huesped_reserva SET id_huesped = ...` (directo, sin SP) | — |
+| Huésped nuevo (desde reservas) | `POST /reservas/huesped/nuevo` | Alta de huésped (siempre identificado) | `INSERT INTO persona` → `persona_natural` → `huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` (o solo `huesped` si ya existe la persona, atajo "usar mis datos") | — |
 
 ## Estadía (`app/estadia/routes.py`)
 
@@ -37,7 +38,7 @@ incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-B
 | Realizar check-in | `POST /estadia/checkin` | Asignar habitación a una línea | `CALL sp_realizar_checkin(...)` | Trigger `trg_alojamiento_checkin` → habitación pasa a `OCUPADA` |
 | Alojamiento (hub) | `GET /estadia/<id_alojamiento>` | Ver huéspedes, consumos, daños | `SELECT` sobre `alojamiento`, `huesped_alojamiento`, `vw_consumos_alojamiento`, `servicio`, `danio` | — |
 | Agregar huésped existente | `POST /estadia/<id>/huespedes` | Sumar huésped ya registrado al alojamiento | `CALL sp_agregar_huesped_alojamiento(...)` | Trigger `trg_huesped_alojamiento_capacidad` valida cupo |
-| Huésped nuevo (desde estadía) | `POST /estadia/huesped/nuevo` | Alta de huésped real o genérico | `INSERT INTO huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` | — |
+| Huésped nuevo (desde estadía) | `POST /estadia/huesped/nuevo` | Alta de huésped (siempre identificado) | `INSERT INTO persona` → `persona_natural` → `huesped` vía `app/huespedes.py:crear_huesped_desde_formulario` (o solo `huesped` si ya existe la persona, atajo "usar mis datos") | — |
 | Registrar consumo | `POST /estadia/<id>/consumo` | Cargar un servicio consumido | `CALL sp_registrar_consumo(...)` | Calcula subtotal con precio vigente |
 | Registrar daño | `POST /estadia/<id>/danio` | Reportar daño en la habitación | `CALL sp_registrar_danio(...)` | — |
 | Salida individual | `POST /estadia/<id>/salida-huesped` | Registrar salida de un huésped | `CALL sp_registrar_salida_huesped(...)` | Si es el último huésped, finaliza el alojamiento automáticamente |
@@ -57,5 +58,4 @@ incluyen las mismas anotaciones de SQL como notas sobre cada paso del flujo TO-B
 
 | Pantalla | Ruta Flask | Acción del usuario | SQL invocado | Efecto |
 |---|---|---|---|---|
-| Login | `GET/POST /login` | Elegir empleado y rol de app | `SELECT` sobre `empleado`/`cargo_empleado`/`hotel` | Inicializa `session` |
-| Cambiar rol | `POST /auth/rol` | Cambiar el rol activo sin cerrar sesión | Ninguno (solo actualiza `session["rol"]`) | El rol de app es independiente del cargo real del empleado (ver `README.md`) |
+| Login | `GET/POST /login` | Ingresar usuario y contraseña | `SELECT` sobre `usuario`/`empleado`/`hotel` + `check_password_hash` | Inicializa `session` con el rol y el alcance (`id_hotel`) ya fijos en `usuario` |
