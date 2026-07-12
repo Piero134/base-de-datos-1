@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from app.auth.routes import requiere_rol
 from app.constants import CANALES
-from app.asignacion_huespedes import construir_grid_reserva
+from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_reserva
 from app.db import call_procedure, execute_transaction, query
 from app.errors import ejecutar_con_flash
 from app.huespedes import crear_huesped_desde_formulario
@@ -50,19 +50,6 @@ def corporativas():
         if f["id_reserva"] in ids_de_mi_hotel
     ]
     return render_template("reservas/corporativas.html", filas=filas)
-
-
-def _pasos_reserva(id_reserva, actual):
-    """Breadcrumb dinámico de los pasos del flujo de reserva. La asignación
-    de huéspedes aplica a toda reserva (natural o jurídica), no solo a las
-    corporativas."""
-    return [
-        {"label": "Reservas", "url": url_for("reservas.listado")},
-        {"label": "Cabecera", "url": None},
-        {"label": "Detalle", "url": None if actual == "detalle" else url_for("reservas.detalle", id_reserva=id_reserva)},
-        {"label": "Pago", "url": None if actual == "pago" else url_for("reservas.pago", id_reserva=id_reserva)},
-        {"label": "Asignación de huéspedes", "url": None if actual == "preasignar" else url_for("reservas.preasignar", id_reserva=id_reserva)},
-    ]
 
 
 def _contexto_nuevo():
@@ -248,7 +235,7 @@ def _contexto_detalle(id_reserva):
         "lineas": lineas,
         "tipos": query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre"),
         "planes": query("SELECT id_plan, nombre, es_publico FROM plan_tarifa WHERE activo = 1 ORDER BY nombre"),
-        "pasos": _pasos_reserva(id_reserva, "detalle"),
+        "pasos": construir_pasos_reserva(id_reserva, "detalle"),
     }
 
 
@@ -296,7 +283,7 @@ def pago(id_reserva):
     if not reserva:
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
-    pasos = _pasos_reserva(id_reserva, "pago")
+    pasos = construir_pasos_reserva(id_reserva, "pago")
     return render_template("reservas/pago.html", reserva=reserva[0], pasos=pasos)
 
 
@@ -335,7 +322,7 @@ def _contexto_preasignar(id_reserva):
             """
         ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
-        "pasos": _pasos_reserva(id_reserva, "preasignar"),
+        "pasos": construir_pasos_reserva(id_reserva, "preasignar"),
     }
 
 

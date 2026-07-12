@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
-from app.asignacion_huespedes import construir_grid_reserva
+from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_reserva
 from app.auth.routes import requiere_rol
 from app.db import call_procedure, call_procedures_en_transaccion, query
 from app.errors import ejecutar_con_flash
@@ -148,6 +148,7 @@ def _contexto_checkin_reserva(id_reserva):
         "lineas": lineas,
         "habitaciones_por_tipo": habitaciones_por_tipo,
         "completo": completo,
+        "pasos": construir_pasos_reserva(id_reserva, "checkin"),
     }
 
 

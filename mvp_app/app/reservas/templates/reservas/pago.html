@@ -15,7 +15,7 @@
   {% if reserva.pagado %}
   <p class="alert alert-success">✓ Pago confirmado{% if reserva.fecha_pago %} el {{ reserva.fecha_pago }}{% endif %}.</p>
   <p class="actions">
-    <a href="{{ url_for('estadia.checkin_reserva', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Ir a check-in →</a>
+    <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
   </p>
   {% else %}
   <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"
@@ -25,7 +25,4 @@
   </form>
   {% endif %}
 </div>
-<p class="actions">
-  <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a detalle →</a>
-</p>
 {% endblock %}

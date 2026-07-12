@@ -116,6 +116,24 @@ h2 { font-size: 1.15rem; margin-top: 32px; }
 .page-header .breadcrumb a:hover { text-decoration: underline; }
 .page-header .breadcrumb .current { color: var(--color-text); font-weight: 600; }
 
+/* Stepper de progreso (flujo de reserva: Cabecera → Detalle → Pago →
+   Asignación → Check-in). Mismos tokens de color que el resto del sistema. */
+.stepper { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; font-size: 0.82rem; margin-bottom: 4px; }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.stepper .step-marker {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 19px; height: 19px; border-radius: 50%; flex-shrink: 0;
+  font-size: 0.68rem; font-weight: 700;
+  background: var(--color-border); color: var(--color-text-muted);
+}
+.stepper .step--done .step-marker { background: var(--color-success-border); color: #fff; }
+.stepper .step--current .step-marker { background: var(--color-primary); color: #fff; }
+.stepper .step a { color: var(--color-primary); text-decoration: none; }
+.stepper .step a:hover { text-decoration: underline; }
+.stepper .step--current .step-label { color: var(--color-text); font-weight: 700; }
+.stepper .step--upcoming a, .stepper .step--upcoming .step-label { color: var(--color-text-muted); }
+.stepper .step-connector { width: 18px; height: 1px; background: var(--color-border); margin: 0 8px; flex-shrink: 0; }
+
 .table-scroll { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; }
 .table-scroll table { box-shadow: none; margin-bottom: 0; }
 
@@ -169,6 +187,7 @@ form.card, .card {
   max-width: 640px;
 }
 .card--readonly { background: var(--color-surface-2); box-shadow: none; }
+.card--wide { max-width: none; }
 
 fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); margin: 16px 0 0; padding: 4px 16px 16px; }
 legend { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); padding: 0 6px; }
@@ -365,4 +384,6 @@ button.btn-abrir-modal { margin-bottom: 16px; }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
   h1 { font-size: 1.35rem; }
+  .stepper .step-connector { width: 8px; margin: 0 4px; }
+  .stepper .step-label, .stepper .step a { font-size: 0.78rem; }
 }

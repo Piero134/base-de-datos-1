@@ -13,7 +13,7 @@
 {% endif %}
 
 {% for l in lineas %}
-<div class="card">
+<div class="card card--wide">
   <h2>{{ l.tipo_habitacion }} — {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
   <form method="post" action="{{ url_for('reservas.guardar_asignacion_linea', id_reserva=reserva.id_reserva, id_detalle_reserva=l.id_detalle_reserva) }}">
     <div class="table-scroll">
@@ -101,6 +101,7 @@
 </dialog>
 
 <p class="actions">
+  <a href="{{ url_for('estadia.checkin_reserva', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a check-in →</a>
   <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Volver al detalle</a>
 </p>
 {% endblock %}

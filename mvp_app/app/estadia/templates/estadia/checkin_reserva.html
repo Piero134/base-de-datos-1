@@ -1,10 +1,9 @@
 {% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
 {% block title %}Check-in reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div class="breadcrumb">
-    <a href="{{ url_for('estadia.checkin_listado') }}">Check-in</a> &rsaquo; <span class="current">Reserva #{{ reserva.id_reserva }}</span>
-  </div>
+  {{ crumbs.breadcrumb(pasos) }}
   <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
   <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a>; aquí solo se elige la habitación física y se confirma el check-in de todos a la vez.</p>
 </div>
@@ -14,7 +13,7 @@
 {% endif %}
 
 {% for l in lineas %}
-<div class="card">
+<div class="card card--wide">
   <h2>{{ l.tipo_habitacion }} — {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
 
   {% for hab in l.habitaciones %}
