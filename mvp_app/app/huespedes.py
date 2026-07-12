@@ -1,4 +1,4 @@
-from app.db import execute, execute_transaction
+from app.db import execute, execute_transaction, query
 from app.errors import ejecutar_con_flash
 
 
@@ -7,34 +7,34 @@ def crear_huesped_desde_formulario(form):
     Da de alta un huésped a partir de un formulario compartido por las
     pantallas de reservas (pre-asignación corporativa) y estadía
     (check-in). huesped es solo un rol de ocupación — la identidad vive
-    siempre en persona/persona_natural — así que, salvo que ya venga un
-    id_persona (atajo "usar mis datos", cuando el huésped es la misma
-    persona física que el cliente), primero se crea la persona natural y
-    recién después el huesped que la referencia. Mismo patrón que
-    reservas/routes.py:cliente_nuevo para dar de alta una persona natural.
-    Devuelve (ok, id_huesped), igual que antes de este cambio.
+    siempre en persona/persona_natural — así que, si ya existe una
+    persona_natural con el mismo tipo+número de documento, se reutiliza
+    (la misma persona puede volver a hospedarse en distintas estadías);
+    si no existe, se crea persona+persona_natural en una única transacción
+    atómica y recién después el huesped que la referencia. Mismo patrón
+    que reservas/routes.py:cliente_nuevo para dar de alta una persona
+    natural. Devuelve (ok, id_huesped), igual que antes de este cambio.
     """
-    id_persona = form.get("id_persona") or None
+    existente = query(
+        "SELECT id_persona FROM persona_natural WHERE id_tipo_documento = %s AND numero_documento = %s",
+        (form["id_tipo_documento"], form["numero_documento"]),
+    )
 
-    if not id_persona:
-        ids = execute_transaction(
+    if existente:
+        id_persona = existente[0]["id_persona"]
+    else:
+        ok, ids = ejecutar_con_flash(
+            execute_transaction,
             [
                 (
                     "INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', %s, %s)",
                     (form.get("telefono") or None, form.get("email") or None),
-                )
-            ]
-        )
-        id_persona = ids[0]
-        ok, _ = ejecutar_con_flash(
-            execute_transaction,
-            [
+                ),
                 (
                     "INSERT INTO persona_natural (id_persona, id_tipo_documento, numero_documento, "
                     "nombres, apellidos, fecha_nacimiento, genero, nacionalidad) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s)",
                     (
-                        id_persona,
                         form["id_tipo_documento"],
                         form["numero_documento"],
                         form["nombres"],
@@ -48,6 +48,7 @@ def crear_huesped_desde_formulario(form):
         )
         if not ok:
             return False, None
+        id_persona = ids[0]
 
     return ejecutar_con_flash(
         execute,
