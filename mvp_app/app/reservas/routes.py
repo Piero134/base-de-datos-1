@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from app.auth.routes import requiere_rol
 from app.constants import CANALES, ESTADOS_RESERVA, ESTADOS_RESERVA_TERMINALES
-from app.asignacion_huespedes import construir_grid_reserva, construir_pasos_reserva
+from app.asignacion_huespedes import construir_grid_reserva
 from app.db import call_procedure, execute_transaction, query
 from app.errors import ejecutar_con_flash
 from app.huespedes import crear_huesped_desde_formulario
@@ -311,8 +311,7 @@ def pago(id_reserva):
     if reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES:
         flash("La reserva está en un estado final; ya no se puede confirmar el pago.", "danger")
         return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
-    pasos = construir_pasos_reserva(id_reserva, "pago")
-    return render_template("reservas/pago.html", reserva=reserva[0], pasos=pasos)
+    return render_template("reservas/pago.html", reserva=reserva[0])
 
 
 @bp.route("/<int:id_reserva>/pago", methods=["POST"])
@@ -383,7 +382,6 @@ def _contexto_preasignar(id_reserva):
         ),
         "tipos_documento": query("SELECT id_tipo_documento, nombre FROM tipo_documento ORDER BY nombre"),
         "es_terminal": reserva[0]["estado"] in ESTADOS_RESERVA_TERMINALES,
-        "pasos": construir_pasos_reserva(id_reserva, "preasignar"),
     }
 
 

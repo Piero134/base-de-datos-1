@@ -1,20 +1,8 @@
 {% macro breadcrumb(pasos) -%}
-{%- if pasos and 'status' in pasos[0] %}
-<nav class="stepper" aria-label="Progreso de la reserva">
-  {%- for paso in pasos %}
-  <div class="step step--{{ paso.status }}">
-    <span class="step-marker" aria-hidden="true">{% if paso.status == 'done' %}&#10003;{% else %}{{ loop.index }}{% endif %}</span>
-    {%- if paso.url %}<a href="{{ paso.url }}">{{ paso.label }}</a>{% else %}<span class="step-label">{{ paso.label }}</span>{% endif -%}
-  </div>
-  {%- if not loop.last %}<span class="step-connector" aria-hidden="true"></span>{% endif %}
-  {%- endfor %}
-</nav>
-{%- else %}
 <div class="breadcrumb">
   {%- for paso in pasos %}
     {%- if not loop.first %} &rsaquo; {% endif -%}
     {%- if paso.url %}<a href="{{ paso.url }}">{{ paso.label }}</a>{% else %}<span class="current">{{ paso.label }}</span>{% endif -%}
   {%- endfor %}
 </div>
-{%- endif %}
 {%- endmacro %}

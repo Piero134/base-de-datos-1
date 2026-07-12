@@ -1,9 +1,7 @@
 {% extends "base.html" %}
-{% import "partials/breadcrumb.html" as crumbs %}
 {% block title %}Asignación de huéspedes — reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  {{ crumbs.breadcrumb(pasos) }}
   <h1>Asignación de huéspedes</h1>
   <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación de esta reserva (o resérvale el cupo sin nombre todavía). Cada habitación con al menos un huésped necesita un titular. Se puede editar hasta el check-in; el check-in es individual, así que cada huésped queda fijo apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.</p>
 </div>

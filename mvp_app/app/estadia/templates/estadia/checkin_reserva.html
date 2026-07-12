@@ -1,9 +1,7 @@
 {% extends "base.html" %}
-{% import "partials/breadcrumb.html" as crumbs %}
 {% block title %}Check-in reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  {{ crumbs.breadcrumb(pasos) }}
   <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
   <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. Los huéspedes de cada habitación se definen en la <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">asignación de huéspedes de la reserva</a> (aquí ya no se agregan huéspedes nuevos). El check-in es individual: el titular debe registrarse primero, eligiendo el número físico de habitación; después, sus compañeros de habitación se suman de a uno.</p>
 </div>

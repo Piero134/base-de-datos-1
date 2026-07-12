@@ -1,45 +1,4 @@
-from flask import session, url_for
-
 from app.db import query
-
-
-def construir_pasos_reserva(id_reserva, actual):
-    """Stepper del flujo completo de una reserva, desde la cabecera hasta el
-    check-in (que vive en el blueprint estadia, no en reservas). El status
-    de cada paso es puramente ordinal respecto a `actual` -- no verifica si
-    ese paso está realmente completo en la BD (ej. si ya se pagó), solo
-    dónde está el usuario parado en la secuencia. La navegación real sigue
-    sin ser lineal: cualquier paso conserva su link y se puede visitar
-    fuera de orden -- excepto "Pago", cuya URL es CAJA/ADMINISTRADOR
-    exclusiva; para el resto de roles se muestra sin link para no ofrecer
-    un acceso que el servidor va a rechazar igual."""
-    url_pago = (
-        url_for("reservas.pago", id_reserva=id_reserva)
-        if session.get("rol") in ("CAJA", "ADMINISTRADOR")
-        else None
-    )
-    definicion = [
-        ("detalle", "Detalle", url_for("reservas.detalle", id_reserva=id_reserva)),
-        ("pago", "Pago", url_pago),
-        ("preasignar", "Asignación de huéspedes", url_for("reservas.preasignar", id_reserva=id_reserva)),
-        ("checkin", "Check-in", url_for("estadia.checkin_reserva", id_reserva=id_reserva)),
-    ]
-    orden = [clave for clave, _, _ in definicion]
-    idx_actual = orden.index(actual) if actual in orden else -1
-
-    pasos = [
-        {"label": "Reservas", "url": url_for("reservas.listado"), "status": "done"},
-        {"label": "Cabecera", "url": None, "status": "done"},
-    ]
-    for i, (clave, label, url) in enumerate(definicion):
-        if i < idx_actual:
-            status = "done"
-        elif i == idx_actual:
-            status = "current"
-        else:
-            status = "upcoming"
-        pasos.append({"label": label, "url": None if clave == actual else url, "status": status})
-    return pasos
 
 
 def construir_grid_reserva(id_reserva, con_estado_estadia=False):
