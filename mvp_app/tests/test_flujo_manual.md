@@ -9,9 +9,11 @@ retirar el alta de huéspedes desde estadía, una cuarta vez tras pasar la
 confirmación de pago a ser responsabilidad exclusiva de Caja, una quinta
 tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
 "Reservas corporativas", una sexta el mismo día tras rediseñar el listado
-de check-in como tabla plana buscable por titular, y una séptima tras
+de check-in como tabla plana buscable por titular, una séptima tras
 bloquear también para Recepción el acceso directo a la URL de confirmación
-de pago (antes solo se ocultaba el botón) (ver commits de esa fecha). Marcar
+de pago (antes solo se ocultaba el botón), y una octava tras agregar
+cancelar/no-show de reserva y el bloqueo general de estados finales (ver
+commits de esa fecha). Marcar
 de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
@@ -96,6 +98,27 @@ de nuevo tras cambios importantes.
       corrigió de paso un bug visual: el formulario del titular desbordaba
       la fila por falta de la clase `inline-form`, y el aviso de espera
       usaba por error el estilo de bloque `empty-state`).
+- [x] **Cancelar/no-show y bloqueo de estados finales (UC-01b/UC-04c,
+      2026-07-12):** con una reserva `PENDIENTE`, Recepción canceló desde
+      `detalle.html` (botón con diálogo de confirmación) y el estado pasó a
+      `CANCELADA`; sobre esa misma reserva, `agregar_detalle`,
+      `confirmar_pago`, `guardar_asignacion_linea` y `sp_realizar_checkin`
+      fueron todos rechazados con el mensaje "La reserva está en un estado
+      final...", y `detalle.html`/`preasignar.html`/`checkin_reserva.html`
+      dejaron de mostrar sus formularios (solo un aviso). Marcar no-show
+      funcionó con una reserva cuya `fecha_checkin` ya pasó y sin ningún
+      check-in real; se rechazó si la fecha de check-in todavía no llegaba,
+      y también se rechazó cancelar una reserva con huéspedes actualmente
+      alojados (`alojamiento.estado = 'ACTIVO'`). Se verificó además que el
+      trigger `trg_reserva_finalizar` pasa la reserva a `FINALIZADA`
+      automáticamente en cuanto el checkout deja sin ningún alojamiento
+      activo para esa reserva (probado con `sp_registrar_salida_huesped`
+      sobre el único huésped). Verificado con `test_client` contra
+      `hotel_db` real (con limpieza posterior de todas las reservas de
+      prueba) y visualmente con Playwright (botones, diálogo de
+      confirmación y mensaje final). De paso se quitó el breadcrumb/stepper
+      de `reservas/detalle.html` (a pedido del usuario), que ya no
+      recibía `pasos` desde `_contexto_detalle`.
 - [x] **Pago bloqueado por completo para Recepción (UC-02, 2026-07-12):**
       antes Recepción solo no veía el botón "Confirmar pago" dentro de
       `/reservas/<id>/pago` (podía igual entrar a la URL en modo lectura).

@@ -74,6 +74,23 @@ asignado a ese empleado:
 - **Postcondición:** reserva creada en estado `PENDIENTE`, sin habitación física asignada aún.
 - **Consulta MVP relacionada:** `09_Consultas_MVP.sql` #1b, #1c, #2.
 
+### UC-01b: Cancelar reserva o marcarla como no-show
+- **Actor:** Recepcionista o Administrador (`POST /reservas/<id>/cancelar` y
+  `POST /reservas/<id>/no-show`, ambos `requiere_rol("RECEPCION", "ADMINISTRADOR")`; Caja no
+  tiene acceso a estas rutas — no existe ningún flujo de reembolso en el MVP que justifique
+  dárselo, así que cancelar/no-show quedan como una decisión operativa de recepción).
+- **Cancelar (`sp_cancelar_reserva`):** válido en cualquier momento mientras la reserva no esté ya
+  en un estado final (`CANCELADA`/`NO_SHOW`/`FINALIZADA`) **y** no tenga huéspedes actualmente
+  alojados (`alojamiento.estado = 'ACTIVO'` para esa reserva) — una reserva con gente hospedada ya
+  no es "cancelable", es una estadía en curso que debe cerrarse por checkout (UC-07/UC-08).
+- **Marcar no-show (`sp_marcar_no_show`):** solo si la fecha actual ya pasó la
+  `fecha_checkin` prevista **y** la reserva nunca tuvo ningún check-in real (no existe ningún
+  `alojamiento` asociado) — si ya hubo check-in, no fue un no-show, fue una estadía que empezó.
+- **Postcondición:** `reserva.estado` pasa a `CANCELADA` o `NO_SHOW`. A partir de ahí aplica el
+  bloqueo general de estados finales (ver nota al final de esta sección): ya no se pueden agregar
+  líneas, confirmar pago, asignar huéspedes ni hacer check-in sobre esa reserva, y la interfaz deja
+  de ofrecer esos botones.
+
 ### UC-02: Confirmar pago de reserva
 - **Actor:** Caja (exclusivo). Recepción ya no accede a esta pantalla en absoluto: solo ve el
   estado "Pagado: Sí/No" en el detalle de la reserva.
@@ -144,6 +161,23 @@ asignado a ese empleado:
   alojamiento si ese huésped ya figura en `huesped_alojamiento` de otro `alojamiento` con
   `estado = 'ACTIVO'`, incluso si el intento llega directo al check-in (UC-04) sin pasar por la
   interfaz.
+
+### UC-04c: Finalización automática de la reserva
+- **Regla de negocio:** `reserva.estado` pasa a `FINALIZADA` automáticamente (trigger
+  `trg_reserva_finalizar`, `AFTER UPDATE ON alojamiento`) cuando el checkout (UC-07/UC-08) deja sin
+  ningún `alojamiento` en estado `ACTIVO` para esa reserva — es decir, cuando termina el último
+  alojamiento que sí llegó a tener check-in. No espera a que se cumplan todas las líneas
+  reservadas: si una reserva reservó 2 habitaciones y solo 1 tuvo check-in, la reserva se
+  finaliza igual apenas esa única habitación hace checkout (se considera terminada la estadía, no
+  el cumplimiento íntegro de lo reservado).
+- **Regla general de estados finales:** apenas `reserva.estado` es `CANCELADA`, `NO_SHOW` o
+  `FINALIZADA`, ninguna acción de mutación vuelve a estar disponible sobre esa reserva:
+  `sp_agregar_detalle_reserva`, `sp_confirmar_pago` y `sp_realizar_checkin` rechazan con `SIGNAL`
+  si se invocan sobre una reserva en estado final (defensa de último nivel, por si el intento llega
+  directo por SP/POST sin pasar por la interfaz); `guardar_asignacion_linea` (asignación de
+  huéspedes, UC-03) hace la misma validación en Python antes de tocar la base. Las plantillas
+  (`reservas/detalle.html`, `reservas/preasignar.html`, `estadia/checkin_reserva.html`) ocultan los
+  formularios/botones correspondientes y muestran en su lugar un aviso con el estado actual.
 
 ### UC-05: Registrar consumo de servicio
 - **Actor:** Cajero o Recepcionista
