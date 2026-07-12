@@ -508,4 +508,27 @@ BEGIN
     END IF;
 END$$
 
+-- ──────────────────────────────────────────────────────────────
+-- T17 (NUEVO). Una habitación física no puede tener más de un
+--     alojamiento ACTIVO al mismo tiempo. sp_realizar_checkin ya
+--     lo valida antes de insertar, pero ese chequeo se salta si
+--     alguien inserta directo en `alojamiento` (carga de datos,
+--     script manual, etc.); este trigger es la red de seguridad a
+--     nivel de tabla, mismo espíritu que trg_huesped_alojamiento_
+--     capacidad para huesped_alojamiento.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_alojamiento_habitacion_unica$$
+CREATE TRIGGER trg_alojamiento_habitacion_unica
+BEFORE INSERT ON alojamiento
+FOR EACH ROW
+BEGIN
+    IF NEW.estado = 'ACTIVO' AND EXISTS (
+        SELECT 1 FROM alojamiento
+        WHERE id_habitacion = NEW.id_habitacion AND estado = 'ACTIVO'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Esta habitación ya tiene un alojamiento activo.';
+    END IF;
+END$$
+
 DELIMITER ;

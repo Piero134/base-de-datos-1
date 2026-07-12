@@ -44,7 +44,8 @@ WHERE pagado = 0
 ORDER BY fecha_limite_pago;
 
 -- =============================================================
--- 3. Clientes hospedados actualmente (huéspedes con alojamiento activo)
+-- 3. Habitaciones ocupadas actualmente (una fila por alojamiento
+--    activo, con sus huéspedes agregados en una sola columna)
 -- =============================================================
 SELECT * FROM vw_alojamientos_activos
 ORDER BY hotel, habitacion;

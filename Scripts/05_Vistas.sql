@@ -73,7 +73,9 @@ JOIN hotel ht         ON ht.id_hotel = r.id_hotel;
 
 -- -------------------------------------------------------------
 -- V4. vw_alojamientos_activos
--- Quién está hospedado ahora mismo y en qué habitación.
+-- Qué habitaciones están ocupadas ahora mismo y quiénes las
+-- alojan (una fila por habitación/alojamiento, no por huésped:
+-- los nombres se agregan en una sola columna, titular primero).
 -- -------------------------------------------------------------
 -- Solo huéspedes que TODAVÍA están presentes: alojamiento activo
 -- Y sin fecha_salida_real individual registrada (un acompañante
@@ -85,10 +87,13 @@ SELECT
     h.numero AS habitacion,
     h.piso,
     th.nombre AS tipo,
-    CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
-    IF(ha.es_titular, 'SÍ', 'NO') AS es_titular,
     a.fecha_checkin_real,
-    v.nombre_reservante AS cliente_pagador
+    v.nombre_reservante AS cliente_pagador,
+    GROUP_CONCAT(
+        CONCAT(pn.nombres, ' ', pn.apellidos, IF(ha.es_titular, ' (titular)', ''))
+        ORDER BY ha.es_titular DESC, pn.nombres
+        SEPARATOR ', '
+    ) AS huespedes
 FROM alojamiento a
 JOIN habitacion h            ON h.id_habitacion       = a.id_habitacion
 JOIN hotel ht                ON ht.id_hotel           = h.id_hotel
@@ -99,7 +104,8 @@ JOIN huesped hu              ON hu.id_huesped         = ha.id_huesped
 JOIN persona_natural pn      ON pn.id_persona         = hu.id_persona
 JOIN reserva r                ON r.id_reserva          = a.id_reserva
 JOIN vw_reservante v          ON v.id_cliente          = r.id_cliente
-WHERE a.estado = 'ACTIVO';
+WHERE a.estado = 'ACTIVO'
+GROUP BY a.id_alojamiento, ht.nombre, h.numero, h.piso, th.nombre, a.fecha_checkin_real, v.nombre_reservante;
 
 -- -------------------------------------------------------------
 -- V5. vw_historial_estadias
