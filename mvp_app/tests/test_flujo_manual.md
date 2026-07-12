@@ -6,10 +6,11 @@ re-verificaron el 2026-07-12 tras el rediseño de asignación de huéspedes por
 tabla, de nuevo tras corregir el check-in a individual por huésped, una
 tercera vez el mismo día tras exigir que el titular haga check-in primero y
 retirar el alta de huéspedes desde estadía, una cuarta vez tras pasar la
-confirmación de pago a ser responsabilidad exclusiva de Caja, y una quinta
+confirmación de pago a ser responsabilidad exclusiva de Caja, una quinta
 tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
-"Reservas corporativas" (ver commits de esa fecha). Marcar de nuevo tras
-cambios importantes.
+"Reservas corporativas", y una sexta el mismo día tras rediseñar el listado
+de check-in como tabla plana buscable por titular (ver commits de esa
+fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -93,6 +94,16 @@ cambios importantes.
       corrigió de paso un bug visual: el formulario del titular desbordaba
       la fila por falta de la clase `inline-form`, y el aviso de espera
       usaba por error el estilo de bloque `empty-state`).
+- [x] **Listado de check-in como tabla plana buscable (2026-07-12):**
+      `GET /estadia/checkin` ahora muestra una fila por habitación pendiente
+      (no por reserva), con el titular, su documento y la reserva/reservante
+      a la que pertenece; buscar "García" encontró tanto la fila cuyo
+      titular se apellida García como la de un reservante con ese apellido.
+      Cada fila con titular enlaza a `estadia/checkin/<id_reserva>#hab_...` y
+      la página llega con esa habitación resaltada (`:target`, contorno
+      dorado) gracias al ancla `id="hab_{id_detalle_reserva}_{n}"`; las
+      filas sin titular enlazan en cambio a la asignación de huéspedes
+      ("Falta titular →"). Verificado visualmente con Playwright.
 - [x] **Alta de huéspedes retirada de estadía (2026-07-12):** `ver.html`
       (alojamiento activo) ya no muestra "Agregar huésped existente" ni
       "+ Huésped nuevo"; las rutas `POST /estadia/<id>/huespedes` y

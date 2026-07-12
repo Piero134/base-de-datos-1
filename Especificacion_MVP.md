@@ -108,6 +108,12 @@ asignado a ese empleado:
 - **Precondición:** reserva `CONFIRMADA`; la habitación (grupo de cupos dentro de una línea, ver
   UC-03) ya tiene su titular asignado; habitación física sin ocupación activa (ver nota de
   disponibilidad más abajo).
+- **Punto de entrada:** `GET /estadia/checkin` muestra una tabla plana (una fila por habitación
+  pendiente, cruzando todas las reservas `CONFIRMADA`, no una fila por reserva) buscable por
+  nombre/documento del titular o nombre del reservante; cada fila enlaza directo, con ancla, al
+  bloque de esa habitación dentro de `GET /estadia/checkin/<id_reserva>` (UC-03/UC-04 comparten
+  `app/asignacion_huespedes.py:construir_grid_reserva`). Si la habitación todavía no tiene titular,
+  la fila enlaza en cambio a la asignación de huéspedes (UC-03) en vez de al check-in.
 - **Flujo principal:** el check-in es individual por huésped (igual que la salida en UC-07), no por
   habitación completa, y el titular debe ser el primero en hacerlo (fuerza que la habitación "se
   abra" con quien realmente responde por ella). Por cada huésped ya asignado en UC-03 y todavía sin
