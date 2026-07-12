@@ -12,10 +12,11 @@ tras agregar filtros de búsqueda al listado de reservas y retirar la pantalla
 de check-in como tabla plana buscable por titular, una séptima tras
 bloquear también para Recepción el acceso directo a la URL de confirmación
 de pago (antes solo se ocultaba el botón), una octava tras agregar
-cancelar/no-show de reserva y el bloqueo general de estados finales, y una
+cancelar/no-show de reserva y el bloqueo general de estados finales, una
 novena el mismo día tras quitar el stepper visual de pago/asignación/
-check-in (ver commits de esa fecha). Marcar de nuevo tras cambios
-importantes.
+check-in, y una décima tras agregar el trigger de habitación única y
+rediseñar "alojamientos activos" como tabla por habitación (ver commits
+de esa fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -99,6 +100,27 @@ importantes.
       corrigió de paso un bug visual: el formulario del titular desbordaba
       la fila por falta de la clase `inline-form`, y el aviso de espera
       usaba por error el estilo de bloque `empty-state`).
+- [x] **Habitación única por alojamiento activo + "alojamientos activos"
+      rediseñado (UC-04b bis/UC-04d, 2026-07-12):** con un alojamiento
+      `ACTIVO` ya creado para una habitación, un `INSERT` directo de un
+      segundo alojamiento `ACTIVO` en la misma habitación (saltándose
+      `sp_realizar_checkin`) fue rechazado por el nuevo trigger
+      `trg_alojamiento_habitacion_unica` con *"Esta habitación ya tiene un
+      alojamiento activo."*. `GET /estadia/activos` mostró una sola fila
+      para ese alojamiento (antes una por huésped) con ambos huéspedes en
+      la columna "Huéspedes" (titular primero, marcado "(titular)"),
+      columnas Habitación/Tipo/Check-in/Huéspedes/Cliente pagador/botón
+      "Ver alojamiento →". Verificado con `test_client` contra `hotel_db`
+      real, con limpieza posterior de la reserva/alojamiento de prueba.
+      **Nota (bug pre-existente, no corregido en este incremento):** al
+      buscar huéspedes libres para la prueba se detectó que
+      `sp_agregar_huesped_alojamiento` considera "activo en otro
+      alojamiento" a un huésped que ya hizo checkout individual
+      (`fecha_salida_real` no nula) pero cuyo compañero de habitación
+      todavía no se retiró (el `alojamiento` sigue `ACTIVO` en conjunto) —
+      el chequeo no filtra por `fecha_salida_real IS NULL`. Esto puede
+      bloquear indebidamente un nuevo check-in de ese huésped en otra
+      habitación. Reportado, pendiente de decisión.
 - [x] **Cancelar/no-show y bloqueo de estados finales (UC-01b/UC-04c,
       2026-07-12):** con una reserva `PENDIENTE`, Recepción canceló desde
       `detalle.html` (botón con diálogo de confirmación) y el estado pasó a

@@ -161,6 +161,14 @@ asignado a ese empleado:
   `estado = 'ACTIVO'`, incluso si el intento llega directo al check-in (UC-04) sin pasar por la
   interfaz.
 
+### UC-04b bis: Restricción — una habitación física no puede tener dos alojamientos activos
+- **Regla de negocio:** `sp_realizar_checkin` ya lo validaba antes de insertar (rechaza si la
+  habitación tiene un `alojamiento` `ACTIVO`), pero esa validación se salta si algo inserta directo
+  en la tabla `alojamiento` sin pasar por el SP (carga de datos, script manual). El trigger
+  `trg_alojamiento_habitacion_unica` (`BEFORE INSERT ON alojamiento`) es la red de seguridad a
+  nivel de tabla: rechaza cualquier `INSERT` de un alojamiento `ACTIVO` si la misma habitación ya
+  tiene otro `ACTIVO`, sin importar el origen del `INSERT`.
+
 ### UC-04c: Finalización automática de la reserva
 - **Regla de negocio:** `reserva.estado` pasa a `FINALIZADA` automáticamente (trigger
   `trg_reserva_finalizar`, `AFTER UPDATE ON alojamiento`) cuando el checkout (UC-07/UC-08) deja sin
@@ -177,6 +185,15 @@ asignado a ese empleado:
   huéspedes, UC-03) hace la misma validación en Python antes de tocar la base. Las plantillas
   (`reservas/detalle.html`, `reservas/preasignar.html`, `estadia/checkin_reserva.html`) ocultan los
   formularios/botones correspondientes y muestran en su lugar un aviso con el estado actual.
+
+### UC-04d: Ver habitaciones ocupadas (`GET /estadia/activos`)
+- **Actor:** Recepcionista o Administrador
+- **Flujo principal:** una fila por habitación con `alojamiento` `ACTIVO` (no una fila por huésped
+  como antes): `vw_alojamientos_activos` agrupa por `id_alojamiento` y agrega los nombres de los
+  huéspedes todavía presentes (`fecha_salida_real IS NULL`) en una sola columna con `GROUP_CONCAT`,
+  titular primero. Columnas mostradas: habitación, tipo, check-in real, huéspedes, cliente pagador,
+  y un botón "Ver alojamiento →" hacia el hub del alojamiento (UC-05 en adelante).
+- **Consulta relacionada:** `vw_alojamientos_activos`.
 
 ### UC-05: Registrar consumo de servicio
 - **Actor:** Cajero o Recepcionista
