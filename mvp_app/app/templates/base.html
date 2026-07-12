@@ -15,7 +15,7 @@
   {% macro navlink(endpoint, label, match_blueprint=False) -%}
   {%- set seccion = endpoint.split('.')[0] -%}
   {%- set es_activo = (request.blueprint == seccion) if match_blueprint else (request.endpoint == endpoint) -%}
-  <a href="{{ url_for(endpoint) }}"{% if es_activo %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+  <a href="{{ url_for(endpoint, **kwargs) }}"{% if es_activo %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
   {%- endmacro %}
 
   <a class="skip-link" href="#main">Saltar al contenido</a>
@@ -34,6 +34,7 @@
         {{ navlink('reservas.listado', 'Reservas', match_blueprint=True) }}
         {{ navlink('estadia.activos', 'Estadía', match_blueprint=True) }}
       {% elif session.get('rol') == 'CAJA' %}
+        {{ navlink('reservas.listado', 'Pagos pendientes', match_blueprint=True, pagado=0) }}
         {{ navlink('caja.cuentas', 'Cuentas por cobrar', match_blueprint=True) }}
       {% elif session.get('rol') == 'GERENCIA' %}
         {{ navlink('reportes.ocupacion', 'Ocupación') }}

@@ -20,9 +20,11 @@ def _reserva_de_mi_hotel(id_reserva):
 
 
 @bp.route("/")
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
+@requiere_rol("RECEPCION", "CAJA", "ADMINISTRADOR")
 def listado():
-    solo_pendientes = request.args.get("pagado") == "0"
+    # CAJA solo confirma pagos: no tiene motivo para ver reservas ya
+    # pagadas ni forma de togglear a "Todas" (a diferencia de RECEPCION).
+    solo_pendientes = session["rol"] == "CAJA" or request.args.get("pagado") == "0"
     if solo_pendientes:
         filas = query(
             "SELECT * FROM vw_reservas_detalle WHERE pagado = 0 AND hotel = %s ORDER BY fecha_limite_pago",
@@ -235,12 +237,15 @@ def _contexto_detalle(id_reserva):
         "lineas": lineas,
         "tipos": query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre"),
         "planes": query("SELECT id_plan, nombre, es_publico FROM plan_tarifa WHERE activo = 1 ORDER BY nombre"),
-        "pasos": construir_pasos_reserva(id_reserva, "detalle"),
+        "pasos": [
+            {"label": "Reservas", "url": url_for("reservas.listado")},
+            {"label": "Detalle", "url": None},
+        ],
     }
 
 
 @bp.route("/<int:id_reserva>/detalle", methods=["GET"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
+@requiere_rol("RECEPCION", "CAJA", "ADMINISTRADOR")
 def detalle(id_reserva):
     contexto = _contexto_detalle(id_reserva)
     if contexto is None:
@@ -274,7 +279,7 @@ def agregar_detalle(id_reserva):
 
 
 @bp.route("/<int:id_reserva>/pago", methods=["GET"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
+@requiere_rol("RECEPCION", "CAJA", "ADMINISTRADOR")
 def pago(id_reserva):
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
@@ -292,7 +297,7 @@ def pago(id_reserva):
 
 
 @bp.route("/<int:id_reserva>/pago", methods=["POST"])
-@requiere_rol("RECEPCION", "ADMINISTRADOR")
+@requiere_rol("CAJA", "ADMINISTRADOR")
 def confirmar_pago(id_reserva):
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
@@ -303,7 +308,9 @@ def confirmar_pago(id_reserva):
         (id_reserva,),
         on_success_msg="Pago confirmado. La reserva pasó a CONFIRMADA.",
     )
-    return redirect(url_for("reservas.pago", id_reserva=id_reserva))
+    # No a reservas.pago: una vez pagada esa pantalla ya no tiene nada que
+    # mostrar y redirige a preasignar, que CAJA no puede ver.
+    return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
 
 
 def _contexto_preasignar(id_reserva):

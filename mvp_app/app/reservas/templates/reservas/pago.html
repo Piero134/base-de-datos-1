@@ -12,10 +12,14 @@
   <p><strong>Estado actual:</strong> <span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span>
      — <strong>Pagado:</strong> <span class="badge badge-warning">No</span></p>
 
+  {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
   <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"
         data-confirm="¿Confirmar el pago de S/ {{ reserva.monto_total }} para la reserva #{{ reserva.id_reserva }}?">
     {# invoca sp_confirmar_pago #}
     <button type="submit">Confirmar pago</button>
   </form>
+  {% else %}
+  <p class="empty-state">La confirmación del pago es responsabilidad de caja. Envía al cliente a caja para completar el pago.</p>
+  {% endif %}
 </div>
 {% endblock %}

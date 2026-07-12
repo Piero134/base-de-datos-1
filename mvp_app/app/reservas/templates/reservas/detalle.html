@@ -35,19 +35,24 @@
 </table>
 </div>
 <p class="actions">
+  {% if not reserva.pagado %}
   <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+  {% elif session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
+  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
+  {% endif %}
 </p>
 {% else %}
 <p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa el formulario de abajo para agregar la primera antes de poder continuar a pago.</p>
 {% endif %}
 
-{% if lineas %}
+{% if lineas and not reserva.pagado and session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
 <p class="actions">
   <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Asignar huéspedes →</a>
 </p>
 {% endif %}
 <p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
 
+{% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
 <h2>Agregar línea</h2>
 {% if reserva.pagado %}
 <p class="empty-state">Esta reserva ya está pagada; no se pueden agregar más líneas.</p>
@@ -74,5 +79,6 @@
   {# invoca sp_agregar_detalle_reserva #}
   <button type="submit">Agregar línea</button>
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}
