@@ -294,16 +294,6 @@ INSERT INTO tarifa_habitacion
 (19, 4, 5, 370.00);
 
 -- =============================================================
---  15. ESTADO_RESERVA
--- =============================================================
-INSERT INTO estado_reserva (id_estado_reserva, nombre) VALUES
-(1, 'PENDIENTE'),
-(2, 'CONFIRMADA'),
-(3, 'CANCELADA'),
-(4, 'NO_SHOW'),
-(5, 'FINALIZADA');
-
--- =============================================================
 --  16. CATEGORIA_SERVICIO Y SERVICIO
 -- =============================================================
 INSERT INTO categoria_servicio (id_categoria, nombre) VALUES
@@ -335,32 +325,32 @@ INSERT INTO servicio (id_servicio, nombre, id_categoria, precio_unitario, activo
 --  G: Pedro Villar (cliente 5) — CONFIRMADA, con acompañante
 -- =============================================================
 INSERT INTO reserva
-    (id_reserva, id_cliente, id_hotel, id_estado_reserva,
+    (id_reserva, id_cliente, id_hotel, estado,
      id_empleado, id_cliente_contacto, canal,
      fecha_reserva, fecha_checkin, fecha_checkout,
      fecha_limite_pago, pagado, fecha_pago, monto_total, observaciones) VALUES
-(1, 1, 1, 2, 3, NULL, 'DIRECTO',
+(1, 1, 1, 'CONFIRMADA', 3, NULL, 'DIRECTO',
    '2026-06-01 10:30:00', '2026-06-10', '2026-06-12',
    '2026-06-05', 1, '2026-06-03 14:00:00', 470.00, 'Cliente solicita cama king si disponible'),
-(2, 9, 1, 2, 3, NULL, 'TELEFONO',
+(2, 9, 1, 'CONFIRMADA', 3, NULL, 'TELEFONO',
    '2026-06-05 09:00:00', '2026-06-15', '2026-06-18',
    '2026-06-10', 1, '2026-06-08 11:00:00', 1350.00, 'Reserva corporativa ABC — 3 noches, 3 habitaciones'),
-(3, 2, 1, 1, 1, NULL, 'WEB',
+(3, 2, 1, 'PENDIENTE', 1, NULL, 'WEB',
    '2026-06-20 16:45:00', '2026-06-25', '2026-06-27',
    '2026-06-22', 0, NULL, 530.00, 'Suite 2 noches'),
-(4, 4, 1, 3, 1, NULL, 'WEB',
+(4, 4, 1, 'CANCELADA', 1, NULL, 'WEB',
    '2026-05-10 12:00:00', '2026-05-20', '2026-05-22',
    '2026-05-15', 0, NULL, 300.00, 'Cliente canceló por cambio de viaje'),
-(5, 7, 1, 4, 4, NULL, 'AGENCIA',
+(5, 7, 1, 'NO_SHOW', 4, NULL, 'AGENCIA',
    '2026-05-01 08:00:00', '2026-05-05', '2026-05-06',
    '2026-05-03', 1, '2026-05-02 10:00:00', 150.00, 'No se presentó (no-show), pago no reembolsable'),
-(6, 3, 1, 5, 4, NULL, 'DIRECTO',
+(6, 3, 1, 'FINALIZADA', 4, NULL, 'DIRECTO',
    '2026-04-01 09:00:00', '2026-04-10', '2026-04-13',
    '2026-04-05', 1, '2026-04-02 09:30:00', 750.00, 'Estadía finalizada, cuenta liquidada'),
-(7, 5, 1, 2, 3, NULL, 'WEB',
+(7, 5, 1, 'CONFIRMADA', 3, NULL, 'WEB',
    '2026-06-18 15:00:00', '2026-06-20', '2026-06-23',
    '2026-06-19', 1, '2026-06-18 15:20:00', 660.00, 'Doble para 2 personas, segundo huésped por confirmar'),
-(8, 6, 2, 2, 6, NULL, 'DIRECTO',
+(8, 6, 2, 'CONFIRMADA', 6, NULL, 'DIRECTO',
    '2026-06-17 11:00:00', '2026-06-19', '2026-06-22',
    '2026-06-18', 1, '2026-06-17 11:30:00', 705.00, 'Caso H: salida individual — el acompañante se retira antes que la titular');
 

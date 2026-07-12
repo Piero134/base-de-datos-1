@@ -102,11 +102,8 @@ entity TarifaHabitacion {
 }
 
 ' ---------- Reserva ----------
-entity EstadoReserva {
-  * nombre
-}
-
 entity Reserva {
+  * estado (PENDIENTE / CONFIRMADA / CANCELADA / NO_SHOW / FINALIZADA)
   * canal
   * fecha_checkin / checkout
   * monto_total
@@ -199,7 +196,6 @@ Hotel  ||--o{ Reserva             : recibe
 Cliente ||--o{ Reserva            : realiza / paga
 Cliente ||--o{ Reserva            : contacto alterno
 Empleado ||--o{ Reserva           : atiende
-EstadoReserva ||--o{ Reserva      : clasifica
 
 Reserva ||--o{ ReservaDetalle     : contiene
 TipoHabitacion ||--o{ ReservaDetalle : especifica

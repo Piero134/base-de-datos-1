@@ -153,18 +153,12 @@ entity "tarifa_habitacion" as tarifa_habitacion {
   precio_por_noche : DECIMAL(10,2)
 }
 
-entity "estado_reserva" as estado_reserva {
-  * id_estado_reserva : INT <<PK>>
-  --
-  nombre : VARCHAR(30)
-}
-
 entity "reserva" as reserva {
   * id_reserva : INT <<PK>>
   --
   # id_cliente : INT <<FK>>
   # id_hotel : INT <<FK>>
-  # id_estado_reserva : INT <<FK>>
+  estado : ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA')
   # id_empleado : INT <<FK>> (NULL)
   # id_cliente_contacto : INT <<FK>> (NULL)
   canal : ENUM('DIRECTO','WEB','TELEFONO','AGENCIA','OTA')
@@ -315,7 +309,6 @@ hotel           ||--o{ reserva                  : id_hotel
 cliente         ||--o{ reserva                  : id_cliente
 cliente         ||--o{ reserva                  : id_cliente_contacto
 empleado        ||--o{ reserva                  : id_empleado
-estado_reserva  ||--o{ reserva                  : id_estado_reserva
 
 reserva         ||--o{ reserva_detalle          : id_reserva
 tipo_habitacion ||--o{ reserva_detalle          : id_tipo_habitacion

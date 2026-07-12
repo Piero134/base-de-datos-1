@@ -58,7 +58,7 @@ SELECT
     v.nombre_reservante,
     v.tipo_persona,
     ht.nombre AS hotel,
-    er.nombre AS estado,
+    r.estado,
     r.canal,
     r.fecha_checkin,
     r.fecha_checkout,
@@ -69,8 +69,7 @@ SELECT
     r.fecha_limite_pago
 FROM reserva r
 JOIN vw_reservante v ON v.id_cliente = r.id_cliente
-JOIN hotel ht         ON ht.id_hotel = r.id_hotel
-JOIN estado_reserva er ON er.id_estado_reserva = r.id_estado_reserva;
+JOIN hotel ht         ON ht.id_hotel = r.id_hotel;
 
 -- -------------------------------------------------------------
 -- V4. vw_alojamientos_activos
@@ -202,7 +201,7 @@ LEFT JOIN (
     JOIN alojamiento a ON a.id_alojamiento = cs.id_alojamiento
     GROUP BY a.id_reserva
 ) cs_total ON cs_total.id_reserva = r.id_reserva
-WHERE r.id_estado_reserva = 2  -- CONFIRMADA
+WHERE r.estado = 'CONFIRMADA'
 GROUP BY ht.id_hotel, ht.nombre;
 
 -- -------------------------------------------------------------
@@ -219,7 +218,7 @@ SELECT
     RANK() OVER (ORDER BY SUM(r.monto_total) DESC) AS ranking
 FROM reserva r
 JOIN vw_reservante v ON v.id_cliente = r.id_cliente
-WHERE r.id_estado_reserva IN (2, 5) -- CONFIRMADA o FINALIZADA
+WHERE r.estado IN ('CONFIRMADA', 'FINALIZADA')
 GROUP BY v.id_cliente, v.nombre_reservante, v.tipo_persona;
 
 -- -------------------------------------------------------------

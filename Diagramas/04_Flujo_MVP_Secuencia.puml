@@ -33,7 +33,7 @@ APP --> REC : confirmación + resumen de costo
 CLI -> REC : realiza el pago del hospedaje
 REC -> APP : "Confirmar pago"
 APP -> DB : CALL sp_confirmar_pago(id_reserva)
-DB -> DB : trigger trg_reserva_confirmar (estado → CONFIRMADA)
+DB -> DB : UPDATE reserva SET estado = 'CONFIRMADA' (dentro del propio SP, sin trigger)
 DB --> APP : OK
 APP --> REC : reserva confirmada
 

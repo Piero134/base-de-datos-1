@@ -136,14 +136,21 @@ entity "reserva" as reserva {
   --
   # id_cliente : INT <<FK>>
   # id_hotel : INT <<FK>>
-  # id_estado_reserva : INT <<FK>>
+  estado : ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA')
   fecha_checkin : DATE
   fecha_checkout : DATE
   monto_total : DECIMAL(12,2)
   ..
   <<INDEX>> idx_reserva_cliente_fechas (id_cliente, fecha_checkin, fecha_checkout)
-  <<INDEX>> idx_reserva_hotel_estado (id_hotel, id_estado_reserva)
+  <<INDEX>> idx_reserva_hotel_estado (id_hotel, estado)
 }
+note right of reserva
+  estado es ENUM directo, no tabla catálogo (antes
+  estado_reserva): mismo patrón que habitacion.estado /
+  alojamiento.estado / danio.estado — dominio fijo y
+  estable, sin necesidad de administrarlo sin migración
+  (cada transición ya requiere lógica de negocio propia).
+end note
 note right of reserva
   <b>Candidata a particionamiento (a futuro):</b>
   PARTITION BY RANGE (YEAR(fecha_checkin))

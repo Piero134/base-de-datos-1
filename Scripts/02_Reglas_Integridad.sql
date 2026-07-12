@@ -106,9 +106,6 @@ ALTER TABLE reserva
     ADD CONSTRAINT fk_reserva_hotel
         FOREIGN KEY (id_hotel)           REFERENCES hotel         (id_hotel)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_reserva_estado
-        FOREIGN KEY (id_estado_reserva)  REFERENCES estado_reserva (id_estado_reserva)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
     ADD CONSTRAINT fk_reserva_empleado
         FOREIGN KEY (id_empleado)        REFERENCES empleado      (id_empleado)
         ON UPDATE CASCADE ON DELETE SET NULL,
@@ -244,10 +241,6 @@ ALTER TABLE tarifa_habitacion
     ADD CONSTRAINT uq_tarifa_plan_tipo
         UNIQUE (id_plan, id_tipo_habitacion);
 
--- Los nombres de estado de reserva no deben repetirse.
-ALTER TABLE estado_reserva
-    ADD CONSTRAINT uq_estado_reserva_nombre UNIQUE (nombre);
-
 -- Los nombres de cargo no deben repetirse.
 ALTER TABLE cargo_empleado
     ADD CONSTRAINT uq_cargo_nombre UNIQUE (nombre);
@@ -301,7 +294,7 @@ CREATE INDEX idx_reserva_cliente_fechas
 
 -- Búsqueda de reservas por hotel y estado
 CREATE INDEX idx_reserva_hotel_estado
-    ON reserva (id_hotel, id_estado_reserva);
+    ON reserva (id_hotel, estado);
 
 -- Búsqueda de alojamientos activos por habitación (clave para
 -- calcular disponibilidad por rango de fechas)

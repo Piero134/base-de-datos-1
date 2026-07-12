@@ -40,11 +40,11 @@ BEGIN
     END IF;
 
     INSERT INTO reserva (
-        id_cliente, id_hotel, id_estado_reserva, id_empleado,
+        id_cliente, id_hotel, estado, id_empleado,
         id_cliente_contacto, canal, fecha_checkin, fecha_checkout,
         fecha_limite_pago, pagado, monto_total, observaciones
     ) VALUES (
-        p_id_cliente, p_id_hotel, 1, p_id_empleado,
+        p_id_cliente, p_id_hotel, 'PENDIENTE', p_id_empleado,
         p_id_cliente_contacto, p_canal, p_fecha_checkin, p_fecha_checkout,
         p_fecha_limite_pago, 0, 0.00, p_observaciones
     );
@@ -128,9 +128,8 @@ END$$
 
 -- -------------------------------------------------------------
 -- SP 3: sp_confirmar_pago
--- Confirma el pago total de una reserva. El trigger
--- trg_reserva_confirmar (06_Triggers.sql) descuenta el stock de
--- referencia y cambia el estado de la reserva a CONFIRMADA.
+-- Confirma el pago total de una reserva y cambia su estado a
+-- CONFIRMADA
 -- -------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_confirmar_pago$$
 CREATE PROCEDURE sp_confirmar_pago(
@@ -148,7 +147,7 @@ BEGIN
     UPDATE reserva
     SET pagado = 1,
         fecha_pago = NOW(),
-        id_estado_reserva = 2  -- CONFIRMADA
+        estado = 'CONFIRMADA'
     WHERE id_reserva = p_id_reserva;
 END$$
 
@@ -249,6 +248,16 @@ BEGIN
         SELECT id_huesped INTO v_id_huesped_preasignado
         FROM detalle_huesped_reserva
         WHERE id_detalle_huesped = p_id_detalle_huesped;
+
+        IF v_id_huesped_preasignado IS NOT NULL AND v_id_huesped_preasignado != p_id_huesped THEN
+            UPDATE reserva r
+            JOIN reserva_detalle rd ON rd.id_reserva = r.id_reserva
+            JOIN detalle_huesped_reserva dhr ON dhr.id_detalle_reserva = rd.id_detalle_reserva
+            SET r.observaciones = CONCAT_WS('\n', r.observaciones,
+                CONCAT('Cambio en check-in: El cupo ', p_id_detalle_huesped, ' fue ocupado por huésped ID ', p_id_huesped, ' en lugar del pre-asignado ID ', v_id_huesped_preasignado))
+            WHERE dhr.id_detalle_huesped = p_id_detalle_huesped;
+        END IF;
+
     END IF;
 
     INSERT INTO huesped_alojamiento (id_alojamiento, id_huesped, id_detalle_huesped, es_titular)

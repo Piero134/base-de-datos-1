@@ -4,7 +4,7 @@ ESTADO_BADGE = {
     "RESERVADA": "badge-warning",
     "OCUPADA": "badge-danger",
     "LIMPIEZA": "badge-warning",
-    # estado_reserva.nombre
+    # reserva.estado
     "PENDIENTE": "badge-warning",
     "CONFIRMADA": "badge-info",
     "CANCELADA": "badge-danger",

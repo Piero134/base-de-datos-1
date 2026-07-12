@@ -167,11 +167,16 @@ el DDL ejecutable en `Scripts/01_Creacion_Tablas.sql` (creación) y `Scripts/02_
 Decisiones de implementación física en MySQL 8.0:
 
 - Charset `utf8mb4` / collation `utf8mb4_spanish_ci` a nivel de base de datos completa.
-- `ENUM` para dominios cerrados y estables (`estado` de habitación/alojamiento/daño/cuenta, `canal`,
-  `metodo_pago`, `genero`, `tipo` de persona) en vez de tablas catálogo adicionales, cuando el
-  dominio es fijo y no requiere atributos propios; se usan tablas catálogo (`estado_reserva`,
-  `tipo_documento`, `cargo_empleado`, `categoria_servicio`) cuando el dominio sí necesita nombre
-  descriptivo administrable sin migración de esquema.
+- `ENUM` para dominios cerrados y estables (`estado` de reserva/habitación/alojamiento/daño/cuenta,
+  `canal`, `metodo_pago`, `genero`, `tipo` de persona) en vez de tablas catálogo adicionales,
+  cuando el dominio es fijo y no requiere atributos propios; se usan tablas catálogo
+  (`tipo_documento`, `cargo_empleado`, `categoria_servicio`) cuando el dominio sí necesita nombre
+  descriptivo administrable sin migración de esquema. `reserva.estado` empezó como tabla catálogo
+  (`estado_reserva`) y se corrigió a `ENUM` directo: el código ya la trataba como un enum de todos
+  modos (comparaba `id_estado_reserva` contra literales numéricos con un comentario al lado, ej.
+  `= 2 -- CONFIRMADA`, en vez de nombres legibles), y cada transición de estado ya requiere lógica
+  de negocio propia en un procedimiento — "agregar un estado sin migración" nunca fue una ventaja
+  real para este caso, a diferencia de un catálogo genuinamente abierto como `categoria_servicio`.
 - Claves foráneas declaradas explícitamente en `02_Reglas_Integridad.sql`, separadas del DDL base,
   para poder crear primero todas las tablas sin preocuparse por el orden de dependencias y luego
   cerrar la integridad referencial en un segundo paso auditable.

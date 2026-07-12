@@ -187,19 +187,22 @@ CREATE TABLE tarifa_habitacion (
 
 -- -------------------------------------------------------------
 --  7. RESERVA
+--     estado: ENUM directo (no tabla catálogo) — mismo patrón que
+--     habitacion.estado/alojamiento.estado/danio.estado. El dominio
+--     es fijo y estable (ciclo de vida cerrado, cada transición ya
+--     requiere lógica de negocio propia en un procedimiento/trigger,
+--     así que "agregar un estado sin migración" nunca fue una
+--     ventaja real); antes era estado_reserva (tabla catálogo), pero
+--     el propio código ya la trataba como un enum, comparando
+--     id_estado_reserva contra literales numéricos con un comentario
+--     al lado (ej. "= 2 -- CONFIRMADA") en vez de nombres legibles.
 -- -------------------------------------------------------------
-CREATE TABLE estado_reserva (
-    id_estado_reserva   INT           NOT NULL AUTO_INCREMENT,
-    nombre              VARCHAR(30)   NOT NULL
-        COMMENT 'PENDIENTE | CONFIRMADA | CANCELADA | NO_SHOW | FINALIZADA',
-    CONSTRAINT pk_estado_reserva PRIMARY KEY (id_estado_reserva)
-) COMMENT = 'Estados del ciclo de vida de una reserva';
-
 CREATE TABLE reserva (
     id_reserva          INT           NOT NULL AUTO_INCREMENT,
     id_cliente          INT           NOT NULL COMMENT 'Quien reserva / paga',
     id_hotel            INT           NOT NULL,
-    id_estado_reserva   INT           NOT NULL,
+    estado              ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA')
+                        NOT NULL DEFAULT 'PENDIENTE',
     id_empleado         INT           NULL     COMMENT 'Empleado que tomó la reserva',
     id_cliente_contacto INT           NULL     COMMENT 'Contacto corporativo alternativo',
     canal               ENUM('DIRECTO','WEB','TELEFONO','AGENCIA','OTA') NOT NULL,
