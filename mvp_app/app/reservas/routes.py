@@ -106,18 +106,27 @@ def cliente_nuevo():
     draft_reserva = _draft_reserva_desde_form(request.form)
 
     if tipo == "NATURAL":
-        ids = execute_transaction(
-            [("INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', %s, %s)", (telefono, email))]
+        existente = query(
+            "SELECT id_persona FROM persona_natural WHERE id_tipo_documento = %s AND numero_documento = %s",
+            (request.form["id_tipo_documento"], request.form["numero_documento"]),
         )
-        id_persona = ids[0]
-        ok, lastrowids = ejecutar_con_flash(
-            execute_transaction,
-            [
+        if existente:
+            # La persona ya existe (p.ej. ya fue huésped antes): se reutiliza
+            # su id_persona en vez de intentar crear un duplicado que
+            # chocaría con uq_pnatural_documento.
+            statements = [
+                (
+                    "INSERT INTO cliente (id_persona, observaciones) VALUES (%s, %s)",
+                    (existente[0]["id_persona"], request.form.get("observaciones") or None),
+                )
+            ]
+        else:
+            statements = [
+                ("INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', %s, %s)", (telefono, email)),
                 (
                     "INSERT INTO persona_natural (id_persona, id_tipo_documento, numero_documento, nombres, apellidos, fecha_nacimiento, genero, nacionalidad) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s)",
                     (
-                        id_persona,
                         request.form["id_tipo_documento"],
                         request.form["numero_documento"],
                         request.form["nombres"],
@@ -127,23 +136,32 @@ def cliente_nuevo():
                         request.form["nacionalidad"],
                     ),
                 ),
-                ("INSERT INTO cliente (id_persona, observaciones) VALUES (%s, %s)", (id_persona, request.form.get("observaciones") or None)),
-            ],
+                (
+                    "INSERT INTO cliente (id_persona, observaciones) VALUES (LAST_INSERT_ID(), %s)",
+                    (request.form.get("observaciones") or None,),
+                ),
+            ]
+        ok, lastrowids = ejecutar_con_flash(
+            execute_transaction,
+            statements,
             on_success_msg="Cliente natural creado correctamente. Continúa completando la reserva.",
         )
     else:
-        ids = execute_transaction(
-            [("INSERT INTO persona (tipo, telefono, email) VALUES ('JURIDICA', %s, %s)", (telefono, email))]
-        )
-        id_persona = ids[0]
-        ok, lastrowids = ejecutar_con_flash(
-            execute_transaction,
-            [
+        existente = query("SELECT id_persona FROM persona_juridica WHERE ruc = %s", (request.form["ruc"],))
+        if existente:
+            statements = [
+                (
+                    "INSERT INTO cliente (id_persona, observaciones) VALUES (%s, %s)",
+                    (existente[0]["id_persona"], request.form.get("observaciones") or None),
+                )
+            ]
+        else:
+            statements = [
+                ("INSERT INTO persona (tipo, telefono, email) VALUES ('JURIDICA', %s, %s)", (telefono, email)),
                 (
                     "INSERT INTO persona_juridica (id_persona, ruc, razon_social, nombre_comercial, representante_legal, giro_negocio) "
-                    "VALUES (%s, %s, %s, %s, %s, %s)",
+                    "VALUES (LAST_INSERT_ID(), %s, %s, %s, %s, %s)",
                     (
-                        id_persona,
                         request.form["ruc"],
                         request.form["razon_social"],
                         request.form.get("nombre_comercial") or None,
@@ -151,8 +169,14 @@ def cliente_nuevo():
                         request.form.get("giro_negocio") or None,
                     ),
                 ),
-                ("INSERT INTO cliente (id_persona, observaciones) VALUES (%s, %s)", (id_persona, request.form.get("observaciones") or None)),
-            ],
+                (
+                    "INSERT INTO cliente (id_persona, observaciones) VALUES (LAST_INSERT_ID(), %s)",
+                    (request.form.get("observaciones") or None,),
+                ),
+            ]
+        ok, lastrowids = ejecutar_con_flash(
+            execute_transaction,
+            statements,
             on_success_msg="Cliente jurídico (empresa) creado correctamente. Continúa completando la reserva.",
         )
 
@@ -164,7 +188,7 @@ def cliente_nuevo():
             **_contexto_nuevo(),
         )
 
-    id_cliente_nuevo = lastrowids[1]
+    id_cliente_nuevo = lastrowids[-1]
     return render_template(
         "reservas/nuevo.html",
         seleccion_reserva={**draft_reserva, "id_cliente": id_cliente_nuevo},
