@@ -77,20 +77,28 @@ asignado a ese empleado:
 ### UC-02: Confirmar pago de reserva
 - **Actor:** Recepcionista o Caja
 - **Flujo principal:** el sistema llama `sp_confirmar_pago(id_reserva)`; la reserva pasa a `CONFIRMADA`.
-- **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada.
+- **Postcondición:** `reserva.pagado = 1`, `fecha_pago` registrada. A partir de aquí, `sp_agregar_detalle_reserva` rechaza cualquier intento de agregar una línea nueva a esta reserva (una reserva pagada ya no cambia de alcance).
 - **Consulta relacionada:** vista `vw_reservas_detalle` filtrando `pagado = 0` (reservas pendientes de pago, útil también para mostrar el caso contrario ya resuelto).
 
-### UC-03: Pre-asignar huéspedes (reserva corporativa)
+### UC-03: Asignar huéspedes a una reserva
 - **Actor:** Recepcionista
-- **Precondición:** reserva con detalle ya creado, cliente de tipo `JURIDICA`.
-- **Flujo principal:** para cada línea de reserva, se reserva un cupo insertando en
-  `detalle_huesped_reserva`, indicando qué huésped (empleado de la empresa) lo ocupará **o
-  dejándolo sin nombre todavía** (`id_huesped = NULL`) si la empresa aún no lo sabe — se resuelve
-  después con un `UPDATE` (misma operación para identificar un cupo por primera vez o para
-  sustituir a último momento a quien ya estaba asignado).
-- **Postcondición:** pre-asignación (identificada o no) registrada, disponible para comparar luego
-  contra el check-in real.
-- **Consulta relacionada:** `vw_reservas_corporativas`, `vw_preasignacion_vs_checkin`.
+- **Precondición:** reserva con detalle ya creado. Aplica a toda reserva (natural o corporativa), no solo a las de cliente `JURIDICA`.
+- **Flujo principal:**
+  1. Por cada línea de la reserva (tipo de habitación x cantidad), el sistema la subdivide en
+     habitaciones de `capacidad_base` cupos cada una (cálculo en Python —
+     `app/asignacion_huespedes.py:construir_grid_reserva` —, no persistido: se ordena por
+     `id_detalle_huesped` y se agrupa de `capacidad_base` en `capacidad_base`).
+  2. El recepcionista edita, en una sola tabla, todos los cupos de una línea a la vez: asigna un
+     huésped a cada cupo (o lo deja vacío/sin identificar) y marca un titular por habitación.
+  3. Al guardar (una línea completa por envío), el sistema valida que **cada habitación con al
+     menos un huésped tenga exactamente un titular marcado**; si falta, rechaza el guardado
+     completo de esa línea sin persistir nada. Si pasa la validación, inserta/actualiza
+     `detalle_huesped_reserva` dentro de una única transacción.
+- **Flujo alterno:** una habitación que ya tiene check-in (existe un `alojamiento` para ese cupo)
+  se muestra de solo lectura — sus huéspedes ya no se editan desde esta pantalla.
+- **Postcondición:** asignación (identificada o no) registrada en `detalle_huesped_reserva`,
+  disponible para comparar luego contra el check-in real.
+- **Consulta relacionada:** `vw_preasignacion_vs_checkin`.
 
 ### UC-04: Realizar check-in
 - **Actor:** Recepcionista
