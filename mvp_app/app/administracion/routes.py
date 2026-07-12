@@ -5,7 +5,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import generate_password_hash
 
 from app.auth.routes import requiere_rol
-from app.db import call_procedure, execute, query
+from app.db import call_procedure, execute, execute_transaction, query
 from app.errors import ejecutar_con_flash
 
 bp = Blueprint("administracion", __name__, url_prefix="/admin", template_folder="templates")
@@ -25,22 +25,24 @@ def _crear_admin_de_hotel(id_hotel_nuevo, nombre_hotel):
     """Se llama justo después de crear un hotel (solo alcance general): le
     da un perfil de administrador propio de inmediato, para que el hotel
     sea usable desde el día uno sin depender de que alguien se lo cree
-    manualmente después. Encadena 2 INSERT secuenciales (mismo patrón no
-    atómico que reservas.cliente_nuevo() usa para persona -> persona_natural)."""
+    manualmente después. empleado + usuario se insertan en una sola
+    transacción atómica."""
     id_cargo_admin = query("SELECT id_cargo FROM cargo_empleado WHERE nombre = 'Administrador de Hotel'")[0]["id_cargo"]
-    ok, id_empleado_nuevo = ejecutar_con_flash(
-        execute,
-        "INSERT INTO empleado (id_hotel, id_cargo, nombres, apellidos, activo) VALUES (%s, %s, 'Administrador', %s, 1)",
-        (id_hotel_nuevo, id_cargo_admin, nombre_hotel),
-    )
-    if not ok:
-        return
     username = _username_desde_hotel(nombre_hotel)
     password_temporal = secrets.token_urlsafe(6)
     ejecutar_con_flash(
-        execute,
-        "INSERT INTO usuario (id_empleado, username, password_hash, rol, id_hotel, activo) VALUES (%s, %s, %s, 'ADMINISTRADOR', %s, 1)",
-        (id_empleado_nuevo, username, generate_password_hash(password_temporal), id_hotel_nuevo),
+        execute_transaction,
+        [
+            (
+                "INSERT INTO empleado (id_hotel, id_cargo, nombres, apellidos, activo) VALUES (%s, %s, 'Administrador', %s, 1)",
+                (id_hotel_nuevo, id_cargo_admin, nombre_hotel),
+            ),
+            (
+                "INSERT INTO usuario (id_empleado, username, password_hash, rol, id_hotel, activo) "
+                "VALUES (LAST_INSERT_ID(), %s, %s, 'ADMINISTRADOR', %s, 1)",
+                (username, generate_password_hash(password_temporal), id_hotel_nuevo),
+            ),
+        ],
         on_success_msg=f"Hotel creado. Usuario administrador: {username} / contraseña temporal: {password_temporal} (anótala, no se vuelve a mostrar).",
     )
 
