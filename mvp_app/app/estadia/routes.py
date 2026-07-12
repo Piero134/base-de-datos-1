@@ -108,9 +108,12 @@ def checkin_listado():
 def _contexto_checkin_reserva(id_reserva):
     """Contexto de la pantalla de check-in: reusa la misma tabla de
     asignación de huéspedes de reservas (construir_grid_reserva), agrupada
-    por habitación dentro de cada línea. El check-in se hace por habitación
-    completa (no huésped por huésped): una habitación solo puede recibir
-    check-in si ya tiene su titular asignado en la pantalla de reservas."""
+    por habitación dentro de cada línea. El check-in es individual por
+    huésped (igual que el checkout ya lo es en ver.html): el primer
+    check-in de una habitación crea el alojamiento (exige elegir la
+    habitación física y que ya tenga titular asignado); los siguientes
+    huéspedes de esa misma habitación solo se adjuntan al alojamiento ya
+    creado, uno a la vez."""
     if not _reserva_de_mi_hotel(id_reserva):
         return None
     reserva = query("SELECT * FROM vw_reservas_detalle WHERE id_reserva = %s", (id_reserva,))
@@ -123,8 +126,7 @@ def _contexto_checkin_reserva(id_reserva):
     habitaciones_por_tipo = {}
     completo = bool(lineas)
     for linea in lineas:
-        if any(not h["checkin_hecho"] for h in linea["habitaciones"]):
-            completo = False
+        if any(h["id_alojamiento"] is None for h in linea["habitaciones"]):
             # Disponibilidad por ocupación real (¿hay un alojamiento ACTIVO
             # en esa habitación ahora?), no por el campo cacheado
             # habitacion.estado — ver sp_realizar_checkin.
@@ -142,6 +144,9 @@ def _contexto_checkin_reserva(id_reserva):
                 """,
                 (id_hotel, linea["id_tipo_habitacion"]),
             )
+        for hab in linea["habitaciones"]:
+            if any(s["id_huesped"] and not s["estadia"] for s in hab["slots"]):
+                completo = False
 
     return {
         "reserva": reserva[0],
@@ -165,50 +170,61 @@ def checkin_reserva(id_reserva):
 @bp.route("/checkin", methods=["POST"])
 @requiere_rol("RECEPCION", "ADMINISTRADOR")
 def checkin_post():
+    """Check-in individual: registra UN huésped ya asignado a una
+    habitación (igual de individual que la salida en ver.html). Si es el
+    primer huésped de esa habitación, de paso crea el alojamiento (exige
+    elegir la habitación física y que ya haya titular); si la habitación
+    ya tiene alojamiento, solo se adjunta este huésped al que ya existe."""
     id_reserva = request.form["id_reserva"]
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("estadia.checkin_listado"))
     id_detalle_reserva = int(request.form["id_detalle_reserva"])
     n_habitacion = int(request.form["n_habitacion"])
-    id_habitacion = request.form["id_habitacion"]
+    id_detalle_huesped = int(request.form["id_detalle_huesped"])
 
     linea = next(
         (l for l in construir_grid_reserva(id_reserva, con_estado_estadia=True) if l["id_detalle_reserva"] == id_detalle_reserva),
         None,
     )
     hab = next((h for h in linea["habitaciones"] if h["n"] == n_habitacion), None) if linea else None
-    if hab is None:
-        flash("Habitación de la reserva no encontrada.", "danger")
+    slot = next((s for s in hab["slots"] if s["id_detalle_huesped"] == id_detalle_huesped), None) if hab else None
+    if slot is None or not slot["id_huesped"]:
+        flash("Cupo no encontrado.", "danger")
         return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
-    if hab["checkin_hecho"]:
-        flash("Esta habitación ya tiene check-in registrado.", "danger")
-        return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
-    if not hab["tiene_titular"]:
-        flash("Esta habitación todavía no tiene un titular asignado; complétalo en la asignación de huéspedes antes del check-in.", "danger")
+    if slot["estadia"]:
+        flash("Este huésped ya tiene check-in registrado.", "danger")
         return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
 
-    huespedes_habitacion = [
-        (slot["id_huesped"], slot["id_detalle_huesped"], 1 if slot["es_titular"] else 0)
-        for slot in hab["slots"]
-        if slot["id_huesped"]
-    ]
+    es_titular = 1 if slot["es_titular"] else 0
 
-    def orquestar(ejecutar):
-        out_checkin = ejecutar(
-            "sp_realizar_checkin",
-            (id_reserva, id_detalle_reserva, id_habitacion, session["id_empleado"], 0),
+    if hab["id_alojamiento"] is None:
+        if not hab["tiene_titular"]:
+            flash("Esta habitación todavía no tiene un titular asignado; complétalo en la asignación de huéspedes antes del check-in.", "danger")
+            return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
+        id_habitacion = request.form["id_habitacion"]
+
+        def orquestar(ejecutar):
+            out_checkin = ejecutar(
+                "sp_realizar_checkin",
+                (id_reserva, id_detalle_reserva, id_habitacion, session["id_empleado"], 0),
+            )
+            id_alojamiento = out_checkin[-1]
+            ejecutar("sp_agregar_huesped_alojamiento", (id_alojamiento, slot["id_huesped"], es_titular, id_detalle_huesped))
+            return id_alojamiento
+
+        ejecutar_con_flash(
+            call_procedures_en_transaccion,
+            orquestar,
+            on_success_msg="Check-in registrado.",
         )
-        id_alojamiento = out_checkin[-1]
-        for id_huesped, id_detalle_huesped, es_titular in huespedes_habitacion:
-            ejecutar("sp_agregar_huesped_alojamiento", (id_alojamiento, id_huesped, es_titular, id_detalle_huesped))
-        return id_alojamiento
-
-    ejecutar_con_flash(
-        call_procedures_en_transaccion,
-        orquestar,
-        on_success_msg="Check-in registrado con todos los huéspedes de la habitación. Continúa con las habitaciones pendientes de esta reserva.",
-    )
+    else:
+        ejecutar_con_flash(
+            call_procedure,
+            "sp_agregar_huesped_alojamiento",
+            (hab["id_alojamiento"], slot["id_huesped"], es_titular, id_detalle_huesped),
+            on_success_msg="Check-in registrado.",
+        )
     return redirect(url_for("estadia.checkin_reserva", id_reserva=id_reserva))
 
 

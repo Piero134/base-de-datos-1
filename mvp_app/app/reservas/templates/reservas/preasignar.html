@@ -5,7 +5,7 @@
 <div class="page-header">
   {{ crumbs.breadcrumb(pasos) }}
   <h1>Asignación de huéspedes</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación de esta reserva (o resérvale el cupo sin nombre todavía). Cada habitación con al menos un huésped necesita un titular. Se puede editar hasta el check-in; una vez hecho el check-in de una habitación, sus huéspedes quedan fijos.</p>
+  <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación de esta reserva (o resérvale el cupo sin nombre todavía). Cada habitación con al menos un huésped necesita un titular. Se puede editar hasta el check-in; el check-in es individual, así que cada huésped queda fijo apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.</p>
 </div>
 
 {% if not lineas %}
@@ -21,17 +21,15 @@
       <thead><tr><th>Habitación</th><th>Cupo</th><th>Huésped</th><th>Titular</th></tr></thead>
       <tbody>
       {% for hab in l.habitaciones %}
+        {% set titular_ya_fijado = hab.slots | selectattr('estadia') | selectattr('es_titular') | list %}
         {% for slot in hab.slots %}
         <tr>
           {% if loop.first %}
-          <td rowspan="{{ hab.slots|length }}">
-            {{ l.tipo_habitacion }} {{ hab.n }}
-            {% if hab.checkin_hecho %}<br><span class="badge badge-good">✓ Check-in hecho</span>{% endif %}
-          </td>
+          <td rowspan="{{ hab.slots|length }}">{{ l.tipo_habitacion }} {{ hab.n }}</td>
           {% endif %}
           <td>{{ loop.index }}</td>
-          {% if hab.checkin_hecho %}
-          <td>{{ slot.nombre or '—' }}</td>
+          {% if slot.estadia %}
+          <td>{{ slot.nombre or '—' }} <span class="badge badge-good">✓ check-in</span></td>
           <td>{{ 'Sí' if slot.es_titular else '' }}</td>
           {% else %}
           <td>
@@ -43,7 +41,9 @@
             </select>
           </td>
           <td>
+            {% if not titular_ya_fijado %}
             <input type="radio" name="titular_{{ hab.n }}" value="{{ loop.index }}" {% if slot.es_titular %}checked{% endif %} style="width:auto">
+            {% endif %}
           </td>
           {% endif %}
         </tr>
@@ -52,9 +52,7 @@
       </tbody>
     </table>
     </div>
-    {% if l.habitaciones|selectattr('checkin_hecho', 'equalto', False)|list %}
     <button type="submit">Guardar asignación de esta línea</button>
-    {% endif %}
   </form>
 </div>
 {% endfor %}

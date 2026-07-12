@@ -283,6 +283,10 @@ def pago(id_reserva):
     if not reserva:
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
+    if reserva[0]["pagado"]:
+        # Ya no hay nada que confirmar en esta pantalla; se salta directo al
+        # siguiente paso real del flujo.
+        return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
     pasos = construir_pasos_reserva(id_reserva, "pago")
     return render_template("reservas/pago.html", reserva=reserva[0], pasos=pasos)
 
@@ -340,13 +344,14 @@ def preasignar(id_reserva):
 @requiere_rol("RECEPCION", "ADMINISTRADOR")
 def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
     """Guarda de una vez toda una línea de la tabla de asignación (todas sus
-    habitaciones/cupos): por cada habitación sin check-in todavía, valida
-    que si tiene algún huésped asignado también tenga un titular marcado
-    (obligatorio, una habitación con gente no puede quedar sin titular), y
-    recién si toda la línea es válida guarda los cambios en una sola
-    transacción. Las habitaciones que ya tienen check-in (checkin_hecho)
-    se ignoran por completo: una vez hecho el check-in, quién se hospeda
-    ahí ya no se edita desde esta pantalla."""
+    habitaciones/cupos): por cada habitación, valida que si tiene algún
+    huésped asignado también tenga un titular marcado (obligatorio, una
+    habitación con gente no puede quedar sin titular), y recién si toda la
+    línea es válida guarda los cambios en una sola transacción. El check-in
+    es individual por huésped (ver estadia.checkin_post), así que el
+    bloqueo también es por cupo: un cupo con check-in ya hecho no se toca,
+    pero sus compañeros de habitación que todavía no hicieron check-in
+    siguen siendo editables."""
     if not _reserva_de_mi_hotel(id_reserva):
         flash("Reserva no encontrada.", "danger")
         return redirect(url_for("reservas.listado"))
@@ -361,23 +366,29 @@ def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
 
     statements = []
     for hab in linea["habitaciones"]:
-        if hab["checkin_hecho"]:
-            continue
         n = hab["n"]
+        # Si el titular de esta habitación ya hizo check-in, su cupo queda
+        # bloqueado y el titular ya está fijado: no hace falta (ni se debe
+        # permitir) marcar otro entre los cupos todavía editables.
+        titular_ya_fijado = any(s["estadia"] and s["es_titular"] for s in hab["slots"])
+        titular_pos = None if titular_ya_fijado else (request.form.get(f"titular_{n}") or None)
+
         nuevos = {}
         for pos, slot in enumerate(hab["slots"], start=1):
+            if slot["estadia"]:
+                continue  # cupo con check-in ya hecho: no se edita
             valor = request.form.get(f"huesped_{n}_{pos}") or None
             nuevos[pos] = (slot["id_detalle_huesped"], int(valor) if valor else None)
 
-        titular_pos = request.form.get(f"titular_{n}") or None
         ocupados = [pos for pos, (_, id_huesped) in nuevos.items() if id_huesped]
 
-        if titular_pos and int(titular_pos) not in ocupados:
-            flash(f"Habitación {n} de {linea['tipo_habitacion']}: el titular marcado no tiene huésped asignado.", "danger")
-            return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
-        if ocupados and not titular_pos:
-            flash(f"Habitación {n} de {linea['tipo_habitacion']}: falta marcar un titular.", "danger")
-            return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+        if not titular_ya_fijado:
+            if titular_pos and int(titular_pos) not in ocupados:
+                flash(f"Habitación {n} de {linea['tipo_habitacion']}: el titular marcado no tiene huésped asignado.", "danger")
+                return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
+            if ocupados and not titular_pos:
+                flash(f"Habitación {n} de {linea['tipo_habitacion']}: falta marcar un titular.", "danger")
+                return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
 
         for pos, (id_detalle_huesped, id_huesped) in nuevos.items():
             es_titular = 1 if titular_pos and int(titular_pos) == pos else 0
@@ -397,7 +408,7 @@ def guardar_asignacion_linea(id_reserva, id_detalle_reserva):
                 )
 
     if not statements:
-        flash("No hubo cambios para guardar (o la línea ya tiene todas sus habitaciones con check-in).", "warning")
+        flash("No hubo cambios para guardar (o todos los cupos de esta línea ya tienen check-in).", "warning")
         return redirect(url_for("reservas.preasignar", id_reserva=id_reserva))
 
     ejecutar_con_flash(execute_transaction, statements, on_success_msg="Asignación de huéspedes guardada.")
