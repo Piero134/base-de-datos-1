@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Ocupación mensual{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ocupación mensual</h1>
+  <p class="subtitle">Estadías iniciadas (check-in real) por mes, con variación contra el mes anterior. No es una tasa de ocupación continua — es el conteo de check-ins de ese mes.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Mes</th><th>Estadías iniciadas</th><th>Mes anterior</th><th>Variación</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.mes }}</td>
+    <td>{{ f.estadias_iniciadas }}</td>
+    <td>{{ f.mes_anterior if f.mes_anterior is not none else '—' }}</td>
+    <td>
+      {% if f.variacion is none %}
+      <span class="badge badge-neutral">Sin dato previo</span>
+      {% elif f.variacion > 0 %}
+      <span class="badge badge-good">▲ +{{ f.variacion }}</span>
+      {% elif f.variacion < 0 %}
+      <span class="badge badge-danger">▼ {{ f.variacion }}</span>
+      {% else %}
+      <span class="badge badge-neutral">— 0</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay estadías con check-in real para calcular ocupación mensual.</p>
+{% endif %}
+{% endblock %}

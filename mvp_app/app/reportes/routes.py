@@ -31,3 +31,23 @@ def ingresos():
 def ranking():
     filas = query("SELECT * FROM vw_ranking_clientes ORDER BY ranking")
     return render_template("reportes/ranking.html", filas=filas)
+
+
+@bp.route("/ingresos-mensuales")
+@requiere_rol("GERENCIA", "ADMINISTRADOR")
+def ingresos_mensuales():
+    filas = query(
+        "SELECT * FROM vw_ingresos_mensuales WHERE id_hotel = %s ORDER BY mes",
+        (session["id_hotel"],),
+    )
+    return render_template("reportes/ingresos_mensuales.html", filas=filas)
+
+
+@bp.route("/ocupacion-mensual")
+@requiere_rol("GERENCIA", "ADMINISTRADOR")
+def ocupacion_mensual():
+    filas = query(
+        "SELECT * FROM vw_ocupacion_mensual WHERE id_hotel = %s ORDER BY mes",
+        (session["id_hotel"],),
+    )
+    return render_template("reportes/ocupacion_mensual.html", filas=filas)

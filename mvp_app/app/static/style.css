@@ -330,6 +330,31 @@ button.btn-abrir-modal { margin-bottom: 16px; }
 }
 .kpi-card .kpi-value { font-size: 1.7rem; font-weight: 700; color: var(--color-primary-dark); font-variant-numeric: tabular-nums; }
 .kpi-card .kpi-label { font-size: 0.82rem; color: var(--color-text-muted); margin-top: 2px; }
+.kpi-card .kpi-delta { font-size: 0.82rem; font-weight: 600; margin-top: 4px; }
+.kpi-card .kpi-delta.up { color: var(--color-success-border); }
+.kpi-card .kpi-delta.down { color: var(--color-danger-border); }
+.kpi-card .kpi-delta.flat { color: var(--color-text-muted); }
+
+/* Barra de ocupación (dashboard de Gerencia): sin librería de gráficos,
+   solo un div con el ancho en % — consistente con el resto del proyecto,
+   que no depende de JS externo para nada. */
+.progress-bar {
+  background: var(--color-surface-2);
+  border-radius: var(--radius);
+  height: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-bar-fill { background: var(--color-accent); height: 100%; }
+
+.mini-list { list-style: none; padding: 0; margin: 0; }
+.mini-list li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+.mini-list li:last-child { border-bottom: none; }
+.mini-list .mini-list-rank { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 
 .quick-links { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
 .quick-links a {

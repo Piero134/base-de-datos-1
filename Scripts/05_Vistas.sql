@@ -317,3 +317,70 @@ JOIN hotel ht         ON ht.id_hotel = h.id_hotel
 JOIN vw_reservante v  ON v.id_cliente = r.id_cliente
 WHERE a.estado = 'ACTIVO'
   AND r.fecha_checkout <= CURDATE();
+
+-- -------------------------------------------------------------
+-- V15. vw_ingresos_mensuales
+-- A diferencia de vw_ingresos_por_hotel (un único acumulado desde
+-- siempre), esta desglosa el ingreso por hospedaje mes a mes según
+-- fecha_checkin, y usa funciones de ventana para el acumulado
+-- corrido del año y la comparación contra el mes anterior:
+-- SUM(...) OVER para el acumulado, LAG(...) OVER para el mes previo.
+-- La agregación por mes va en una subconsulta porque en MySQL una
+-- función de ventana no puede envolver directamente a otra función
+-- de agregado dentro del mismo SELECT con GROUP BY.
+-- -------------------------------------------------------------
+CREATE OR REPLACE VIEW vw_ingresos_mensuales AS
+SELECT
+    id_hotel,
+    hotel,
+    mes,
+    ingreso_mes,
+    SUM(ingreso_mes) OVER (PARTITION BY id_hotel ORDER BY mes) AS ingreso_acumulado_anio,
+    LAG(ingreso_mes) OVER (PARTITION BY id_hotel ORDER BY mes) AS ingreso_mes_anterior,
+    ROUND(
+        (ingreso_mes - LAG(ingreso_mes) OVER (PARTITION BY id_hotel ORDER BY mes))
+        / NULLIF(LAG(ingreso_mes) OVER (PARTITION BY id_hotel ORDER BY mes), 0) * 100,
+        1
+    ) AS variacion_pct
+FROM (
+    SELECT
+        ht.id_hotel,
+        ht.nombre AS hotel,
+        DATE_FORMAT(r.fecha_checkin, '%Y-%m') AS mes,
+        SUM(r.monto_total) AS ingreso_mes
+    FROM reserva r
+    JOIN hotel ht ON ht.id_hotel = r.id_hotel
+    WHERE r.estado IN ('CONFIRMADA', 'FINALIZADA')
+    GROUP BY ht.id_hotel, ht.nombre, DATE_FORMAT(r.fecha_checkin, '%Y-%m')
+) ingresos_por_mes;
+
+-- -------------------------------------------------------------
+-- V16. vw_ocupacion_mensual
+-- Estadías realmente iniciadas (check-in real) por mes, con la
+-- variación contra el mes anterior vía LAG(...) OVER — a diferencia
+-- de vw_ocupacion_hotel (foto del estado actual de las habitaciones,
+-- sin ninguna dimensión de tiempo), esto sí es una serie temporal,
+-- aunque acotada a lo que hay en fecha_checkin_real (no hay una
+-- tabla de snapshots diarios de ocupación, así que "estadías
+-- iniciadas por mes" es la mejor aproximación disponible con los
+-- datos que ya se registran).
+-- -------------------------------------------------------------
+CREATE OR REPLACE VIEW vw_ocupacion_mensual AS
+SELECT
+    id_hotel,
+    hotel,
+    mes,
+    estadias_iniciadas,
+    LAG(estadias_iniciadas) OVER (PARTITION BY id_hotel ORDER BY mes) AS mes_anterior,
+    estadias_iniciadas - LAG(estadias_iniciadas) OVER (PARTITION BY id_hotel ORDER BY mes) AS variacion
+FROM (
+    SELECT
+        ht.id_hotel,
+        ht.nombre AS hotel,
+        DATE_FORMAT(a.fecha_checkin_real, '%Y-%m') AS mes,
+        COUNT(*) AS estadias_iniciadas
+    FROM alojamiento a
+    JOIN habitacion h ON h.id_habitacion = a.id_habitacion
+    JOIN hotel ht     ON ht.id_hotel = h.id_hotel
+    GROUP BY ht.id_hotel, ht.nombre, DATE_FORMAT(a.fecha_checkin_real, '%Y-%m')
+) estadias_por_mes;

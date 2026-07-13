@@ -863,4 +863,93 @@ BEGIN
     UPDATE reserva SET estado = 'NO_SHOW' WHERE id_reserva = p_id_reserva;
 END$$
 
+-- -------------------------------------------------------------
+-- SP 15: sp_procesar_reservas_vencidas
+-- Barre dos lotes de reservas "vencidas" y aplica sobre cada una
+-- el mismo procedimiento que ya usaría un recepcionista a mano:
+--   1) PENDIENTE + sin pagar + fecha_limite_pago ya pasada → CANCELADA
+--      (CALL sp_cancelar_reserva).
+--   2) CONFIRMADA + fecha_checkin ya pasada + sin ningún check-in
+--      real → NO_SHOW (CALL sp_marcar_no_show).
+-- No duplica la validación de negocio (eso ya lo hace cada SP con
+-- su propio SIGNAL): aquí solo se identifican las filas candidatas
+-- fila por fila con un CURSOR, y cada CALL va envuelto en su propio
+-- bloque con un HANDLER FOR SQLEXCEPTION que lo absorbe y sigue con
+-- la siguiente fila — una reserva que por alguna razón puntual no
+-- pueda procesarse (ej. alguien le hizo check-in justo en ese
+-- instante) no debe frenar el resto del lote.
+-- Pensado para dispararse solo desde el EVENT diario de abajo, pero
+-- puede llamarse a mano (ej. botón "Ejecutar ahora" de Administración)
+-- para no depender de esperar la próxima corrida programada.
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_procesar_reservas_vencidas$$
+CREATE PROCEDURE sp_procesar_reservas_vencidas(
+    OUT p_canceladas INT,
+    OUT p_no_show INT
+)
+BEGIN
+    DECLARE v_fin INT DEFAULT 0;
+    DECLARE v_id_reserva INT;
+
+    DECLARE cur_pendientes CURSOR FOR
+        SELECT id_reserva FROM reserva
+        WHERE estado = 'PENDIENTE' AND pagado = 0 AND fecha_limite_pago < CURDATE();
+
+    DECLARE cur_no_show CURSOR FOR
+        SELECT r.id_reserva FROM reserva r
+        WHERE r.estado = 'CONFIRMADA'
+          AND r.fecha_checkin < CURDATE()
+          AND NOT EXISTS (SELECT 1 FROM alojamiento a WHERE a.id_reserva = r.id_reserva);
+
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_fin = 1;
+
+    SET p_canceladas = 0;
+    SET p_no_show = 0;
+
+    OPEN cur_pendientes;
+    lote_cancelar: LOOP
+        FETCH cur_pendientes INTO v_id_reserva;
+        IF v_fin = 1 THEN
+            LEAVE lote_cancelar;
+        END IF;
+        BEGIN
+            DECLARE CONTINUE HANDLER FOR SQLEXCEPTION BEGIN END;
+            CALL sp_cancelar_reserva(v_id_reserva);
+            SET p_canceladas = p_canceladas + 1;
+        END;
+    END LOOP;
+    CLOSE cur_pendientes;
+
+    SET v_fin = 0;
+
+    OPEN cur_no_show;
+    lote_no_show: LOOP
+        FETCH cur_no_show INTO v_id_reserva;
+        IF v_fin = 1 THEN
+            LEAVE lote_no_show;
+        END IF;
+        BEGIN
+            DECLARE CONTINUE HANDLER FOR SQLEXCEPTION BEGIN END;
+            CALL sp_marcar_no_show(v_id_reserva);
+            SET p_no_show = p_no_show + 1;
+        END;
+    END LOOP;
+    CLOSE cur_no_show;
+END$$
+
 DELIMITER ;
+
+-- -------------------------------------------------------------
+-- EVENT: ev_procesar_reservas_vencidas
+-- Corre sp_procesar_reservas_vencidas una vez al día sin que la
+-- aplicación tenga que dispararlo — vive enteramente dentro del
+-- motor (MySQL Event Scheduler). Requiere que el scheduler esté
+-- activo: SHOW VARIABLES LIKE 'event_scheduler'; si da OFF, hace
+-- falta SET GLOBAL event_scheduler = ON (privilegio SUPER/SYSTEM
+-- VARIABLES ADMIN) o event_scheduler=ON en el arranque del server.
+-- -------------------------------------------------------------
+DROP EVENT IF EXISTS ev_procesar_reservas_vencidas;
+CREATE EVENT ev_procesar_reservas_vencidas
+ON SCHEDULE EVERY 1 DAY STARTS (CURRENT_DATE + INTERVAL 1 DAY + INTERVAL 1 HOUR)
+DO
+    CALL sp_procesar_reservas_vencidas(@ev_canceladas, @ev_no_show);

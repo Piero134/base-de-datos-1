@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Ingresos mensuales{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Ingresos mensuales</h1>
+  <p class="subtitle">Ingreso por hospedaje mes a mes (reservas confirmadas o finalizadas), con acumulado del año y variación contra el mes anterior.</p>
+</div>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Mes</th><th>Ingreso del mes</th><th>Acumulado del año</th><th>Mes anterior</th><th>Variación</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.mes }}</td>
+    <td class="money">S/ {{ f.ingreso_mes }}</td>
+    <td class="money">S/ {{ f.ingreso_acumulado_anio }}</td>
+    <td class="money">{{ 'S/ ' + f.ingreso_mes_anterior|string if f.ingreso_mes_anterior is not none else '—' }}</td>
+    <td>
+      {% if f.variacion_pct is none %}
+      <span class="badge badge-neutral">Sin dato previo</span>
+      {% elif f.variacion_pct > 0 %}
+      <span class="badge badge-good">▲ {{ f.variacion_pct }}%</span>
+      {% elif f.variacion_pct < 0 %}
+      <span class="badge badge-danger">▼ {{ f.variacion_pct }}%</span>
+      {% else %}
+      <span class="badge badge-neutral">— 0.0%</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay reservas confirmadas o finalizadas para calcular ingresos mensuales.</p>
+{% endif %}
+{% endblock %}

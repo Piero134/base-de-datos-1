@@ -124,10 +124,20 @@ def landing():
         kpis["habitaciones_total"] = ocup["total"]
         kpis["habitaciones_ocupadas"] = ocup["ocupadas"]
         kpis["habitaciones_disponibles"] = ocup["disponibles"]
+        kpis["ocupacion_pct"] = round(ocup["ocupadas"] / ocup["total"] * 100, 1) if ocup["total"] else 0
         kpis["ingreso_total"] = query(
             "SELECT COALESCE(SUM(ingreso_total), 0) AS n FROM vw_ingresos_por_hotel WHERE id_hotel = %s",
             (id_hotel,),
         )[0]["n"]
+
+        mes_actual = query(
+            "SELECT mes, ingreso_mes, variacion_pct FROM vw_ingresos_mensuales WHERE id_hotel = %s ORDER BY mes DESC LIMIT 1",
+            (id_hotel,),
+        )
+        kpis["mes_actual"] = mes_actual[0] if mes_actual else None
+        kpis["top_clientes"] = query(
+            "SELECT ranking, nombre_reservante, monto_total_gastado FROM vw_ranking_clientes ORDER BY ranking LIMIT 3"
+        )
 
     elif rol == "ADMINISTRADOR":
         # hoteles_activos se deja global a propósito: `hotel` no tiene id_hotel

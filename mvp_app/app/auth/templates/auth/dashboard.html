@@ -48,7 +48,8 @@
 <div class="kpi-grid">
   <div class="kpi-card">
     <div class="kpi-value">{{ kpis.habitaciones_ocupadas }}/{{ kpis.habitaciones_total }}</div>
-    <div class="kpi-label">Habitaciones ocupadas</div>
+    <div class="kpi-label">Habitaciones ocupadas ({{ kpis.ocupacion_pct }}%)</div>
+    <div class="progress-bar"><div class="progress-bar-fill" style="width: {{ kpis.ocupacion_pct }}%"></div></div>
   </div>
   <div class="kpi-card">
     <div class="kpi-value">{{ kpis.habitaciones_disponibles }}</div>
@@ -58,10 +59,40 @@
     <div class="kpi-value">S/ {{ "%.2f"|format(kpis.ingreso_total) }}</div>
     <div class="kpi-label">Ingreso total (hospedaje + servicios)</div>
   </div>
+  <div class="kpi-card">
+    {% if kpis.mes_actual %}
+    <div class="kpi-value">S/ {{ "%.2f"|format(kpis.mes_actual.ingreso_mes) }}</div>
+    <div class="kpi-label">Ingreso de {{ kpis.mes_actual.mes }} (hospedaje)</div>
+    {% if kpis.mes_actual.variacion_pct is none %}
+    <div class="kpi-delta flat">Sin mes anterior para comparar</div>
+    {% elif kpis.mes_actual.variacion_pct > 0 %}
+    <div class="kpi-delta up">▲ {{ kpis.mes_actual.variacion_pct }}% vs. mes anterior</div>
+    {% elif kpis.mes_actual.variacion_pct < 0 %}
+    <div class="kpi-delta down">▼ {{ kpis.mes_actual.variacion_pct }}% vs. mes anterior</div>
+    {% else %}
+    <div class="kpi-delta flat">Igual que el mes anterior</div>
+    {% endif %}
+    {% else %}
+    <div class="kpi-value">—</div>
+    <div class="kpi-label">Sin reservas confirmadas este año</div>
+    {% endif %}
+  </div>
 </div>
+
+{% if kpis.top_clientes %}
+<h2>Top 3 clientes (toda la cadena)</h2>
+<ol class="mini-list">
+  {% for c in kpis.top_clientes %}
+  <li><span><span class="mini-list-rank">#{{ c.ranking }}</span> {{ c.nombre_reservante }}</span><span class="money">S/ {{ "%.2f"|format(c.monto_total_gastado) }}</span></li>
+  {% endfor %}
+</ol>
+{% endif %}
+
 <div class="quick-links">
   <a href="{{ url_for('reportes.ocupacion') }}">Ocupación por hotel</a>
+  <a href="{{ url_for('reportes.ocupacion_mensual') }}">Ocupación mensual</a>
   <a href="{{ url_for('reportes.ingresos') }}">Ingresos por hotel</a>
+  <a href="{{ url_for('reportes.ingresos_mensuales') }}">Ingresos mensuales</a>
   <a href="{{ url_for('reportes.ranking') }}">Ranking de clientes</a>
 </div>
 
