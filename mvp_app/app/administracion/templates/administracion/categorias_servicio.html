@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Categorías de servicio{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Categorías de servicio</h1>
-  <p class="subtitle">{{ filas|length }} categoría{{ 's' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+<div class="page-header page-header--actions">
+  <div>
+    <h1>Categorías de servicio</h1>
+    <p class="subtitle">{{ filas|length }} categoría{{ 's' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+  </div>
+  <button type="button" data-open-modal="dlgNuevaCategoria">+ Nueva categoría</button>
 </div>
 {% if filas %}
 <div class="table-scroll">
@@ -36,10 +39,15 @@
 <p class="empty-state">Todavía no hay categorías de servicio registradas.</p>
 {% endif %}
 
-<h2>Nueva categoría</h2>
-<form class="card" method="post">
-  <label for="cs_nombre">Nombre</label>
-  <input type="text" name="nombre" id="cs_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
-  <button type="submit">Crear categoría</button>
-</form>
+<dialog id="dlgNuevaCategoria" class="form-dialog" {% if seleccion %}data-autoopen{% endif %}>
+  <h2>Nueva categoría</h2>
+  <form method="post">
+    <label for="cs_nombre">Nombre</label>
+    <input type="text" name="nombre" id="cs_nombre" required value="{{ seleccion.nombre if seleccion else '' }}">
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Crear categoría</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}
