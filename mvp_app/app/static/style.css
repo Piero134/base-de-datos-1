@@ -33,6 +33,14 @@
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
+html {
+  /* La navbar es sticky (var(--topbar-h) la fija el script de base.html según
+     su alto real, que varía por rol -- algunos menús envuelven a 2 líneas).
+     Sin esto, saltar a un ancla (#hab_x_y, #seccion-...) la deja tapada
+     detrás de la navbar fija. */
+  scroll-padding-top: var(--topbar-h, 70px);
+}
+
 body {
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
@@ -70,6 +78,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
   gap: 28px;
   flex-wrap: wrap;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 2px 6px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .topbar .brand {
   font-weight: 600;
@@ -167,6 +178,16 @@ h2 { font-size: 1.1rem; margin: 32px 0 14px; font-weight: 700; }
 
 .table-scroll { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; }
 .table-scroll table { box-shadow: none; margin-bottom: 0; }
+
+/* Panel con scroll vertical propio y cabecera fija, para tablas que
+   pueden crecer mucho (ej. auditoría, hasta 200 filas) -- sin esto se
+   pierden los encabezados de columna apenas se hace scroll.
+   La tabla pierde su propio overflow:hidden/radius (que si no,
+   pasaría a ser el contenedor de scroll para "sticky" en vez de este
+   panel) -- el redondeado de esquinas lo sigue dando el panel. */
+.table-scroll--tall { max-height: 65vh; overflow-y: auto; }
+.table-scroll--tall table { overflow: visible; border-radius: 0; }
+.table-scroll--tall thead th { position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12); }
 
 /* Resalta la habitación destino cuando se llega por un link con anchor
    (ej. desde la búsqueda de check-in por titular). */

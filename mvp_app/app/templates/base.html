@@ -85,6 +85,19 @@
 
   <script>
     (function () {
+      // La navbar es sticky y su alto varía según el rol (algunos menús
+      // envuelven a 2 líneas en pantallas medianas): se publica como
+      // variable CSS para que scroll-padding-top (ver style.css) no deje
+      // los saltos a anclas (#hab_x_y, #seccion-...) tapados detrás.
+      var topbar = document.querySelector('.topbar');
+      function actualizarAlturaTopbar() {
+        if (topbar) {
+          document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+        }
+      }
+      actualizarAlturaTopbar();
+      window.addEventListener('resize', actualizarAlturaTopbar);
+
       var confirmDialog = document.getElementById('confirmDialog');
       var confirmMessage = document.getElementById('confirmMessage');
       var confirmAccept = document.getElementById('confirmAccept');
