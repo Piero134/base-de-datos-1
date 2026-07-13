@@ -18,9 +18,12 @@ check-in, una décima tras agregar el trigger de habitación única y
 rediseñar "alojamientos activos" como tabla por habitación, y una
 undécima tras eliminar la tabla `huesped` (rol puro sin datos propios,
 reemplazado por FK directa a `persona_natural`) (ver commits de esa
-fecha), y una duodécima el mismo 2026-07-12 tras agregar la pantalla
-      `/admin/usuarios` (alta de login para un empleado existente). Marcar
-      de nuevo tras cambios importantes.
+fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
+      `/admin/usuarios` (alta de login para un empleado existente), y una
+      decimotercera el mismo día tras dar a Recepción acceso a `/habitaciones`
+      (ver estado + cambiarlo) y restringir las transiciones manuales de
+      `sp_cambiar_estado_habitacion`. Marcar de nuevo tras cambios
+      importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -255,6 +258,29 @@ fecha), y una duodécima el mismo 2026-07-12 tras agregar la pantalla
       `/admin`. Verificado end-to-end con Playwright contra `hotel_db` real
       (capturas de pantalla revisadas); usuarios de prueba borrados al
       terminar.
+- [x] **Recepción ve y cambia el estado de habitaciones de su hotel
+      (2026-07-12):** con `mtorres` (RECEPCION, hotel 1), el link de nav
+      "Habitaciones" apunta a `/habitaciones` (no `/admin/habitaciones`,
+      mismo `view_func` registrado dos veces vía `app.add_url_rule`); la
+      pantalla llega fija al propio hotel, sin selector de hotel y sin el
+      formulario "Nueva habitación" (`puede_crear = rol == 'ADMINISTRADOR'`).
+      Cambiar la habitación 101 de `LIMPIEZA` a `DISPONIBLE` funcionó y
+      quedó reflejado de inmediato en la tabla. Una sesión CAJA (`grojas`)
+      pidiendo `GET /admin/habitaciones` siguió bloqueada, sin cambios.
+      Se corrigieron además las transiciones manuales de
+      `sp_cambiar_estado_habitacion` (ver `Scripts/04_Procedimientos.sql`,
+      aplicado en vivo contra `hotel_db`): rechaza poner `OCUPADA` a mano y
+      rechaza tocar una habitación que ya está `OCUPADA` (con
+      *"El estado OCUPADA solo lo controla el check-in/checkout; no se
+      puede cambiar a mano."*, probado forzando el estado por UPDATE
+      directo y confirmando el rechazo), rechaza "cambiar" al mismo estado
+      (*"La habitación ya está en ese estado."*), y sigue permitiendo
+      `DISPONIBLE ⇄ LIMPIEZA ⇄ RESERVADA` en cualquier combinación. El
+      `<option>` `OCUPADA` se quitó del `<select>` del formulario y las
+      habitaciones `OCUPADA` ya no muestran el formulario de cambio (solo
+      un aviso de que se libera sola al hacer checkout). Verificado con
+      Playwright y con llamadas directas al SP contra `hotel_db` real; la
+      habitación de prueba quedó en su estado original al terminar.
 - [x] **Control de acceso por rol:** una sesión GERENCIA intentando entrar a
       `/admin/hoteles` fue redirigida a `/login` con mensaje de permiso
       denegado.

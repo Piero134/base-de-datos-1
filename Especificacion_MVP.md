@@ -258,6 +258,17 @@ asignado a ese empleado:
   igual. `hotel`, `habitacion` y `empleado` sí son propios de un hotel: solo el administrador
   general crea/edita hoteles y puede elegir cualquier hotel al gestionar empleados/habitaciones; un
   administrador de un solo hotel queda fijo al suyo.
+- **Recepción y el estado de las habitaciones (`GET/POST /habitaciones`):** Recepción entra a la
+  misma pantalla/lógica que `administracion.habitaciones` (fija a su propio hotel, como cualquier
+  administrador de un solo hotel), pero sin el prefijo `/admin` — para su rol no es una pantalla de
+  administración, es su vista normal de habitaciones. Puede ver el estado de cada habitación y
+  cambiarlo (ej. `LIMPIEZA` → `DISPONIBLE`), pero no dar de alta habitaciones nuevas (eso sigue
+  siendo mantenimiento de catálogo, solo Administrador). `sp_cambiar_estado_habitacion` valida que
+  la transición tenga sentido: rechaza tanto poner `OCUPADA` a mano como cambiar una habitación que
+  ya está `OCUPADA` — ese estado lo controlan en exclusiva `trg_alojamiento_checkin`/`_checkout`/
+  `_cancelar` según si hay o no un `alojamiento` `ACTIVO` real (ver `06_Triggers.sql`); permitir
+  tocarlo a mano desincronizaría el campo de la ocupación real. También rechaza "cambiar" al mismo
+  estado que ya tiene.
 - **Alta de hotel (solo administrador general):** crear un hotel encadena automáticamente un
   `empleado` (cargo "Administrador de Hotel") + `usuario` (con `rol='ADMINISTRADOR'`,
   `id_hotel` = el nuevo hotel, username generado del nombre del hotel y contraseña temporal
