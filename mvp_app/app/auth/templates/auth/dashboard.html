@@ -1,24 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Inicio — Hotel MVP{% endblock %}
+{% set rol_labels = {'RECEPCION': 'Recepción', 'CAJA': 'Caja', 'GERENCIA': 'Gerencia', 'ADMINISTRADOR': 'Administración'} %}
 {% block content %}
 <div class="page-header">
   <h1>Hola, {{ session.get('nombre_empleado') }}</h1>
-  <div class="subtitle">Sesión activa como {{ rol }} — {{ session.get('nombre_hotel') }}</div>
+  <div class="subtitle">{{ rol_labels.get(rol, rol) }} · {{ session.get('nombre_hotel') or 'Administración general' }}</div>
 </div>
 
 {% if rol == 'RECEPCION' %}
 <div class="kpi-grid">
-  <div class="kpi-card">
+  <div class="kpi-card{{ ' kpi-card--attention' if kpis.reservas_pendientes_pago }}">
     <div class="kpi-value">{{ kpis.reservas_pendientes_pago }}</div>
     <div class="kpi-label">Reservas pendientes de pago</div>
+    {% if not kpis.reservas_pendientes_pago %}<div class="kpi-hint">Al día</div>{% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-value">{{ kpis.alojamientos_activos }}</div>
     <div class="kpi-label">Alojamientos activos</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card{{ ' kpi-card--attention' if kpis.checkouts_pendientes }}">
     <div class="kpi-value">{{ kpis.checkouts_pendientes }}</div>
     <div class="kpi-label">Check-outs pendientes</div>
+    {% if not kpis.checkouts_pendientes %}<div class="kpi-hint">Al día</div>{% endif %}
   </div>
 </div>
 <h2>Accesos rápidos</h2>
@@ -31,11 +34,12 @@
 
 {% elif rol == 'CAJA' %}
 <div class="kpi-grid">
-  <div class="kpi-card">
+  <div class="kpi-card{{ ' kpi-card--attention' if kpis.cuentas_pendientes }}">
     <div class="kpi-value">{{ kpis.cuentas_pendientes }}</div>
     <div class="kpi-label">Cuentas por cobrar pendientes</div>
+    {% if not kpis.cuentas_pendientes %}<div class="kpi-hint">Al día</div>{% endif %}
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card{{ ' kpi-card--attention' if kpis.monto_pendiente }}">
     <div class="kpi-value">S/ {{ "%.2f"|format(kpis.monto_pendiente) }}</div>
     <div class="kpi-label">Monto total pendiente de cobro</div>
   </div>
@@ -82,12 +86,14 @@
 </div>
 
 {% if kpis.top_clientes %}
-<h2>Top 3 clientes (toda la cadena)</h2>
-<ol class="mini-list">
-  {% for c in kpis.top_clientes %}
-  <li><span><span class="mini-list-rank">#{{ c.ranking }}</span> {{ c.nombre_reservante }}</span><span class="money">S/ {{ "%.2f"|format(c.monto_total_gastado) }}</span></li>
-  {% endfor %}
-</ol>
+<div class="card">
+  <h2>Top 3 clientes (toda la cadena)</h2>
+  <ol class="mini-list">
+    {% for c in kpis.top_clientes %}
+    <li><span><span class="mini-list-rank">#{{ c.ranking }}</span> {{ c.nombre_reservante }}</span><span class="money">S/ {{ "%.2f"|format(c.monto_total_gastado) }}</span></li>
+    {% endfor %}
+  </ol>
+</div>
 {% endif %}
 
 <h2>Accesos rápidos</h2>

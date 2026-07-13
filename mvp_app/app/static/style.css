@@ -125,6 +125,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 h1, h2 { color: var(--color-primary-dark); text-wrap: balance; letter-spacing: -0.01em; }
 h1 { font-size: 1.6rem; margin: 0 0 4px; font-weight: 700; }
 h2 { font-size: 1.1rem; margin: 32px 0 14px; font-weight: 700; }
+.card > h2:first-child { margin-top: 0; }
 
 .page-header {
   margin-bottom: 24px;
@@ -533,6 +534,13 @@ button.btn-abrir-modal { margin-bottom: 16px; }
 .kpi-card .kpi-delta.up { color: var(--color-success-border); }
 .kpi-card .kpi-delta.down { color: var(--color-danger-border); }
 .kpi-card .kpi-delta.flat { color: var(--color-text-muted); }
+/* Distingue "esto necesita que hagas algo" (pendientes > 0) de un conteo
+   meramente informativo -- sin esto, un dashboard con 3 pendientes y un
+   dashboard con 0 pendientes se ven exactamente igual de "neutros". */
+.kpi-card--attention { border-left-color: var(--color-warning-border); }
+.kpi-card--attention .kpi-value { color: var(--color-warning-text); }
+.kpi-card .kpi-hint { display: inline-block; margin-top: 6px; font-size: 0.76rem; font-weight: 700; color: var(--color-success-text); }
+.kpi-card .kpi-hint::before { content: "✓ "; }
 /* Variante para un único KPI fuera de un .kpi-grid (ej. resultado de una
    consulta puntual, como disponibilidad de habitaciones). */
 .kpi-card--solo { max-width: 320px; margin-bottom: 24px; }
