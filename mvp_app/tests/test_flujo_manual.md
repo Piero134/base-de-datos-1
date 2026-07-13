@@ -14,9 +14,11 @@ bloquear también para Recepción el acceso directo a la URL de confirmación
 de pago (antes solo se ocultaba el botón), una octava tras agregar
 cancelar/no-show de reserva y el bloqueo general de estados finales, una
 novena el mismo día tras quitar el stepper visual de pago/asignación/
-check-in, y una décima tras agregar el trigger de habitación única y
-rediseñar "alojamientos activos" como tabla por habitación (ver commits
-de esa fecha). Marcar de nuevo tras cambios importantes.
+check-in, una décima tras agregar el trigger de habitación única y
+rediseñar "alojamientos activos" como tabla por habitación, y una
+undécima tras eliminar la tabla `huesped` (rol puro sin datos propios,
+reemplazado por FK directa a `persona_natural`) (ver commits de esa
+fecha). Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -121,6 +123,36 @@ de esa fecha). Marcar de nuevo tras cambios importantes.
       el chequeo no filtra por `fecha_salida_real IS NULL`. Esto puede
       bloquear indebidamente un nuevo check-in de ese huésped en otra
       habitación. Reportado, pendiente de decisión.
+- [x] **Eliminación de la tabla `huesped` — "huésped" pasa a ser un rol
+      puro sobre `persona_natural`, sin tabla propia (UC-03/UC-04b,
+      2026-07-12):** `detalle_huesped_reserva.id_huesped` y
+      `huesped_alojamiento.id_huesped` ahora referencian directo a
+      `persona_natural.id_persona` (FK repuntada, mismo nombre de
+      columna). Se migró en vivo contra `hotel_db` real (`detalle_huesped_
+      reserva`/`huesped_alojamiento` estaban en 0 filas por el borrado
+      previo, así que no hubo datos que trasladar) y se actualizaron las 4
+      vistas que hacían `JOIN huesped` (`vw_alojamientos_activos`,
+      `vw_historial_estadias`, `vw_reservas_corporativas`,
+      `vw_preasignacion_vs_checkin`) para saltar el hop intermedio.
+      Verificado con `test_client`: (1) un cliente natural nuevo aparece
+      YA MISMO en el selector de `preasignar.html`, sin ningún paso
+      adicional (el problema original de esta sesión — "cuando creo un
+      cliente no aparece como huésped" — queda resuelto de raíz, no con un
+      parche); (2) "+ Huésped nuevo" (`crear_huesped_desde_formulario`)
+      sigue funcionando igual; (3) el flujo completo reserva → pago →
+      asignación → check-in → `vw_alojamientos_activos` →
+      `vw_historial_estadias` funciona de punta a punta; (4) **el bug real
+      de doble ocupación** (misma persona con dos filas de huésped
+      distintas podía terminar en dos alojamientos activos a la vez, ver
+      nota de la fila anterior) queda estructuralmente cerrado: se
+      confirmó que un segundo check-in de la misma persona mientras sigue
+      activa en otra habitación es rechazado por
+      `sp_agregar_huesped_alojamiento`, ya que ahora solo puede existir un
+      identificador por persona. Sin datos residuales tras la prueba.
+      **Pendiente:** los diagramas `Diagramas/Diagrama de Base de Datos/
+      01_Modelo_Conceptual.puml`/`02_Modelo_Logico.puml`/
+      `03_Modelo_Fisico.puml` (y sus PNG) todavía muestran `huesped` como
+      entidad separada — no se regeneraron en este incremento.
 - [x] **Cancelar/no-show y bloqueo de estados finales (UC-01b/UC-04c,
       2026-07-12):** con una reserva `PENDIENTE`, Recepción canceló desde
       `detalle.html` (botón con diálogo de confirmación) y el estado pasó a

@@ -70,16 +70,17 @@ Entidades principales y su razón de ser:
   quien reserva/factura puede ser una persona individual o una empresa, compartiendo atributos
   comunes (teléfono, email, ubigeo) pero con atributos propios de cada subtipo (DNI/RUC,
   nombres/razón social).
-- **`cliente`**: quien reserva y paga — distinto de **`huesped`**, quien físicamente ocupa la
+- **`cliente`**: quien reserva y paga — distinto de **huésped**, quien físicamente ocupa la
   habitación. Esta separación (decisión tomada tras la asesoría del profesor: *"cliente = quien
   paga/factura; huésped = quien duerme"*) permite modelar reservas corporativas donde la empresa
-  paga pero sus empleados son quienes se hospedan.
-- **`huesped`** es un rol de ocupación, no una identidad propia: no tiene columnas de
-  nombre/documento — siempre referencia a una `persona_natural` ya existente. La incertidumbre de
-  "quién" en una reserva corporativa (N habitaciones reservadas sin saber aún quién las ocupará)
-  vive en `detalle_huesped_reserva.id_huesped` (nulable = cupo sin identificar), nunca en `huesped`:
-  por exigencia legal (registro de huéspedes, normativa MINCETUR) una ocupación real
-  (`huesped_alojamiento`) nunca puede existir sin identidad completa.
+  paga pero sus empleados son quienes se hospedan. **"Huésped" es un rol, no una tabla**: no existe
+  ninguna entidad `huesped` en el modelo actual (se eliminó, ver punto correspondiente en el modelo
+  lógico) — `detalle_huesped_reserva.id_huesped` y `huesped_alojamiento.id_huesped` referencian
+  directo a `persona_natural.id_persona`. La incertidumbre de "quién" en una reserva corporativa (N
+  habitaciones reservadas sin saber aún quién las ocupará) vive en
+  `detalle_huesped_reserva.id_huesped` (nulable = cupo sin identificar); por exigencia legal
+  (registro de huéspedes, normativa MINCETUR) una ocupación real (`huesped_alojamiento`) nunca puede
+  existir sin identidad completa, por eso ahí esa misma columna es `NOT NULL`.
 - **`reserva`** → **`reserva_detalle`**: una reserva puede combinar varias líneas de tipo de
   habitación + plan tarifario + cantidad (ej. 2 simples + 1 doble en la misma reserva).
 - **`detalle_huesped_reserva`**: pre-asignación de huéspedes a una línea de reserva, usada en el
@@ -96,7 +97,7 @@ Entidades principales y su razón de ser:
 Ver `Diagramas/Diagrama de Base de Datos/02_Modelo_Logico.png` (fuente: `02_Modelo_Logico.puml`),
 que corresponde 1:1 con `Scripts/01_Creacion_Tablas.sql` + `Scripts/02_Reglas_Integridad.sql`.
 
-27 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
+26 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
 destacables del esquema relacional:
 
 - Todas las claves primarias son `INT AUTO_INCREMENT`, excepto `huesped_alojamiento` que usa clave
@@ -124,25 +125,45 @@ destacables del esquema relacional:
   `empleado` (la app corre con `debug=True`, que expone variables locales en cualquier traceback
   no capturado), y ciclo de vida independiente (`empleado` nunca se borra por el historial que
   referencia; el acceso sí debe poder revocarse al instante).
-- **`huesped` es un rol puro sobre `persona_natural` (no un subtipo con datos propios).** Una
-  primera corrección (auditoría de normalización) agregó `huesped.id_persona` como vínculo
-  *opcional* y dos triggers de sincronización para mantener las columnas duplicadas de `huesped`
-  (nombres, documento, fecha de nacimiento, etc.) al día con `persona_natural` — una solución válida
-  pero que atacaba el síntoma, no la causa: la duplicación seguía existiendo, solo quedaba
-  sincronizada. La corrección de raíz, motivada por una regla de negocio real (en una reserva
-  corporativa la empresa reserva N habitaciones sin saber aún quién las ocupará — se conoce la
-  cantidad, no las personas; los nombres se resuelven después, vía lista de la empresa o recién en
-  el check-in), fue eliminar las columnas de `huesped` por completo y dejar `id_persona` como
-  **`NOT NULL`**, referenciando **`persona_natural`** (no `persona`): el propio FK garantiza a nivel
-  de esquema que el ocupante sea siempre una persona natural, sin necesitar un trigger de
-  validación. `huesped` no es 1:1 con `persona_natural` (no lleva `UNIQUE`): la misma persona puede
-  volver a hospedarse y generar otra fila de huésped en otra estadía — es un rol repetible, no un
-  subtipo. La incertidumbre de "quién" se trasladó donde realmente vive: `detalle_huesped_reserva.
-  id_huesped`, que pasó a ser nulable (`trg_valida_cupos_reserva` limita el total de cupos —
-  identificados o no — de una línea a `cantidad_habitaciones × capacidad_base`). Esto también
-  eliminó de raíz el antiguo "huésped genérico" (`es_generico`): la propia carga de datos ya
-  demostraba que ese diseño no funcionaba en la práctica — la app prometía "se completa después"
-  pero ningún código actualizaba jamás un huésped genérico con datos reales.
+- **La tabla `huesped` (rol puro sobre `persona_natural`, sin datos propios) se eliminó por
+  completo — "huésped" es un rol, no una entidad.** Es la corrección más profunda del modelo,
+  llegada en dos pasos:
+  1. Primero, una auditoría de normalización agregó `huesped.id_persona` como vínculo *opcional* y
+     dos triggers de sincronización para mantener las columnas duplicadas de `huesped` (nombres,
+     documento, fecha de nacimiento, etc.) al día con `persona_natural` — una solución válida pero
+     que atacaba el síntoma, no la causa: la duplicación seguía existiendo, solo quedaba
+     sincronizada.
+  2. Una segunda corrección de raíz, motivada por la misma regla de negocio (en una reserva
+     corporativa la empresa reserva N habitaciones sin saber aún quién las ocupará — se conoce la
+     cantidad, no las personas; los nombres se resuelven después, vía lista de la empresa o recién
+     en el check-in), eliminó las columnas de `huesped` por completo y dejó `id_persona` **`NOT
+     NULL`** referenciando **`persona_natural`** (no `persona`).
+  3. **Corrección final:** con `huesped` reducida a una sola columna útil (`id_persona`) más una PK
+     autoincremental que no aportaba nada, se eliminó la tabla entera. `detalle_huesped_reserva.
+     id_huesped` y `huesped_alojamiento.id_huesped` pasaron a referenciar directo a
+     `persona_natural.id_persona` (mismo nombre de columna, por continuidad con el código; el FK
+     sigue garantizando a nivel de esquema que el ocupante sea siempre una persona natural). Este
+     último paso no fue solo estético: la tabla `huesped` intermedia permitía que la misma
+     `persona_natural` tuviera **varias filas de huésped simultáneas** (no llevaba `UNIQUE` sobre
+     `id_persona`, a propósito, para que una persona pudiera volver a hospedarse y generar otra fila
+     en otra estadía), y eso rompía en la práctica la regla de negocio "un huésped no puede estar en
+     dos alojamientos activos a la vez" (`sp_agregar_huesped_alojamiento`): esa regla compara por id
+     de huésped, así que con dos filas de huésped para la misma persona el chequeo no detectaba el
+     choque — la misma persona física podía terminar, en teoría, hospedada en dos habitaciones a la
+     vez. Al eliminar la tabla intermedia y usar `id_persona` directo, la identidad vuelve a ser
+     única por definición y ese hueco se cierra sin necesitar ningún trigger ni `UNIQUE` adicional.
+     La incertidumbre de "quién" se mantiene donde siempre vivió: `detalle_huesped_reserva.
+     id_huesped` sigue siendo nulable (`trg_valida_cupos_reserva` limita el total de cupos —
+     identificados o no — de una línea a `cantidad_habitaciones × capacidad_base`); en
+     `huesped_alojamiento` sigue siendo `NOT NULL`, por exigencia legal (registro de huéspedes,
+     normativa MINCETUR): una ocupación real nunca existe sin identidad completa. Esto también
+     eliminó de raíz el antiguo "huésped genérico" (`es_generico`): la propia carga de datos ya
+     demostraba que ese diseño no funcionaba en la práctica — la app prometía "se completa después"
+     pero ningún código actualizaba jamás un huésped genérico con datos reales.
+  **Nota:** los diagramas `Diagramas/Diagrama de Base de Datos/01_Modelo_Conceptual.puml`,
+  `02_Modelo_Logico.puml` y `03_Modelo_Fisico.puml` (y sus PNG) todavía muestran `huesped` como
+  entidad separada — quedaron desactualizados por este cambio y no se regeneraron en este
+  incremento; hay que actualizarlos a mano antes de la sustentación.
 - **Columna eliminada: `tarifa_habitacion.capacidad_maxima`.** La misma auditoría encontró que esta
   columna nunca se leía en ningún procedimiento/trigger/vista (la capacidad siempre se valida contra
   `tipo_habitacion.capacidad_base`) y en los datos de prueba siempre coincidía con ese valor — era

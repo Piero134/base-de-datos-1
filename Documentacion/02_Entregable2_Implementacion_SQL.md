@@ -15,7 +15,7 @@ ejecución obligatorio (cada script depende del anterior):
 
 | Orden | Script | Contenido |
 |---|---|---|
-| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 27 tablas (sin FK) |
+| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
 | 4 | `04_Procedimientos.sql` | 14 procedimientos (`CREATE PROCEDURE`) |

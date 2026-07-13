@@ -4,7 +4,7 @@
 
 Según lo indicado por el profesor en la asesoría: **"el proyecto final no va a ser la aplicación al 100% desarrollada, sino centrarnos en cómo hacer un MVP que use todas las consultas que estamos viendo"**, y su exigencia explícita fue: *"la aplicación tiene que ser la interfase... puede no estar construida en un milímetro, no tan fino, pero sí tiene que haber conectividad a la base de datos, tiene que haber usado una serie de instrucciones SQL"*.
 
-Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 27 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
+Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 26 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
 
 ### Qué SÍ entra en el MVP
 - Una interfaz (web, escritorio o incluso consola con menú) con conectividad real a `hotel_db`.
@@ -121,6 +121,13 @@ asignado a ese empleado:
 - **Postcondición:** asignación (identificada o no) registrada en `detalle_huesped_reserva`,
   disponible para comparar luego contra el check-in real.
 - **Consulta relacionada:** `vw_preasignacion_vs_checkin`.
+- **Nota de identidad — "huésped" es un rol, no una tabla:** el selector de esta pantalla
+  (`_contexto_preasignar` en `reservas/routes.py`) lista directo todas las `persona_natural` activas
+  (`JOIN persona ... WHERE p.activo = 1`); no existe ninguna tabla `huesped` intermedia que haya que
+  dar de alta antes de que una persona pueda asignarse. `detalle_huesped_reserva.id_huesped` y
+  `huesped_alojamiento.id_huesped` son FK directas a `persona_natural.id_persona` (mismo nombre de
+  columna, por continuidad con el código). Por eso un cliente `NATURAL` recién creado
+  (`reservas.cliente_nuevo`) ya aparece de inmediato en este selector, sin ningún paso adicional.
 
 ### UC-04: Realizar check-in
 - **Actor:** Recepcionista
@@ -160,6 +167,12 @@ asignado a ese empleado:
   alojamiento si ese huésped ya figura en `huesped_alojamiento` de otro `alojamiento` con
   `estado = 'ACTIVO'`, incluso si el intento llega directo al check-in (UC-04) sin pasar por la
   interfaz.
+- **Nota:** esta regla depende de que `id_huesped` identifique unívocamente a la persona física. No
+  existe una tabla `huesped` aparte (ver nota de identidad en UC-03): `id_huesped` es directo
+  `persona_natural.id_persona`, así que no hay forma de que la misma persona termine con dos
+  identificadores distintos y se cuele por este chequeo — antes, cuando `huesped` era una tabla
+  intermedia sin `UNIQUE` sobre `id_persona`, esto sí era posible (dos filas de huésped para la
+  misma persona, cada una con su propio `id_huesped`).
 
 ### UC-04b bis: Restricción — una habitación física no puede tener dos alojamientos activos
 - **Regla de negocio:** `sp_realizar_checkin` ya lo validaba antes de insertar (rechaza si la
