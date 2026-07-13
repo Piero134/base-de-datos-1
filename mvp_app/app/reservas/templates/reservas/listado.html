@@ -10,9 +10,7 @@
   <a href="{{ url_for('reservas.nuevo') }}" class="btn-primary-link">+ Nueva reserva</a>
   {% endif %}
 </div>
-{% if filtros is none %}
-<p class="subtitle">Solo se muestran las reservas pendientes de pago.</p>
-{% else %}
+{% if filtros is not none %}
 <form method="get" class="card card--wide filter-bar">
   <div>
     <label for="filtro_tipo_persona">Tipo de reservante</label>
@@ -47,8 +45,8 @@
 <table>
   <thead>
   <tr>
-    <th>ID</th><th>Reservante</th><th>Documento</th><th>Hotel</th><th>Estado</th><th>Canal</th>
-    <th>Check-in</th><th>Check-out</th><th>Noches</th><th>Monto total</th><th>Pagado</th><th></th>
+    <th>ID</th><th>Reservante</th><th>Documento</th><th>Estado</th><th>Pagado</th><th>Canal</th>
+    <th>Check-in</th><th>Check-out</th><th>Noches</th><th>Monto total</th><th></th>
   </tr>
   </thead>
   <tbody>
@@ -57,14 +55,13 @@
     <td>#{{ r.id_reserva }}</td>
     <td>{{ r.nombre_reservante }}</td>
     <td>{{ r.documento }}</td>
-    <td>{{ r.hotel }}</td>
     <td><span class="badge {{ r.estado|badge_class }}">{{ r.estado }}</span></td>
+    <td><span class="badge {{ 'badge-good' if r.pagado else 'badge-warning' }}">{{ 'Sí' if r.pagado else 'No' }}</span></td>
     <td>{{ r.canal }}</td>
     <td>{{ r.fecha_checkin }}</td>
     <td>{{ r.fecha_checkout }}</td>
     <td>{{ r.noches }}</td>
     <td class="money">S/ {{ r.monto_total }}</td>
-    <td><span class="badge {{ 'badge-good' if r.pagado else 'badge-warning' }}">{{ 'Sí' if r.pagado else 'No' }}</span></td>
     <td class="actions"><a href="{{ url_for('reservas.detalle', id_reserva=r.id_reserva) }}">Ver</a></td>
   </tr>
   {% endfor %}
