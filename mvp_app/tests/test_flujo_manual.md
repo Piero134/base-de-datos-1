@@ -25,8 +25,11 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       `sp_cambiar_estado_habitacion`, una decimocuarta tras rechazar
       generar cuentas por cobrar sin consumos ni daños pendientes, y una
       decimoquinta el 2026-07-13 tras corregir el bug de
-      `fecha_salida_real` en `sp_agregar_huesped_alojamiento`. Marcar de
-      nuevo tras cambios importantes.
+      `fecha_salida_real` en `sp_agregar_huesped_alojamiento`, y una
+      decimosexta el mismo día tras agregar edición (+ activar/desactivar
+      donde aplica) a hoteles, tipos de habitación, categorías de
+      servicio, servicios, planes tarifarios, tarifas y empleados. Marcar
+      de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -318,6 +321,32 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
 - [x] **Control de acceso por rol:** una sesión GERENCIA intentando entrar a
       `/admin/hoteles` fue redirigida a `/login` con mensaje de permiso
       denegado.
+- [x] **Edición completa de catálogos (UC-13, 2026-07-13):** se agregó un
+      diálogo "Editar" por fila (mismo patrón `<dialog>` que cliente/huésped
+      nuevo) a `hoteles` (el endpoint `hotel_editar` ya existía en el
+      backend desde antes pero sin ningún botón en la pantalla que lo
+      invocara — quedó conectado), `tipos-habitacion`, `categorias-servicio`,
+      `servicios`, `planes-tarifa`, `tarifas` y `empleados`. Probado
+      end-to-end con Playwright como `lparedes` (administrador general),
+      editando y revirtiendo un valor real en cada pantalla contra
+      `hotel_db`: teléfono de Hotel San Marcos Arequipa, descripción del
+      tipo "Familiar", nombre de la categoría ESTACIONAMIENTO, activo del
+      servicio "Servicio de cuarto (cena)" (con badge Sí/No cambiando en la
+      tabla), activo del plan "Tarifa Corporativa ABC", precio de la
+      tarifa Regular/Matrimonial (250.00 → 999.00 → 250.00), y activo del
+      empleado Roberto Huanca Flores. También se probó que editar una
+      tarifa para que choque con una combinación plan+tipo ya existente es
+      rechazada con el mensaje amigable *"Ya existe una tarifa para ese
+      plan y tipo de habitación."* (nueva entrada `uq_tarifa_plan_tipo` en
+      `app/errors.py`, junto con 3 restricciones CHECK nuevas:
+      `chk_capacidad_base`, `chk_tarifa_precio`, `chk_plan_fechas`, que ya
+      existían en el schema pero no tenían mensaje traducido). No se
+      agregó columna `activo` a `tipo_habitacion`, `categoria_servicio` ni
+      `tarifa_habitacion` (no la tienen en el schema y no se justificaba
+      un cambio de schema solo para esto): esas tres solo son editables,
+      sin botón de baja. Verificado que la base quedó exactamente en su
+      estado original al terminar (todas las filas de prueba comparadas
+      antes/después).
 
 ## Cómo volver a correr esta verificación
 

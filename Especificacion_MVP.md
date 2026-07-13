@@ -263,6 +263,15 @@ asignado a ese empleado:
 ### UC-13: Mantenimiento de catálogos
 - **Actor:** Administrador (general o por hotel, ver sección 2)
 - **Flujo principal:** CRUD simple (INSERT/UPDATE) sobre `hotel`, `tipo_habitacion`, `habitacion`, `categoria_servicio`, `servicio`, `plan_tarifa`, `tarifa_habitacion`, `empleado`. No requiere procedimientos especiales; son operaciones directas de mantenimiento.
+- **Edición (2026-07-13):** todas estas pantallas ya tenían alta; se agregó edición vía un diálogo
+  "Editar" por fila (mismo patrón `<dialog>` que el registro de cliente/huésped nuevo) en `hoteles`,
+  `tipos-habitacion`, `categorias-servicio`, `servicios`, `planes-tarifa`, `tarifas` y `empleados`.
+  Donde la tabla tiene columna `activo` (`hotel`, `servicio`, `plan_tarifa`, `empleado`), el mismo
+  diálogo de edición incluye el checkbox de activar/desactivar — no hay una acción separada de
+  "baja". `tipo_habitacion`, `categoria_servicio` y `tarifa_habitacion` no tienen columna `activo` en
+  el esquema (y no se agregó una para esto, ver nota de alcance de cambios de schema): en esas tres
+  solo se puede editar los valores, no desactivar. `habitacion` ya tenía su propio mecanismo de
+  cambio de estado (`sp_cambiar_estado_habitacion`, ver UC de estadía) y no se tocó.
 - **Alcance:** `tipo_habitacion`/`categoria_servicio`/`servicio`/`plan_tarifa`/`tarifa_habitacion`
   son catálogos de toda la cadena (sin `id_hotel`), así que cualquier administrador los gestiona
   igual. `hotel`, `habitacion` y `empleado` sí son propios de un hotel: solo el administrador
