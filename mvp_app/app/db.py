@@ -1,5 +1,5 @@
 import mysql.connector
-from flask import current_app
+from flask import current_app, session
 
 
 def get_connection():
@@ -11,6 +11,15 @@ def get_connection():
         user=cfg["DB_USER"],
         password=cfg["DB_PASSWORD"],
     )
+
+
+def _marcar_empleado_actual(cur):
+    """Deja el id_empleado de la sesión Flask en la variable de sesión MySQL
+    @auditoria_id_empleado, que los triggers trg_auditoria_*_au/_ad leen
+    para saber quién hizo el cambio (ver 06_Triggers.sql). Se llama al abrir
+    cada conexión que va a mutar datos, antes de la sentencia real; fuera de
+    una request (scripts, EVENT) simplemente no hay sesión y queda NULL."""
+    cur.execute("SET @auditoria_id_empleado = %s", (session.get("id_empleado"),))
 
 
 def call_procedure(proc_name, params=()):
@@ -38,6 +47,7 @@ def call_procedure(proc_name, params=()):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        _marcar_empleado_actual(cur)
         out_values = cur.callproc(proc_name, params)
         result_sets = []
         for rs in cur.stored_results():
@@ -71,6 +81,7 @@ def execute(sql, params=None):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        _marcar_empleado_actual(cur)
         cur.execute(sql, params or ())
         conn.commit()
         return cur.lastrowid
@@ -100,6 +111,7 @@ def call_procedures_en_transaccion(fabrica_llamadas):
     """
     conn = get_connection()
     cur = conn.cursor()
+    _marcar_empleado_actual(cur)
 
     def ejecutar(proc_name, params):
         out_values = cur.callproc(proc_name, params)
@@ -130,6 +142,7 @@ def execute_transaction(statements):
     cur = conn.cursor()
     lastrowids = []
     try:
+        _marcar_empleado_actual(cur)
         for sql, params in statements:
             cur.execute(sql, params or ())
             lastrowids.append(cur.lastrowid)

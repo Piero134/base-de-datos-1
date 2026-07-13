@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Auditoría{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Auditoría{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
+  <p class="subtitle">Cambios (edición o eliminación) sobre reservas y cuentas por cobrar, con quién y cuándo. Últimos 200 registros.</p>
+</div>
+
+<form class="card" method="get">
+  {% if es_general %}
+  <label for="filtro_id_hotel">Hotel</label>
+  <select name="id_hotel" id="filtro_id_hotel" required data-searchable="Buscar hotel…">
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}" {% if h.id_hotel == id_hotel_filtro %}selected{% endif %}>{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  {% if puede_filtrar_tabla %}
+  <label for="filtro_tabla">Tabla</label>
+  <select name="tabla" id="filtro_tabla">
+    <option value="" {% if not tabla_filtro %}selected{% endif %}>Todas</option>
+    <option value="reserva" {% if tabla_filtro == 'reserva' %}selected{% endif %}>Reservas</option>
+    <option value="cuenta_cobrar" {% if tabla_filtro == 'cuenta_cobrar' %}selected{% endif %}>Cuentas por cobrar</option>
+  </select>
+  {% endif %}
+  <button type="submit" class="btn-secondary">Filtrar</button>
+</form>
+
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Fecha</th><th>Tabla</th><th>Registro</th><th>Operación</th><th>Empleado</th><th>Cambios</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr>
+    <td>{{ f.fecha_cambio }}</td>
+    <td>{{ 'Reserva' if f.tabla == 'reserva' else 'Cuenta por cobrar' }}</td>
+    <td>#{{ f.id_registro }}</td>
+    <td><span class="badge {{ 'badge-danger' if f.operacion == 'DELETE' else 'badge-info' }}">{{ f.operacion }}</span></td>
+    <td>{{ f.empleado or 'Automático / sistema' }}</td>
+    <td>
+      {% if f.operacion == 'DELETE' %}
+      <span class="optional">Registro eliminado.</span>
+      {% elif f.cambios %}
+      <ul class="mini-list">
+        {% for campo, antes, despues in f.cambios %}
+        <li><span>{{ campo }}</span><span>{{ antes if antes is not none else '—' }} → {{ despues if despues is not none else '—' }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <span class="optional">Sin cambios detectados.</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay cambios auditados{% if tabla_filtro %} para este filtro{% endif %}.</p>
+{% endif %}
+{% endblock %}

@@ -531,4 +531,106 @@ BEGIN
     END IF;
 END$$
 
+-- ──────────────────────────────────────────────────────────────
+-- T18 (NUEVO). Auditoría de reserva y cuenta_cobrar: cada UPDATE/
+--     DELETE queda registrado en `auditoria` con el antes/después
+--     completo de la fila (JSON) y quién lo hizo (id_empleado, leído
+--     de la variable de sesión @auditoria_id_empleado que fija
+--     mvp_app/app/db.py antes de cada operación — queda NULL si el
+--     cambio lo disparó un proceso automático, ej. el EVENT de
+--     reservas vencidas, o una sesión que nunca la fijó).
+--     cuenta_cobrar en vez de pago_cuenta_cobrar a propósito: un
+--     pago en este proyecto nunca se edita ni se borra (siempre
+--     INSERT), así que ahí no habría nada que un trigger de UPDATE/
+--     DELETE pudiera capturar; cuenta_cobrar sí cambia de verdad
+--     (saldo/estado) cada vez que se registra un pago, vía
+--     trg_cuenta_actualizar_saldo — este trigger nuevo se dispara en
+--     cascada desde ese UPDATE, sin que la app tenga que hacer nada
+--     extra para que quede auditado.
+-- ──────────────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS trg_auditoria_reserva_au$$
+CREATE TRIGGER trg_auditoria_reserva_au
+AFTER UPDATE ON reserva
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria (tabla, id_registro, id_hotel, operacion, valores_antes, valores_despues, id_empleado)
+    VALUES (
+        'reserva', OLD.id_reserva, OLD.id_hotel, 'UPDATE',
+        JSON_OBJECT(
+            'estado', OLD.estado, 'id_cliente', OLD.id_cliente, 'id_hotel', OLD.id_hotel,
+            'id_empleado', OLD.id_empleado, 'id_cliente_contacto', OLD.id_cliente_contacto,
+            'canal', OLD.canal, 'fecha_checkin', OLD.fecha_checkin, 'fecha_checkout', OLD.fecha_checkout,
+            'fecha_limite_pago', OLD.fecha_limite_pago, 'pagado', OLD.pagado, 'fecha_pago', OLD.fecha_pago,
+            'monto_total', OLD.monto_total, 'observaciones', OLD.observaciones
+        ),
+        JSON_OBJECT(
+            'estado', NEW.estado, 'id_cliente', NEW.id_cliente, 'id_hotel', NEW.id_hotel,
+            'id_empleado', NEW.id_empleado, 'id_cliente_contacto', NEW.id_cliente_contacto,
+            'canal', NEW.canal, 'fecha_checkin', NEW.fecha_checkin, 'fecha_checkout', NEW.fecha_checkout,
+            'fecha_limite_pago', NEW.fecha_limite_pago, 'pagado', NEW.pagado, 'fecha_pago', NEW.fecha_pago,
+            'monto_total', NEW.monto_total, 'observaciones', NEW.observaciones
+        ),
+        @auditoria_id_empleado
+    );
+END$$
+
+DROP TRIGGER IF EXISTS trg_auditoria_reserva_ad$$
+CREATE TRIGGER trg_auditoria_reserva_ad
+AFTER DELETE ON reserva
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria (tabla, id_registro, id_hotel, operacion, valores_antes, valores_despues, id_empleado)
+    VALUES (
+        'reserva', OLD.id_reserva, OLD.id_hotel, 'DELETE',
+        JSON_OBJECT(
+            'estado', OLD.estado, 'id_cliente', OLD.id_cliente, 'id_hotel', OLD.id_hotel,
+            'pagado', OLD.pagado, 'monto_total', OLD.monto_total
+        ),
+        NULL,
+        @auditoria_id_empleado
+    );
+END$$
+
+DROP TRIGGER IF EXISTS trg_auditoria_cuenta_cobrar_au$$
+CREATE TRIGGER trg_auditoria_cuenta_cobrar_au
+AFTER UPDATE ON cuenta_cobrar
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria (tabla, id_registro, id_hotel, operacion, valores_antes, valores_despues, id_empleado)
+    VALUES (
+        'cuenta_cobrar', OLD.id_cuenta,
+        (SELECT h.id_hotel FROM alojamiento a JOIN habitacion h ON h.id_habitacion = a.id_habitacion
+         WHERE a.id_alojamiento = OLD.id_alojamiento),
+        'UPDATE',
+        JSON_OBJECT(
+            'id_alojamiento', OLD.id_alojamiento, 'subtotal', OLD.subtotal, 'impuestos', OLD.impuestos,
+            'total', OLD.total, 'saldo', OLD.saldo, 'estado', OLD.estado
+        ),
+        JSON_OBJECT(
+            'id_alojamiento', NEW.id_alojamiento, 'subtotal', NEW.subtotal, 'impuestos', NEW.impuestos,
+            'total', NEW.total, 'saldo', NEW.saldo, 'estado', NEW.estado
+        ),
+        @auditoria_id_empleado
+    );
+END$$
+
+DROP TRIGGER IF EXISTS trg_auditoria_cuenta_cobrar_ad$$
+CREATE TRIGGER trg_auditoria_cuenta_cobrar_ad
+AFTER DELETE ON cuenta_cobrar
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria (tabla, id_registro, id_hotel, operacion, valores_antes, valores_despues, id_empleado)
+    VALUES (
+        'cuenta_cobrar', OLD.id_cuenta,
+        (SELECT h.id_hotel FROM alojamiento a JOIN habitacion h ON h.id_habitacion = a.id_habitacion
+         WHERE a.id_alojamiento = OLD.id_alojamiento),
+        'DELETE',
+        JSON_OBJECT(
+            'id_alojamiento', OLD.id_alojamiento, 'total', OLD.total, 'saldo', OLD.saldo, 'estado', OLD.estado
+        ),
+        NULL,
+        @auditoria_id_empleado
+    );
+END$$
+
 DELIMITER ;

@@ -1,3 +1,4 @@
+import json
 import re
 import secrets
 
@@ -566,4 +567,69 @@ def usuarios():
         "administracion/usuarios.html", filas=filas, admins_generales=admins_generales,
         empleados_disponibles=empleados_disponibles, roles=ROLES, seleccion=seleccion,
         hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
+    )
+
+
+# ---------------------------------------------------------------------
+# Auditoría (bitácora de cambios en reserva / cuenta_cobrar)
+# ---------------------------------------------------------------------
+def _calcular_diferencias(fila):
+    """valores_antes/valores_despues llegan como JSON (str o dict según la
+    versión de mysql-connector); se homogeneiza a dict y se arma la lista de
+    (campo, antes, después) que sí cambiaron, para no obligar a la plantilla
+    a mostrar 13 columnas iguales cuando solo una cambió de verdad."""
+    antes = fila["valores_antes"]
+    despues = fila["valores_despues"]
+    if isinstance(antes, str):
+        antes = json.loads(antes)
+    if isinstance(despues, str):
+        despues = json.loads(despues)
+    fila["valores_antes"] = antes
+    fila["valores_despues"] = despues
+    fila["cambios"] = (
+        [(campo, antes.get(campo), valor) for campo, valor in despues.items() if antes.get(campo) != valor]
+        if despues is not None
+        else []
+    )
+    return fila
+
+
+@bp.route("/auditoria")
+@requiere_rol("ADMINISTRADOR", "GERENCIA", "CAJA")
+def auditoria():
+    # Caja solo audita cuenta_cobrar (su ámbito real: conciliar pagos), no
+    # ve cambios de reserva — esos no le corresponden. Administrador y
+    # Gerencia ven ambas tablas, acotado a su hotel salvo el admin general.
+    rol = session["rol"]
+    es_general = rol == "ADMINISTRADOR" and session["id_hotel"] is None
+    id_hotel_filtro = (request.args.get("id_hotel", type=int) or _primer_hotel_activo()) if es_general else session["id_hotel"]
+    puede_filtrar_tabla = rol != "CAJA"
+    tabla_filtro = "cuenta_cobrar" if not puede_filtrar_tabla else (request.args.get("tabla") or "")
+
+    condiciones = ["au.id_hotel = %s"]
+    parametros = [id_hotel_filtro]
+    if tabla_filtro:
+        condiciones.append("au.tabla = %s")
+        parametros.append(tabla_filtro)
+
+    filas_crudas = query(
+        f"""
+        SELECT au.id_auditoria, au.tabla, au.id_registro, au.operacion,
+               au.valores_antes, au.valores_despues, au.fecha_cambio,
+               CONCAT(e.nombres, ' ', e.apellidos) AS empleado
+        FROM auditoria au
+        LEFT JOIN empleado e ON e.id_empleado = au.id_empleado
+        WHERE {' AND '.join(condiciones)}
+        ORDER BY au.fecha_cambio DESC
+        LIMIT 200
+        """,
+        tuple(parametros),
+    )
+    filas = [_calcular_diferencias(f) for f in filas_crudas]
+
+    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
+    return render_template(
+        "administracion/auditoria.html", filas=filas, tabla_filtro=tabla_filtro,
+        id_hotel_filtro=id_hotel_filtro, es_general=es_general, hoteles=hoteles,
+        puede_filtrar_tabla=puede_filtrar_tabla,
     )

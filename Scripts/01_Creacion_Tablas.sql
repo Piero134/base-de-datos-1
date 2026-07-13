@@ -358,3 +358,32 @@ CREATE TABLE pago_cuenta_cobrar (
     id_empleado     INT             NULL COMMENT 'Empleado de caja que recibe el pago',
     CONSTRAINT pk_pago_cuenta_cobrar PRIMARY KEY (id_pago)
 ) COMMENT = 'Historial de abonos/pagos aplicados a una cuenta por cobrar';
+
+-- -------------------------------------------------------------
+--  13. AUDITORIA
+--      Bitácora genérica de cambios (UPDATE/DELETE) sobre tablas
+--      sensibles: reserva y cuenta_cobrar. pago_cuenta_cobrar
+--      quedó fuera a propósito: en este proyecto un pago nunca se
+--      edita ni se borra (siempre INSERT), así que un trigger
+--      AFTER UPDATE/DELETE ahí no tendría nada que capturar;
+--      cuenta_cobrar sí cambia de verdad (saldo/estado) cada vez
+--      que se registra un pago, vía trg_cuenta_actualizar_saldo.
+--      id_empleado se llena desde la variable de sesión
+--      @auditoria_id_empleado, que la aplicación fija antes de
+--      cada operación (ver mvp_app/app/db.py); queda NULL cuando
+--      el cambio lo hizo un proceso automático (ej. el EVENT de
+--      reservas vencidas) o una sesión que no la fijó.
+-- -------------------------------------------------------------
+CREATE TABLE auditoria (
+    id_auditoria    INT             NOT NULL AUTO_INCREMENT,
+    tabla           VARCHAR(40)     NOT NULL COMMENT 'reserva o cuenta_cobrar',
+    id_registro     INT             NOT NULL COMMENT 'PK del registro afectado en esa tabla',
+    id_hotel        INT             NULL
+        COMMENT 'Capturado por el propio trigger al momento del cambio (no por JOIN posterior): un DELETE deja de tener fila en la tabla origen, así que filtrar por hotel más tarde ya no funcionaría.',
+    operacion       ENUM('UPDATE','DELETE') NOT NULL,
+    valores_antes   JSON            NULL,
+    valores_despues JSON            NULL COMMENT 'NULL en DELETE',
+    id_empleado     INT             NULL,
+    fecha_cambio    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_auditoria PRIMARY KEY (id_auditoria)
+) COMMENT = 'Bitácora de cambios sobre reserva y cuenta_cobrar, llenada por triggers';

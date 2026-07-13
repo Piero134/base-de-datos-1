@@ -197,6 +197,20 @@ ALTER TABLE pago_cuenta_cobrar
         FOREIGN KEY (id_empleado)        REFERENCES empleado (id_empleado)
         ON UPDATE CASCADE ON DELETE SET NULL;
 
+-- ── auditoria ─────────────────────────────────────────────────
+-- Sin FK hacia reserva/cuenta_cobrar a propósito: auditoria.id_registro
+-- es polimórfico (según auditoria.tabla), así que no puede apuntar a una
+-- sola tabla con una FK normal; además debe sobrevivir aunque el
+-- registro auditado ya no exista (ej. una fila borrada). id_empleado e
+-- id_hotel sí son FK normales.
+ALTER TABLE auditoria
+    ADD CONSTRAINT fk_auditoria_empleado
+        FOREIGN KEY (id_empleado)        REFERENCES empleado (id_empleado)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    ADD CONSTRAINT fk_auditoria_hotel
+        FOREIGN KEY (id_hotel)           REFERENCES hotel (id_hotel)
+        ON UPDATE CASCADE ON DELETE RESTRICT;
+
 
 -- =============================================================
 --  B. RESTRICCIONES UNIQUE

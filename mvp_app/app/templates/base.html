@@ -37,12 +37,14 @@
       {% elif session.get('rol') == 'CAJA' %}
         {{ navlink('reservas.listado', 'Pagos pendientes', match_blueprint=True, pagado=0) }}
         {{ navlink('caja.cuentas', 'Cuentas por cobrar', match_blueprint=True) }}
+        {{ navlink('administracion.auditoria', 'Auditoría') }}
       {% elif session.get('rol') == 'GERENCIA' %}
         {{ navlink('reportes.ocupacion', 'Ocupación') }}
         {{ navlink('reportes.ocupacion_mensual', 'Ocupación mensual') }}
         {{ navlink('reportes.ingresos', 'Ingresos') }}
         {{ navlink('reportes.ingresos_mensuales', 'Ingresos mensuales') }}
         {{ navlink('reportes.ranking', 'Ranking clientes') }}
+        {{ navlink('administracion.auditoria', 'Auditoría') }}
       {% elif session.get('rol') == 'ADMINISTRADOR' %}
         {{ navlink('administracion.hoteles', 'Hoteles') }}
         {{ navlink('administracion.tipos_habitacion', 'Tipos habitación') }}
@@ -53,6 +55,7 @@
         {{ navlink('administracion.tarifas', 'Tarifas') }}
         {{ navlink('administracion.empleados', 'Empleados') }}
         {{ navlink('administracion.usuarios', 'Usuarios') }}
+        {{ navlink('administracion.auditoria', 'Auditoría') }}
       {% endif %}
     </nav>
     <div class="session-info">
