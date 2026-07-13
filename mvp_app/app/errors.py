@@ -29,6 +29,7 @@ _MENSAJES_DUPLICADO = {
     "uq_pjuridica_ruc": "Ya existe una empresa registrada con ese RUC.",
     "uq_cliente_persona": "Esta persona ya está registrada como cliente; selecciónala en vez de crearla de nuevo.",
     "uq_detalle_huesped_reserva": "Ese huésped ya está asignado a otra habitación de esta misma reserva.",
+    "uq_usuario_username": "Ya existe un usuario con ese nombre de usuario.",
 }
 _PATRON_DUPLICADO = re.compile(r"for key '(?:[\w]+\.)?([\w]+)'")
 

@@ -5,6 +5,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import generate_password_hash
 
 from app.auth.routes import requiere_rol
+from app.constants import ROLES
 from app.db import call_procedure, execute, execute_transaction, query
 from app.errors import ejecutar_con_flash
 
@@ -371,5 +372,91 @@ def empleados():
     hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
     return render_template(
         "administracion/empleados.html", filas=filas, cargos=cargos, seleccion=seleccion,
+        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
+    )
+
+
+def _empleado_en_alcance(id_empleado, id_hotel):
+    return bool(query("SELECT 1 FROM empleado WHERE id_empleado = %s AND id_hotel = %s", (id_empleado, id_hotel)))
+
+
+# ---------------------------------------------------------------------
+# Usuarios (login de un empleado ya existente)
+# ---------------------------------------------------------------------
+@bp.route("/usuarios", methods=["GET", "POST"])
+@requiere_rol("ADMINISTRADOR")
+def usuarios():
+    # Mismo alcance que empleados(): el admin general elige el hotel y
+    # además puede crear administradores generales (sin hotel); un admin
+    # de un solo hotel queda fijo al suyo y nunca puede otorgar alcance
+    # general, aunque elija el rol ADMINISTRADOR (ver trg_usuario_validar_
+    # alcance_bi/_bu: para ADMINISTRADOR el id_hotel puede ser NULL o
+    # cualquiera; para el resto de roles debe coincidir con el del
+    # empleado, por eso siempre se deriva de id_hotel_nuevo/el empleado).
+    es_general = session["id_hotel"] is None
+    id_hotel_filtro = (request.args.get("id_hotel", type=int) or _primer_hotel_activo()) if es_general else session["id_hotel"]
+
+    seleccion = None
+    if request.method == "POST":
+        id_hotel_nuevo = (request.form.get("id_hotel", type=int) or id_hotel_filtro) if es_general else session["id_hotel"]
+        id_empleado = request.form["id_empleado"]
+        rol = request.form["rol"]
+        administrador_general = es_general and rol == "ADMINISTRADOR" and request.form.get("administrador_general")
+
+        if not _empleado_en_alcance(id_empleado, id_hotel_nuevo):
+            flash("Empleado no encontrado en ese hotel.", "danger")
+            return redirect(url_for("administracion.usuarios", id_hotel=id_hotel_nuevo))
+
+        ok, _ = ejecutar_con_flash(
+            execute,
+            """
+            INSERT INTO usuario (id_empleado, username, password_hash, rol, id_hotel, activo)
+            VALUES (%s, %s, %s, %s, %s, 1)
+            """,
+            (
+                id_empleado, request.form["username"],
+                generate_password_hash(request.form["password"]), rol,
+                None if administrador_general else id_hotel_nuevo,
+            ),
+            on_success_msg="Usuario creado.",
+        )
+        if ok:
+            return redirect(url_for("administracion.usuarios", id_hotel=id_hotel_nuevo))
+        seleccion = request.form
+        id_hotel_filtro = id_hotel_nuevo
+
+    filas = query(
+        """
+        SELECT u.id_empleado, e.nombres, e.apellidos, u.username, u.rol, u.activo
+        FROM usuario u
+        JOIN empleado e ON e.id_empleado = u.id_empleado
+        WHERE e.id_hotel = %s AND NOT (u.rol = 'ADMINISTRADOR' AND u.id_hotel IS NULL)
+        ORDER BY u.rol, e.apellidos
+        """,
+        (id_hotel_filtro,),
+    )
+    admins_generales = query(
+        """
+        SELECT u.id_empleado, e.nombres, e.apellidos, u.username, u.activo
+        FROM usuario u
+        JOIN empleado e ON e.id_empleado = u.id_empleado
+        WHERE u.rol = 'ADMINISTRADOR' AND u.id_hotel IS NULL
+        ORDER BY e.apellidos
+        """
+    ) if es_general else None
+    empleados_disponibles = query(
+        """
+        SELECT e.id_empleado, e.nombres, e.apellidos
+        FROM empleado e
+        LEFT JOIN usuario u ON u.id_empleado = e.id_empleado
+        WHERE e.id_hotel = %s AND e.activo = 1 AND u.id_empleado IS NULL
+        ORDER BY e.apellidos
+        """,
+        (id_hotel_filtro,),
+    )
+    hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
+    return render_template(
+        "administracion/usuarios.html", filas=filas, admins_generales=admins_generales,
+        empleados_disponibles=empleados_disponibles, roles=ROLES, seleccion=seleccion,
         hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
     )

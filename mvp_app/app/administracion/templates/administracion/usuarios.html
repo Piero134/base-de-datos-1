@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Usuarios{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
+  <p class="subtitle">Da acceso al sistema a un empleado ya registrado (login + rol).</p>
+</div>
+
+{% if es_general %}
+<form class="card" method="get">
+  <label for="filtro_id_hotel">Hotel</label>
+  <select name="id_hotel" id="filtro_id_hotel" required data-searchable="Buscar hotel…">
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}" {% if h.id_hotel == id_hotel_filtro %}selected{% endif %}>{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Ver usuarios de este hotel</button>
+</form>
+
+<h2>Administradores generales</h2>
+<p class="subtitle">Alcance sobre todos los hoteles (sin hotel asignado).</p>
+{% if admins_generales %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombres</th><th>Apellidos</th><th>Usuario</th><th>Activo</th></tr></thead>
+  <tbody>
+  {% for f in admins_generales %}
+  <tr><td>{{ f.nombres }}</td><td>{{ f.apellidos }}</td><td>{{ f.username }}</td><td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">No hay administradores generales registrados.</p>
+{% endif %}
+{% endif %}
+
+<h2>Usuarios{% if es_general %} de este hotel{% endif %}</h2>
+{% if filas %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Nombres</th><th>Apellidos</th><th>Usuario</th><th>Rol</th><th>Activo</th></tr></thead>
+  <tbody>
+  {% for f in filas %}
+  <tr><td>{{ f.nombres }}</td><td>{{ f.apellidos }}</td><td>{{ f.username }}</td><td>{{ f.rol }}</td><td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Todavía no hay usuarios registrados en este hotel.</p>
+{% endif %}
+
+<h2>Nuevo usuario</h2>
+{% if empleados_disponibles %}
+<form class="card" method="post">
+  {% if es_general %}
+  <label for="u_id_hotel">Hotel</label>
+  <select name="id_hotel" id="u_id_hotel" required data-searchable="Buscar hotel…">
+    {% for h in hoteles %}
+      <option value="{{ h.id_hotel }}" {% if (seleccion.id_hotel|string if seleccion else id_hotel_filtro|string) == h.id_hotel|string %}selected{% endif %}>{{ h.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <label for="u_id_empleado">Empleado</label>
+  <select name="id_empleado" id="u_id_empleado" required data-searchable="Buscar empleado…">
+    {% for e in empleados_disponibles %}
+      <option value="{{ e.id_empleado }}" {% if seleccion and seleccion.id_empleado|string == e.id_empleado|string %}selected{% endif %}>{{ e.nombres }} {{ e.apellidos }}</option>
+    {% endfor %}
+  </select>
+  <label for="u_username">Usuario</label>
+  <input type="text" name="username" id="u_username" required maxlength="50" value="{{ seleccion.username if seleccion else '' }}">
+  <label for="u_password">Contraseña</label>
+  <input type="password" name="password" id="u_password" required minlength="8" autocomplete="new-password">
+  <label for="u_rol">Rol</label>
+  <select name="rol" id="u_rol" required>
+    {% for r in roles %}<option value="{{ r }}" {% if seleccion and seleccion.rol == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
+  </select>
+  {% if es_general %}
+  <label>
+    <input type="checkbox" name="administrador_general" value="1" style="width:auto;display:inline"
+      {% if seleccion and seleccion.administrador_general %}checked{% endif %}>
+    Administrador general (todos los hoteles, no solo el elegido arriba). Solo aplica si el rol es ADMINISTRADOR.
+  </label>
+  {% endif %}
+  <button type="submit">Crear usuario</button>
+</form>
+{% else %}
+<p class="empty-state">No hay empleados sin usuario en este hotel. Primero da de alta al empleado en <a href="{{ url_for('administracion.empleados', id_hotel=id_hotel_filtro) if es_general else url_for('administracion.empleados') }}">Empleados</a>.</p>
+{% endif %}
+{% endblock %}
