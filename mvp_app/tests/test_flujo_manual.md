@@ -22,9 +22,11 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       `/admin/usuarios` (alta de login para un empleado existente), y una
       decimotercera el mismo día tras dar a Recepción acceso a `/habitaciones`
       (ver estado + cambiarlo) y restringir las transiciones manuales de
-      `sp_cambiar_estado_habitacion`, y una decimocuarta tras rechazar
-      generar cuentas por cobrar sin consumos ni daños pendientes. Marcar
-      de nuevo tras cambios importantes.
+      `sp_cambiar_estado_habitacion`, una decimocuarta tras rechazar
+      generar cuentas por cobrar sin consumos ni daños pendientes, y una
+      decimoquinta el 2026-07-13 tras corregir el bug de
+      `fecha_salida_real` en `sp_agregar_huesped_alojamiento`. Marcar de
+      nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -120,15 +122,13 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       columnas Habitación/Tipo/Check-in/Huéspedes/Cliente pagador/botón
       "Ver alojamiento →". Verificado con `test_client` contra `hotel_db`
       real, con limpieza posterior de la reserva/alojamiento de prueba.
-      **Nota (bug pre-existente, no corregido en este incremento):** al
-      buscar huéspedes libres para la prueba se detectó que
-      `sp_agregar_huesped_alojamiento` considera "activo en otro
-      alojamiento" a un huésped que ya hizo checkout individual
+      **Nota (bug pre-existente, corregido el 2026-07-13 — ver más abajo):**
+      al buscar huéspedes libres para la prueba se detectó que
+      `sp_agregar_huesped_alojamiento` consideraba "activo en otro
+      alojamiento" a un huésped que ya había hecho checkout individual
       (`fecha_salida_real` no nula) pero cuyo compañero de habitación
-      todavía no se retiró (el `alojamiento` sigue `ACTIVO` en conjunto) —
-      el chequeo no filtra por `fecha_salida_real IS NULL`. Esto puede
-      bloquear indebidamente un nuevo check-in de ese huésped en otra
-      habitación. Reportado, pendiente de decisión.
+      todavía no se había retirado (el `alojamiento` seguía `ACTIVO` en
+      conjunto) — el chequeo no filtraba por `fecha_salida_real IS NULL`.
 - [x] **Eliminación de la tabla `huesped` — "huésped" pasa a ser un rol
       puro sobre `persona_natural`, sin tabla propia (UC-03/UC-04b,
       2026-07-12):** `detalle_huesped_reserva.id_huesped` y
@@ -250,6 +250,24 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       candidato mientras no tuvo gastos, y mostró el estado vacío
       actualizado. Datos de prueba (consumo + cuenta) borrados al terminar,
       dejando el alojamiento #36 finalizado y sin cuenta (su estado real).
+- [x] **Corrección del bug de `fecha_salida_real` en
+      `sp_agregar_huesped_alojamiento` (2026-07-13):** reproducido de punta
+      a punta contra `hotel_db` real con el flujo de reserva completo (no
+      solo el SP aislado): reserva A → check-in de persona 1 (titular) +
+      persona 2 (acompañante) en hab. 202 (Doble) → salida individual de
+      persona 1 (`sp_registrar_salida_huesped`, alojamiento sigue `ACTIVO`
+      por persona 2) → reserva B → check-in de persona 1 en hab. 101 (otra
+      habitación). Antes del fix esto fallaba con *"Este huésped ya está
+      activo en otro alojamiento."*; con el `AND ha.fecha_salida_real IS
+      NULL` agregado al `EXISTS` del SP, el segundo check-in de persona 1
+      funcionó correctamente. Se verificó además que la protección real
+      sigue intacta: una reserva C con persona 5 de titular en hab. 203
+      (Doble) y un intento de agregar ahí a persona 2 —que sigue
+      *genuinamente* activa en la hab. 202, sin salida registrada— fue
+      rechazado con el mismo mensaje, como corresponde. Los 3
+      reserva/alojamiento de prueba y sus `huesped_alojamiento` se
+      borraron al terminar y las 3 habitaciones usadas volvieron a
+      `DISPONIBLE`.
 - [x] **Pago de cuenta (UC-10):** pago parcial de 50.00 dejó saldo 62.10
       (estado PENDIENTE); intento de pagar 999.00 mostró el SIGNAL *"El
       monto del pago excede el saldo pendiente"*; pago final de 62.10 dejó

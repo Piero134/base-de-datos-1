@@ -165,8 +165,13 @@ asignado a ese empleado:
 ### UC-04b: Restricción — un huésped no puede estar en dos estadías activas
 - **Regla de negocio:** `sp_agregar_huesped_alojamiento` rechaza asociar un huésped a un
   alojamiento si ese huésped ya figura en `huesped_alojamiento` de otro `alojamiento` con
-  `estado = 'ACTIVO'`, incluso si el intento llega directo al check-in (UC-04) sin pasar por la
-  interfaz.
+  `estado = 'ACTIVO'` **y sin salida individual registrada** (`fecha_salida_real IS NULL`), incluso
+  si el intento llega directo al check-in (UC-04) sin pasar por la interfaz.
+- **Corrección (2026-07-13):** el chequeo no filtraba por `fecha_salida_real IS NULL`, así que un
+  huésped que ya había hecho su salida individual (UC-07) de una habitación —pero cuyo compañero
+  seguía dentro, dejando el `alojamiento` en conjunto `ACTIVO`— quedaba indebidamente bloqueado
+  para un nuevo check-in en otra habitación. Se agregó ese filtro al `EXISTS`; la restricción real
+  (un huésped genuinamente activo en otra habitación) sigue intacta.
 - **Nota:** esta regla depende de que `id_huesped` identifique unívocamente a la persona física. No
   existe una tabla `huesped` aparte (ver nota de identidad en UC-03): `id_huesped` es directo
   `persona_natural.id_persona`, así que no hay forma de que la misma persona termine con dos
