@@ -508,6 +508,11 @@ BEGIN
     SELECT v_subtotal + COALESCE(SUM(costo), 0) INTO v_subtotal
     FROM danio WHERE id_alojamiento = p_id_alojamiento AND estado = 'PENDIENTE';
 
+    IF v_subtotal = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Este alojamiento no tiene consumos ni daños pendientes; no hay nada que cobrar.';
+    END IF;
+
     SET v_impuestos = ROUND(v_subtotal * 0.18, 2);
     SET v_total = v_subtotal + v_impuestos;
 

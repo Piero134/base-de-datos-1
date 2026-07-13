@@ -36,6 +36,10 @@ def cuentas():
 
 
 def _contexto_generar_cuenta():
+    # Solo candidatos con algo real que cobrar (sp_generar_cuenta_cobrar
+    # rechaza generar una cuenta en 0 si no hay consumos ni daños
+    # pendientes); sin este filtro el cajero vería alojamientos que igual
+    # fallarían al intentar generarles cuenta.
     return query(
         """
         SELECT a.id_alojamiento, ht.nombre AS hotel, h.numero AS habitacion, a.fecha_checkout_real
@@ -44,6 +48,10 @@ def _contexto_generar_cuenta():
         JOIN hotel ht ON ht.id_hotel = h.id_hotel
         LEFT JOIN cuenta_cobrar cc ON cc.id_alojamiento = a.id_alojamiento
         WHERE a.estado = 'FINALIZADO' AND cc.id_cuenta IS NULL AND ht.id_hotel = %s
+          AND (
+              EXISTS (SELECT 1 FROM consumo_servicio cs WHERE cs.id_alojamiento = a.id_alojamiento)
+              OR EXISTS (SELECT 1 FROM danio d WHERE d.id_alojamiento = a.id_alojamiento AND d.estado = 'PENDIENTE')
+          )
         ORDER BY a.fecha_checkout_real
         """,
         (session["id_hotel"],),

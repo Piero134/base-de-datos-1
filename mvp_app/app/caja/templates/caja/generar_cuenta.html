@@ -4,7 +4,7 @@
 <div class="page-header">
   <div class="breadcrumb"><a href="{{ url_for('caja.cuentas') }}">Cuentas por cobrar</a> &rsaquo; <span class="current">Generar</span></div>
   <h1>Generar cuenta por cobrar</h1>
-  <p class="subtitle">Alojamientos finalizados (checkout hecho) que aún no tienen cuenta generada.</p>
+  <p class="subtitle">Alojamientos finalizados (checkout hecho) con consumos o daños pendientes que aún no tienen cuenta generada.</p>
 </div>
 {% if alojamientos %}
 <form class="card" method="post">
@@ -18,6 +18,6 @@
   <button type="submit">Generar cuenta</button>
 </form>
 {% else %}
-<p class="empty-state">No hay alojamientos finalizados pendientes de facturar.</p>
+<p class="empty-state">No hay alojamientos finalizados con consumos o daños pendientes de facturar.</p>
 {% endif %}
 {% endblock %}
