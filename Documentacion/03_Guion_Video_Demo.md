@@ -21,10 +21,8 @@ efecto en la base de datos cuando se mencione un trigger.
 ## 1. Diseño de la base de datos (1:00–3:00)
 
 - Mostrar `Diagramas/Diagrama de Base de Datos/01_Modelo_Conceptual.png`: explicar brevemente
-  persona (natural/jurídica), cliente vs. huésped, y por qué están separados. **Pendiente:** este
-  PNG (y `02_Modelo_Logico.png`/`03_Modelo_Fisico.png`) todavía muestra `huesped` como tabla propia
-  y no muestra `auditoria`; se eliminó `huesped` del esquema y se agregó `auditoria` (ver
-  `01_Entregable1_Diseno_BD.md` sección 4) y hay que regenerar los diagramas antes de grabar.
+  persona (natural/jurídica), cliente vs. huésped (huésped es un rol de `persona_natural`, no una
+  entidad propia), y por qué están separados.
 - Mostrar `02_Modelo_Logico.png` → `03_Modelo_Fisico.png`: mencionar 27 tablas, tipos ENUM para
   estados, cupos sin identificar en reservas corporativas, plan público vs. corporativo.
 - Un vistazo rápido a `Scripts/01_Creacion_Tablas.sql` y `02_Reglas_Integridad.sql` en el editor

@@ -161,9 +161,11 @@ destacables del esquema relacional:
      demostraba que ese diseño no funcionaba en la práctica — la app prometía "se completa después"
      pero ningún código actualizaba jamás un huésped genérico con datos reales.
   **Nota:** los diagramas `Diagramas/Diagrama de Base de Datos/01_Modelo_Conceptual.puml`,
-  `02_Modelo_Logico.puml` y `03_Modelo_Fisico.puml` (y sus PNG) todavía muestran `huesped` como
-  entidad separada — quedaron desactualizados por este cambio y no se regeneraron en este
-  incremento; hay que actualizarlos a mano antes de la sustentación.
+  `02_Modelo_Logico.puml` y `03_Modelo_Fisico.puml` (y sus PNG) ya se actualizaron para reflejar
+  esto: `huesped` no aparece como entidad, y `detalle_huesped_reserva`/`huesped_alojamiento` se
+  relacionan directo con `persona_natural`. De paso se agregó `auditoria` (no estaba en ningún
+  diagrama) y el modelo físico ahora incluye las 27 tablas (antes omitía `ubigeo`,
+  `cargo_empleado`, `persona`, `cliente`, `tipo_documento` y `plan_tarifa`).
 - **Columna eliminada: `tarifa_habitacion.capacidad_maxima`.** La misma auditoría encontró que esta
   columna nunca se leía en ningún procedimiento/trigger/vista (la capacidad siempre se valida contra
   `tipo_habitacion.capacidad_base`) y en los datos de prueba siempre coincidía con ese valor — era
