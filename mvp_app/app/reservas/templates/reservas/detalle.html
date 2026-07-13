@@ -1,8 +1,13 @@
 {% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
 {% block title %}Detalle reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 {% set puede_editar_lineas = session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') and not es_terminal and not reserva.pagado %}
 <div class="page-header">
+  {{ crumbs.breadcrumb([
+    {"label": "Reservas", "url": url_for('reservas.listado')},
+    {"label": "Reserva #" ~ reserva.id_reserva, "url": None},
+  ]) }}
   <h1>Reserva #{{ reserva.id_reserva }} — {{ reserva.hotel }}</h1>
   <p class="subtitle">Agrega una o más líneas (tipo de habitación) antes de confirmar el pago.</p>
 </div>
@@ -91,10 +96,8 @@
 {% endif %}
 {% endif %}
 
-{% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
-  {% if es_terminal %}
-  <p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; no se pueden agregar más líneas.</p>
-  {% elif reserva.pagado %}
+{% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') and not es_terminal %}
+  {% if reserva.pagado %}
   <p class="empty-state">Esta reserva ya está pagada; no se pueden agregar más líneas.</p>
   {% else %}
   <button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgAgregarLinea">+ Agregar línea</button>
@@ -130,36 +133,35 @@
   {% endif %}
 {% endif %}
 
-{% if es_terminal %}
-<p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; ya no admite ninguna acción (agregar líneas, pagar, asignar huéspedes o hacer check-in).</p>
-{% elif lineas %}
-<p class="actions">
-  {% if not reserva.pagado %}
-    {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
-    <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+<div class="actions-footer">
+  <div>
+    {% if es_terminal %}
+    <p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; ya no admite ninguna acción (agregar líneas, pagar, asignar huéspedes o hacer check-in).</p>
+    {% elif lineas %}
+      {% if not reserva.pagado %}
+        {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
+        <a href="{{ url_for('reservas.pago', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a confirmación de pago →</a>
+        {% else %}
+        <p class="empty-state">Reserva pendiente de pago.</p>
+        {% endif %}
+      {% elif session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
+      <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
+      {% endif %}
     {% else %}
-    <p class="empty-state">Reserva pendiente de pago.</p>
+    <p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa "+ Agregar línea" arriba para agregar la primera antes de poder continuar a pago.</p>
     {% endif %}
-  {% elif session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
-  <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Asignar huéspedes →</a>
+  </div>
+  {% if not es_terminal and session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
+  <div class="actions-footer-secondary">
+    <form method="post" action="{{ url_for('reservas.cancelar_reserva', id_reserva=reserva.id_reserva) }}"
+          data-confirm="¿Cancelar la reserva #{{ reserva.id_reserva }}? Esta acción no se puede deshacer.">
+      <button type="submit" class="btn-secondary">Cancelar reserva</button>
+    </form>
+    <form method="post" action="{{ url_for('reservas.marcar_no_show', id_reserva=reserva.id_reserva) }}"
+          data-confirm="¿Marcar la reserva #{{ reserva.id_reserva }} como no-show? Solo aplica si el cliente no se presentó tras su fecha de check-in.">
+      <button type="submit" class="btn-secondary">Marcar como no-show</button>
+    </form>
+  </div>
   {% endif %}
-</p>
-{% else %}
-<p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa "+ Agregar línea" arriba para agregar la primera antes de poder continuar a pago.</p>
-{% endif %}
-
-<p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
-
-{% if not es_terminal and session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
-<div class="actions">
-  <form class="inline-form" method="post" action="{{ url_for('reservas.cancelar_reserva', id_reserva=reserva.id_reserva) }}"
-        data-confirm="¿Cancelar la reserva #{{ reserva.id_reserva }}? Esta acción no se puede deshacer.">
-    <button type="submit" class="btn-secondary">Cancelar reserva</button>
-  </form>
-  <form class="inline-form" method="post" action="{{ url_for('reservas.marcar_no_show', id_reserva=reserva.id_reserva) }}"
-        data-confirm="¿Marcar la reserva #{{ reserva.id_reserva }} como no-show? Solo aplica si el cliente no se presentó tras su fecha de check-in.">
-    <button type="submit" class="btn-secondary">Marcar como no-show</button>
-  </form>
 </div>
-{% endif %}
 {% endblock %}
