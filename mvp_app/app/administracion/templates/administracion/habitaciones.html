@@ -1,9 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Habitaciones{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Habitaciones{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
-  <p class="subtitle">{{ filas|length }} habitación{{ 'es' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+<div class="page-header page-header--actions">
+  <div>
+    <h1>Habitaciones{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
+    <p class="subtitle">{{ filas|length }} habitación{{ 'es' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
+  </div>
+  {% if puede_crear %}
+  <button type="button" data-open-modal="dlgNuevaHabitacion">+ Nueva habitación</button>
+  {% endif %}
 </div>
 
 {% if es_general %}
@@ -56,30 +61,35 @@
 {% endif %}
 
 {% if puede_crear %}
-<h2>Nueva habitación</h2>
-<form class="card" method="post">
-  {% if es_general %}
-  <label for="hab_id_hotel">Hotel</label>
-  <select name="id_hotel" id="hab_id_hotel" required data-searchable="Buscar hotel…">
-    {% for h in hoteles %}
-      <option value="{{ h.id_hotel }}" {% if (seleccion.id_hotel|string if seleccion else id_hotel_filtro|string) == h.id_hotel|string %}selected{% endif %}>{{ h.nombre }}</option>
-    {% endfor %}
-  </select>
-  {% endif %}
-  <label for="hab_id_tipo_habitacion">Tipo</label>
-  <select name="id_tipo_habitacion" id="hab_id_tipo_habitacion" required>
-    {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
-  </select>
-  <label for="hab_numero">Número</label>
-  <input type="text" name="numero" id="hab_numero" required
-         pattern="[A-Za-z0-9][A-Za-z0-9\-]*"
-         title="Debe empezar con letra o número (sin signo negativo); admite guiones internos, ej: 10B, PH-1."
-         value="{{ seleccion.numero if seleccion else '' }}">
-  <label for="hab_piso">Piso</label>
-  <input type="number" name="piso" id="hab_piso" required value="{{ seleccion.piso if seleccion else '' }}">
-  <label for="hab_descripcion">Descripción <span class="optional">(opcional)</span></label>
-  <textarea name="descripcion" id="hab_descripcion">{{ seleccion.descripcion if seleccion else '' }}</textarea>
-  <button type="submit">Crear habitación</button>
-</form>
+<dialog id="dlgNuevaHabitacion" class="form-dialog" {% if seleccion %}data-autoopen{% endif %}>
+  <h2>Nueva habitación</h2>
+  <form method="post">
+    {% if es_general %}
+    <label for="hab_id_hotel">Hotel</label>
+    <select name="id_hotel" id="hab_id_hotel" required data-searchable="Buscar hotel…">
+      {% for h in hoteles %}
+        <option value="{{ h.id_hotel }}" {% if (seleccion.id_hotel|string if seleccion else id_hotel_filtro|string) == h.id_hotel|string %}selected{% endif %}>{{ h.nombre }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <label for="hab_id_tipo_habitacion">Tipo</label>
+    <select name="id_tipo_habitacion" id="hab_id_tipo_habitacion" required>
+      {% for t in tipos %}<option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
+    </select>
+    <label for="hab_numero">Número</label>
+    <input type="text" name="numero" id="hab_numero" required
+           pattern="[A-Za-z0-9][A-Za-z0-9\-]*"
+           title="Debe empezar con letra o número (sin signo negativo); admite guiones internos, ej: 10B, PH-1."
+           value="{{ seleccion.numero if seleccion else '' }}">
+    <label for="hab_piso">Piso</label>
+    <input type="number" name="piso" id="hab_piso" required value="{{ seleccion.piso if seleccion else '' }}">
+    <label for="hab_descripcion">Descripción <span class="optional">(opcional)</span></label>
+    <textarea name="descripcion" id="hab_descripcion">{{ seleccion.descripcion if seleccion else '' }}</textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Crear habitación</button>
+    </div>
+  </form>
+</dialog>
 {% endif %}
 {% endblock %}
