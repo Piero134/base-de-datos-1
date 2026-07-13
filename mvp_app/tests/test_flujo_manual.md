@@ -30,7 +30,9 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       donde aplica) a hoteles, tipos de habitación, categorías de
       servicio, servicios, planes tarifarios, tarifas y empleados, y una
       decimoséptima tras convertir "Agregar línea" (detalle de reserva) en
-      ventana flotante. Marcar de nuevo tras cambios importantes.
+      ventana flotante, y una decimoctava tras convertir "Registrar
+      consumo" y "Registrar daño" (alojamiento) en ventanas flotantes.
+      Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -362,6 +364,17 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       se reabrió solo (`data-autoopen`) con la cantidad "99" todavía
       tecleada en el campo, igual que ya pasaba con cliente/huésped nuevo.
       La reserva de prueba se borró al terminar.
+- [x] **"Registrar consumo" y "Registrar daño" como ventanas flotantes
+      (UC-05/06, 2026-07-13):** `estadia/ver.html` reemplazó ambos
+      formularios fijos por botones "+ Registrar consumo" / "+ Registrar
+      daño" que abren un `<dialog>` cada uno (mismo patrón que "Cliente
+      nuevo"). Probado con Playwright contra un alojamiento `ACTIVO` real
+      creado para la prueba (reserva → pago → check-in): se registró un
+      consumo real (Servicio de cuarto — desayuno ×2 = S/ 50.00) y un daño
+      real (S/ 45.00), ambos aparecieron de inmediato en sus tablas
+      respectivas con el flash de éxito. Reserva, alojamiento, huésped,
+      consumo y daño de prueba se borraron al terminar, con la habitación
+      de vuelta a `DISPONIBLE`.
 
 ## Cómo volver a correr esta verificación
 
