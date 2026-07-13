@@ -1,9 +1,15 @@
 {% extends "base.html" %}
+{% import "partials/breadcrumb.html" as crumbs %}
 {% block title %}Asignación de huéspedes — reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
+  {{ crumbs.breadcrumb([
+    {"label": "Reservas", "url": url_for('reservas.listado')},
+    {"label": "Reserva #" ~ reserva.id_reserva, "url": url_for('reservas.detalle', id_reserva=reserva.id_reserva)},
+    {"label": "Asignación de huéspedes", "url": None},
+  ]) }}
   <h1>Asignación de huéspedes</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación de esta reserva (o resérvale el cupo sin nombre todavía). Cada habitación con al menos un huésped necesita un titular. Se puede editar hasta el check-in; el check-in es individual, así que cada huésped queda fijo apenas se registra su check-in, aunque sus compañeros de habitación todavía no lo hayan hecho.</p>
+  <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación (o deja el cupo sin nombre por ahora). Cada habitación con huéspedes necesita un titular.</p>
 </div>
 
 {% if es_terminal %}
@@ -126,10 +132,9 @@
   </form>
 </dialog>
 
+{% if not es_terminal %}
 <p class="actions">
-  {% if not es_terminal %}
   <a href="{{ url_for('estadia.checkin_reserva', id_reserva=reserva.id_reserva) }}" class="btn-primary-link">Continuar a check-in →</a>
-  {% endif %}
-  <a href="{{ url_for('reservas.detalle', id_reserva=reserva.id_reserva) }}">Volver al detalle</a>
 </p>
+{% endif %}
 {% endblock %}
