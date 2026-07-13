@@ -251,30 +251,34 @@
       }
 
       // Selects con buscador: cualquier <select data-searchable="placeholder">
-      // se convierte en un <input list> + <datalist> (autocompletado nativo,
-      // sin dependencias). El <select> original queda oculto en el DOM con su
-      // name quitado (para no duplicar el envío); sin JS, el <select> normal
-      // sigue funcionando tal cual.
+      // se convierte en un combobox propio (input + menú desplegable
+      // estilizado por nosotros), en vez de <input list>+<datalist> --
+      // el menú de un <datalist> es UI nativa del navegador y no se puede
+      // personalizar con CSS en absoluto, por lo que se veía fuera de
+      // lugar junto al resto de la interfaz. El <select> original queda
+      // oculto en el DOM con su name quitado (para no duplicar el envío);
+      // sin JS, el <select> normal sigue funcionando tal cual.
       //
       // Filtro previo opcional: si el select trae data-filter-by="<id de otro
-      // select>", el datalist solo incluye las <option> cuyo data-filter-value
+      // select>", el menú solo incluye las <option> cuyo data-filter-value
       // coincide con el valor de ese select filtro, y el buscador arranca
       // deshabilitado hasta que se elija un valor de filtro.
-      var contadorDatalist = 0;
+      var contadorCombobox = 0;
       document.querySelectorAll('select[data-searchable]').forEach(function (select) {
         var placeholder = select.dataset.searchable || 'Buscar…';
         var idOriginal = select.id;
-        var datalistId = (idOriginal || 'searchable_' + (contadorDatalist++)) + '_lista';
         var selectFiltro = select.dataset.filterBy ? document.getElementById(select.dataset.filterBy) : null;
         var placeholderSinFiltro = select.dataset.filterPlaceholder || 'Elige primero un filtro…';
 
-        var datalist = document.createElement('datalist');
-        datalist.id = datalistId;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'combobox';
 
         var input = document.createElement('input');
         input.type = 'text';
-        input.setAttribute('list', datalistId);
         input.autocomplete = 'off';
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-expanded', 'false');
+        input.setAttribute('aria-autocomplete', 'list');
         if (select.required) { input.required = true; }
         // El input visible hereda el id original (el <label for="..."> del
         // select ya apunta ahí), el select oculto se renombra para no chocar.
@@ -283,23 +287,109 @@
           select.id = idOriginal + '_select_oculto';
         }
 
+        var menu = document.createElement('ul');
+        menu.className = 'combobox-menu';
+        menu.setAttribute('role', 'listbox');
+        menu.id = (idOriginal || 'combobox_' + (contadorCombobox++)) + '_menu';
+        input.setAttribute('aria-controls', menu.id);
+
         var hidden = document.createElement('input');
         hidden.type = 'hidden';
         hidden.name = select.name;
 
+        // idPorTexto es estable (se reconstruye solo al iniciar o cuando
+        // cambia el filtro dependiente): permite que tipear el texto EXACTO
+        // de una opción autocomplete el valor sin necesidad de elegirla del
+        // menú, igual que hacía el <datalist> nativo. opcionesLi, en
+        // cambio, se reconstruye en cada tecla para el menú visual filtrado.
         var idPorTexto = {};
-        function reconstruirDatalist() {
-          datalist.innerHTML = '';
-          idPorTexto = {};
-          Array.prototype.forEach.call(select.options, function (opt) {
-            if (opt.value === '') { return; }
-            if (selectFiltro && opt.dataset.filterValue !== selectFiltro.value) { return; }
-            var texto = opt.textContent.trim();
-            var dataOpt = document.createElement('option');
-            dataOpt.value = texto;
-            datalist.appendChild(dataOpt);
-            idPorTexto[texto] = opt.value;
+        var opcionesLi = [];
+        var activo = -1;
+
+        function candidatosDisponibles() {
+          return Array.prototype.filter.call(select.options, function (opt) {
+            if (opt.value === '') { return false; }
+            if (selectFiltro && opt.dataset.filterValue !== selectFiltro.value) { return false; }
+            return true;
           });
+        }
+
+        function actualizarIndice() {
+          idPorTexto = {};
+          candidatosDisponibles().forEach(function (opt) {
+            idPorTexto[opt.textContent.trim()] = opt.value;
+          });
+        }
+
+        function seleccionarOpcion(valor, texto) {
+          input.value = texto;
+          hidden.value = valor;
+          cerrarMenu();
+        }
+
+        function renderMenu() {
+          menu.innerHTML = '';
+          opcionesLi = [];
+          activo = -1;
+          var texto = input.value.trim().toLowerCase();
+          var candidatos = candidatosDisponibles();
+          var coincidencias = texto
+            ? candidatos.filter(function (opt) { return opt.textContent.trim().toLowerCase().indexOf(texto) !== -1; })
+            : candidatos;
+          if (!coincidencias.length) {
+            var vacio = document.createElement('li');
+            vacio.className = 'combobox-empty';
+            vacio.textContent = candidatos.length ? 'Sin resultados' : 'No hay opciones disponibles';
+            menu.appendChild(vacio);
+            return;
+          }
+          coincidencias.slice(0, 300).forEach(function (opt) {
+            var textoOpcion = opt.textContent.trim();
+            var li = document.createElement('li');
+            li.className = 'combobox-option';
+            li.setAttribute('role', 'option');
+            li.textContent = textoOpcion;
+            // mousedown (no click) para que dispare antes que el blur del input.
+            li.addEventListener('mousedown', function (evt) {
+              evt.preventDefault();
+              seleccionarOpcion(opt.value, textoOpcion);
+            });
+            menu.appendChild(li);
+            opcionesLi.push(li);
+          });
+        }
+
+        function marcarActivo(indice) {
+          opcionesLi.forEach(function (li) { li.classList.remove('is-active'); });
+          activo = indice;
+          if (activo >= 0 && opcionesLi[activo]) {
+            opcionesLi[activo].classList.add('is-active');
+            opcionesLi[activo].scrollIntoView({ block: 'nearest' });
+          }
+        }
+
+        function posicionarMenu() {
+          var rect = input.getBoundingClientRect();
+          menu.style.left = rect.left + 'px';
+          menu.style.top = (rect.bottom + 4) + 'px';
+          menu.style.width = rect.width + 'px';
+        }
+
+        function abrirMenu() {
+          if (input.disabled) { return; }
+          renderMenu();
+          posicionarMenu();
+          menu.classList.add('is-open');
+          input.setAttribute('aria-expanded', 'true');
+          window.addEventListener('scroll', posicionarMenu, true);
+          window.addEventListener('resize', posicionarMenu);
+        }
+
+        function cerrarMenu() {
+          menu.classList.remove('is-open');
+          input.setAttribute('aria-expanded', 'false');
+          window.removeEventListener('scroll', posicionarMenu, true);
+          window.removeEventListener('resize', posicionarMenu);
         }
 
         function sincronizarEstadoFiltro() {
@@ -312,14 +402,14 @@
         // Si el select ya trae una opción preseleccionada (re-render tras un
         // error, o auto-selección del cliente recién creado), sincroniza el
         // select-filtro con su data-filter-value ANTES de construir el
-        // datalist, para no dejar el buscador deshabilitado con una
+        // índice, para no dejar el buscador deshabilitado con una
         // selección ya válida por debajo.
         var seleccionActual = select.options[select.selectedIndex];
         if (selectFiltro && seleccionActual && seleccionActual.value !== '' && seleccionActual.dataset.filterValue) {
           selectFiltro.value = seleccionActual.dataset.filterValue;
         }
 
-        reconstruirDatalist();
+        actualizarIndice();
         input.placeholder = placeholder;
         sincronizarEstadoFiltro();
 
@@ -328,23 +418,48 @@
         }
         hidden.value = select.value;
 
+        input.addEventListener('focus', abrirMenu);
         input.addEventListener('input', function () {
           var idCoincide = idPorTexto[input.value.trim()];
           hidden.value = idCoincide !== undefined ? idCoincide : '';
+          abrirMenu();
+        });
+        input.addEventListener('keydown', function (evt) {
+          if (evt.key === 'ArrowDown') {
+            evt.preventDefault();
+            if (!menu.classList.contains('is-open')) { abrirMenu(); return; }
+            marcarActivo(Math.min(activo + 1, opcionesLi.length - 1));
+          } else if (evt.key === 'ArrowUp') {
+            evt.preventDefault();
+            marcarActivo(Math.max(activo - 1, 0));
+          } else if (evt.key === 'Enter') {
+            if (menu.classList.contains('is-open') && activo >= 0 && opcionesLi[activo]) {
+              evt.preventDefault();
+              opcionesLi[activo].dispatchEvent(new MouseEvent('mousedown'));
+            }
+          } else if (evt.key === 'Escape') {
+            cerrarMenu();
+          }
+        });
+        input.addEventListener('blur', function () {
+          // Pequeño margen para que el mousedown de una opción del menú
+          // alcance a dispararse antes de que el menú se oculte.
+          window.setTimeout(cerrarMenu, 120);
         });
 
         if (selectFiltro) {
           selectFiltro.addEventListener('change', function () {
             input.value = '';
             hidden.value = '';
-            reconstruirDatalist();
+            actualizarIndice();
             sincronizarEstadoFiltro();
           });
         }
 
-        select.insertAdjacentElement('afterend', datalist);
         select.insertAdjacentElement('afterend', hidden);
-        select.insertAdjacentElement('afterend', input);
+        wrapper.appendChild(input);
+        wrapper.appendChild(menu);
+        select.insertAdjacentElement('afterend', wrapper);
         select.removeAttribute('name');
         // El <select> original nunca vuelve a actualizar su propio value (la
         // selección real vive en el <input type="hidden">): si se deja
