@@ -33,6 +33,7 @@
         {{ navlink('disponibilidad.buscar', 'Disponibilidad') }}
         {{ navlink('reservas.listado', 'Reservas', match_blueprint=True) }}
         {{ navlink('estadia.activos', 'Estadía', match_blueprint=True) }}
+        {{ navlink('habitaciones_recepcion', 'Habitaciones') }}
       {% elif session.get('rol') == 'CAJA' %}
         {{ navlink('reservas.listado', 'Pagos pendientes', match_blueprint=True, pagado=0) }}
         {{ navlink('caja.cuentas', 'Cuentas por cobrar', match_blueprint=True) }}

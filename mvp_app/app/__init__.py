@@ -15,7 +15,7 @@ def create_app():
     from app.estadia.routes import bp as estadia_bp
     from app.caja.routes import bp as caja_bp
     from app.reportes.routes import bp as reportes_bp
-    from app.administracion.routes import bp as administracion_bp
+    from app.administracion.routes import bp as administracion_bp, habitaciones as vista_habitaciones
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(disponibilidad_bp)
@@ -24,6 +24,13 @@ def create_app():
     app.register_blueprint(caja_bp)
     app.register_blueprint(reportes_bp)
     app.register_blueprint(administracion_bp)
+
+    # Recepción usa la misma pantalla/lógica que administracion.habitaciones
+    # (ver /admin/habitaciones) pero sin el prefijo /admin: para su rol no es
+    # una pantalla "de administración", es su vista normal de habitaciones.
+    app.add_url_rule(
+        "/habitaciones", endpoint="habitaciones_recepcion", view_func=vista_habitaciones, methods=["GET", "POST"]
+    )
 
     @app.errorhandler(404)
     def not_found(error):

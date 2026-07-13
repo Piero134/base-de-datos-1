@@ -133,13 +133,22 @@ def tipos_habitacion():
 # Habitaciones
 # ---------------------------------------------------------------------
 @bp.route("/habitaciones", methods=["GET", "POST"])
-@requiere_rol("ADMINISTRADOR")
+@requiere_rol("ADMINISTRADOR", "RECEPCION")
 def habitaciones():
-    es_general = session["id_hotel"] is None
+    # Recepción entra a la misma pantalla que Administración (siempre fija a
+    # su propio hotel, como cualquier admin de un solo hotel) para ver el
+    # estado de las habitaciones y poder cambiarlo (ej. LIMPIEZA →
+    # DISPONIBLE); solo Administrador puede dar de alta habitaciones nuevas,
+    # eso sigue siendo mantenimiento de catálogo.
+    puede_crear = session["rol"] == "ADMINISTRADOR"
+    es_general = puede_crear and session["id_hotel"] is None
     id_hotel_filtro = (request.args.get("id_hotel", type=int) or _primer_hotel_activo()) if es_general else session["id_hotel"]
 
     seleccion = None
     if request.method == "POST":
+        if not puede_crear:
+            flash("No tienes permiso para crear habitaciones.", "danger")
+            return redirect(url_for("administracion.habitaciones"))
         id_hotel_nuevo = (request.form.get("id_hotel", type=int) or id_hotel_filtro) if es_general else session["id_hotel"]
         ok, _ = ejecutar_con_flash(
             execute,
@@ -169,11 +178,11 @@ def habitaciones():
         """,
         (id_hotel_filtro,),
     )
-    tipos = query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre")
+    tipos = query("SELECT id_tipo_habitacion, nombre FROM tipo_habitacion ORDER BY nombre") if puede_crear else None
     hoteles = query("SELECT id_hotel, nombre FROM hotel WHERE activo = 1 ORDER BY nombre") if es_general else None
     return render_template(
         "administracion/habitaciones.html", filas=filas, tipos=tipos, seleccion=seleccion,
-        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general,
+        hoteles=hoteles, id_hotel_filtro=id_hotel_filtro, es_general=es_general, puede_crear=puede_crear,
     )
 
 

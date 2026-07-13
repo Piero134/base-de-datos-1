@@ -562,8 +562,13 @@ END$$
 
 -- -------------------------------------------------------------
 -- SP 11: sp_cambiar_estado_habitacion
--- Actualiza el estado de una habitación. Usado frecuentemente
--- por el personal de limpieza o recepción.
+-- Cambio MANUAL de estado (limpieza/recepción marcando la
+-- habitación lista, reservándola a mano, etc.). OCUPADA queda
+-- fuera de este SP a propósito: ese estado lo controlan en
+-- exclusiva trg_alojamiento_checkin/_checkout/_cancelar según la
+-- ocupación real (ver 06_Triggers.sql); permitir tocarlo a mano
+-- desincronizaría habitacion.estado de si hay o no un alojamiento
+-- ACTIVO real en la habitación.
 -- -------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_cambiar_estado_habitacion$$
 CREATE PROCEDURE sp_cambiar_estado_habitacion(
@@ -571,6 +576,23 @@ CREATE PROCEDURE sp_cambiar_estado_habitacion(
     IN p_nuevo_estado ENUM('DISPONIBLE','RESERVADA','OCUPADA','LIMPIEZA')
 )
 BEGIN
+    DECLARE v_estado_actual VARCHAR(20);
+
+    SELECT estado INTO v_estado_actual FROM habitacion WHERE id_habitacion = p_id_habitacion;
+
+    IF v_estado_actual IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Habitación no encontrada.';
+    END IF;
+
+    IF v_estado_actual = 'OCUPADA' OR p_nuevo_estado = 'OCUPADA' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'El estado OCUPADA solo lo controla el check-in/checkout; no se puede cambiar a mano.';
+    END IF;
+
+    IF p_nuevo_estado = v_estado_actual THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La habitación ya está en ese estado.';
+    END IF;
+
     UPDATE habitacion
     SET estado = p_nuevo_estado
     WHERE id_habitacion = p_id_habitacion;
