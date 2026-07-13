@@ -78,18 +78,26 @@
 <p class="empty-state">Todavía no se registraron consumos en este alojamiento.</p>
 {% endif %}
 {% if aloj.estado == 'ACTIVO' %}
-<form class="card" method="post" action="{{ url_for('estadia.registrar_consumo', id_alojamiento=aloj.id_alojamiento) }}">
-  <label for="cons_id_servicio">Servicio</label>
-  <select name="id_servicio" id="cons_id_servicio" required data-searchable="Buscar servicio…">
-    {% for s in servicios %}
-      <option value="{{ s.id_servicio }}" {% if seleccion_consumo and seleccion_consumo.id_servicio|string == s.id_servicio|string %}selected{% endif %}>{{ s.categoria }} — {{ s.nombre }} (S/ {{ s.precio_unitario }})</option>
-    {% endfor %}
-  </select>
-  <label for="cons_cantidad">Cantidad</label>
-  <input type="number" name="cantidad" id="cons_cantidad" min="1" value="{{ seleccion_consumo.cantidad if seleccion_consumo else 1 }}" required>
-  {# invoca sp_registrar_consumo #}
-  <button type="submit">Registrar consumo</button>
-</form>
+<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgRegistrarConsumo">+ Registrar consumo</button>
+
+<dialog id="dlgRegistrarConsumo" class="form-dialog" {% if seleccion_consumo %}data-autoopen{% endif %}>
+  <h2>Registrar consumo</h2>
+  <form method="post" action="{{ url_for('estadia.registrar_consumo', id_alojamiento=aloj.id_alojamiento) }}">
+    <label for="cons_id_servicio">Servicio</label>
+    <select name="id_servicio" id="cons_id_servicio" required data-searchable="Buscar servicio…">
+      {% for s in servicios %}
+        <option value="{{ s.id_servicio }}" {% if seleccion_consumo and seleccion_consumo.id_servicio|string == s.id_servicio|string %}selected{% endif %}>{{ s.categoria }} — {{ s.nombre }} (S/ {{ s.precio_unitario }})</option>
+      {% endfor %}
+    </select>
+    <label for="cons_cantidad">Cantidad</label>
+    <input type="number" name="cantidad" id="cons_cantidad" min="1" value="{{ seleccion_consumo.cantidad if seleccion_consumo else 1 }}" required>
+    {# invoca sp_registrar_consumo #}
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Registrar consumo</button>
+    </div>
+  </form>
+</dialog>
 {% endif %}
 
 <h2 id="seccion-danios">Daños</h2>
@@ -108,14 +116,22 @@
 <p class="empty-state">No hay daños registrados en este alojamiento.</p>
 {% endif %}
 {% if aloj.estado == 'ACTIVO' %}
-<form class="card" method="post" action="{{ url_for('estadia.registrar_danio', id_alojamiento=aloj.id_alojamiento) }}">
-  <label for="dan_descripcion">Descripción del daño</label>
-  <textarea name="descripcion" id="dan_descripcion" required>{{ seleccion_danio.descripcion if seleccion_danio else '' }}</textarea>
-  <label for="dan_costo">Costo</label>
-  <input type="number" step="0.01" min="0" name="costo" id="dan_costo" required value="{{ seleccion_danio.costo if seleccion_danio else '' }}">
-  {# invoca sp_registrar_danio #}
-  <button type="submit">Registrar daño</button>
-</form>
+<button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgRegistrarDanio">+ Registrar daño</button>
+
+<dialog id="dlgRegistrarDanio" class="form-dialog" {% if seleccion_danio %}data-autoopen{% endif %}>
+  <h2>Registrar daño</h2>
+  <form method="post" action="{{ url_for('estadia.registrar_danio', id_alojamiento=aloj.id_alojamiento) }}">
+    <label for="dan_descripcion">Descripción del daño</label>
+    <textarea name="descripcion" id="dan_descripcion" required>{{ seleccion_danio.descripcion if seleccion_danio else '' }}</textarea>
+    <label for="dan_costo">Costo</label>
+    <input type="number" step="0.01" min="0" name="costo" id="dan_costo" required value="{{ seleccion_danio.costo if seleccion_danio else '' }}">
+    {# invoca sp_registrar_danio #}
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Registrar daño</button>
+    </div>
+  </form>
+</dialog>
 {% endif %}
 
 <p><a href="{{ url_for('estadia.activos') }}">Volver a alojamientos activos</a></p>
