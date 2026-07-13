@@ -18,7 +18,7 @@ ejecución obligatorio (cada script depende del anterior):
 | 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
-| 4 | `04_Procedimientos.sql` | 14 procedimientos (`CREATE PROCEDURE`) |
+| 4 | `04_Procedimientos.sql` | 18 procedimientos (`CREATE PROCEDURE`) |
 | 5 | `05_Vistas.sql` | 14 vistas (`CREATE OR REPLACE VIEW`) |
 | 6 | `06_Triggers.sql` | 23 triggers (`CREATE TRIGGER`) |
 | 7 | `07_Roles_Permisos.sql` | 4 roles MySQL (`CREATE ROLE` + `GRANT`) |
@@ -61,7 +61,7 @@ los scripts, sin inventar cobertura):
 | Función de ventana `RANK() OVER (ORDER BY ...)` | `vw_ranking_clientes` (`05_Vistas.sql:217`), ranking de clientes por monto gastado |
 | `DISTINCT` / `COUNT(DISTINCT ...)` | `fn_disponibilidad_tipo_habitacion`, `vw_ingresos_por_hotel` |
 | `CASE`/`IF` condicional en `SELECT` | `IF(ha.es_titular, 'SÍ', 'NO')` en varias vistas; `IF(fn_saldo_cuenta(...) <= 0, 'PAGADA', 'PENDIENTE')` en `trg_cuenta_actualizar_saldo` |
-| `SIGNAL SQLSTATE` para errores de negocio | Los 14 procedimientos y varios triggers (ver sección 5) |
+| `SIGNAL SQLSTATE` para errores de negocio | Los 18 procedimientos y varios triggers (ver sección 5) |
 | Fechas: `DATEDIFF`, `BETWEEN`, `TIMESTAMPDIFF` | `fn_calcular_noches`, `fn_plan_vigente`, `fn_calcular_edad`, `vw_historial_estadias` |
 
 > Nota de transparencia: no se usa `HAVING` en el proyecto actual (los filtros de agregación que se
@@ -79,24 +79,28 @@ los scripts, sin inventar cobertura):
 | `fn_precio_vigente(tipo, plan, fecha)` | Precio por noche de un plan ya determinado (público o corporativo) |
 | `fn_saldo_cuenta(id_cuenta)` | Saldo pendiente real (auditoría contra el campo `saldo` mantenido por trigger) |
 
-## 5. Catálogo de procedimientos almacenados (14)
+## 5. Catálogo de procedimientos almacenados (18)
 
 | Procedimiento | Propósito |
 |---|---|
 | `sp_registrar_reserva` | Crea la cabecera de una reserva (estado inicial `PENDIENTE`) |
 | `sp_agregar_detalle_reserva` | Agrega una línea tipo+plan+cantidad, valida disponibilidad y calcula el subtotal; rechaza si la reserva ya está pagada |
+| `sp_editar_detalle_reserva` | Cambia tipo/plan/cantidad de una línea ya creada (recalcula precio y `monto_total`); rechaza si ya está pagada, en estado final, ya tiene check-in, o si la nueva cantidad/tipo ya no alcanza para los huéspedes pre-asignados |
+| `sp_eliminar_detalle_reserva` | Quita una línea de una reserva no pagada (arrastra sus pre-asignaciones); rechaza si ya tiene check-in |
 | `sp_confirmar_pago` | Marca la reserva como pagada y `CONFIRMADA` |
 | `sp_realizar_checkin` | Crea el alojamiento (ocupación real) para una línea de reserva y habitación física, por ocupación real |
-| `sp_agregar_huesped_alojamiento` | Asocia un huésped a un alojamiento, validando capacidad máxima y que el huésped no esté ya activo en otro alojamiento |
+| `sp_agregar_huesped_alojamiento` | Asocia un huésped a un alojamiento, validando capacidad máxima y que el huésped no esté ya activo en otro alojamiento (sin contar salidas individuales ya registradas) |
 | `sp_realizar_checkin_con_huesped` | Envuelve `sp_realizar_checkin` + `sp_agregar_huesped_alojamiento` en una sola transacción: el check-in exige registrar al huésped titular en el mismo paso |
 | `sp_registrar_consumo` | Registra el consumo de un servicio con su precio vigente |
 | `sp_registrar_danio` | Registra un daño en la habitación |
 | `sp_registrar_salida_huesped` | Salida individual de un huésped; finaliza el alojamiento si era el último pendiente |
 | `sp_realizar_checkout` | Checkout conjunto de toda la habitación |
-| `sp_generar_cuenta_cobrar` | Genera la cuenta por cobrar (consumos + daños pendientes + IGV 18 %) |
+| `sp_generar_cuenta_cobrar` | Genera la cuenta por cobrar (consumos + daños pendientes + IGV 18 %); rechaza si no hay nada que cobrar |
 | `sp_registrar_pago_cuenta` | Registra un pago/abono sobre una cuenta por cobrar |
-| `sp_cambiar_estado_habitacion` | Cambia el estado de una habitación (mantenimiento/limpieza) |
+| `sp_cambiar_estado_habitacion` | Cambia el estado de una habitación a mano (mantenimiento/limpieza); rechaza tocar `OCUPADA`, que solo controla el check-in/checkout real |
 | `sp_resumen_ocupacion_hotel` | Resumen de habitaciones por estado para un hotel |
+| `sp_cancelar_reserva` | Cancela una reserva no finalizada sin huéspedes activos |
+| `sp_marcar_no_show` | Marca `NO_SHOW` una reserva confirmada que nunca llegó |
 
 Todos los procedimientos que representan una regla de negocio usan `SIGNAL SQLSTATE '45000'` con
 un `MESSAGE_TEXT` legible cuando la operación no es válida (ej. *"No hay disponibilidad suficiente

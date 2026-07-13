@@ -31,11 +31,12 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       servicio, servicios, planes tarifarios, tarifas y empleados, y una
       decimoséptima tras convertir "Agregar línea" (detalle de reserva) en
       ventana flotante, y una decimoctava tras convertir "Registrar
-      consumo" y "Registrar daño" (alojamiento) en ventanas flotantes.
+      consumo" y "Registrar daño" (alojamiento) en ventanas flotantes, y
+      una decimonovena tras agregar editar/quitar línea de reserva.
       Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
-      `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
+      `hotel_db` (18 procedimientos, 6 funciones, 14 vistas, datos de
       `08_Carga_Datos.sql`).
 - [x] **Login:** `POST /login` con empleado + rol guarda la sesión y
       redirige según el rol (`auth.landing`).
@@ -375,6 +376,33 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       respectivas con el flash de éxito. Reserva, alojamiento, huésped,
       consumo y daño de prueba se borraron al terminar, con la habitación
       de vuelta a `DISPONIBLE`.
+- [x] **Editar y quitar línea de reserva (UC-01, 2026-07-13):** nuevos
+      `sp_editar_detalle_reserva`/`sp_eliminar_detalle_reserva`, aplicados
+      en vivo, con botones "Editar"/"Quitar" por línea en
+      `reservas/detalle.html` (ventanas flotantes, ocultas si la línea ya
+      tiene check-in). Probado con Playwright + llamadas directas a los
+      SP contra una reserva de prueba con 2 líneas (Simple sin huéspedes,
+      Doble con 2 huéspedes pre-asignados): editar la línea sin huéspedes
+      (Simple → Suite) funcionó y recalculó `monto_total` solo (vía los
+      triggers `trg_reserva_detalle_monto_au`/`_ad`, ya existentes, sin
+      necesidad de tocarlos); intentar reducir la otra línea a un tipo con
+      menos capacidad que sus 2 huéspedes pre-asignados fue rechazado con
+      *"Esta línea ya tiene huéspedes pre-asignados que no caben en la
+      nueva cantidad/tipo de habitación; quita huéspedes primero."*, con
+      el diálogo reabriéndose solo; quitar la línea sin huéspedes funcionó
+      y `monto_total` bajó al recalcular. Se verificó por separado (con
+      `pagado` forzado a 0 para aislar el chequeo) que una línea con
+      check-in real rechaza tanto editar como eliminar con *"Esta línea ya
+      tiene check-in registrado"* — en el flujo real de la UI esto ya
+      queda cubierto de todas formas porque el check-in solo es alcanzable
+      después de pagar, y una reserva pagada ya oculta los botones de
+      editar/quitar en toda la pantalla. Todos los datos de prueba
+      (reserva, líneas, pre-asignaciones, alojamiento, huésped) se
+      borraron al terminar, con la habitación de vuelta a `DISPONIBLE`. No
+      se tocó `reserva`/`alojamiento` #40, un residuo sin relación a esta
+      prueba que ya existía en `hotel_db` de antes y cuyo origen no se
+      pudo determinar con certeza — queda pendiente de que alguien lo
+      revise o lo limpie a propósito.
 
 ## Cómo volver a correr esta verificación
 

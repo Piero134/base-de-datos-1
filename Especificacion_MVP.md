@@ -72,6 +72,19 @@ asignado a ese empleado:
   4. El sistema muestra el `monto_total` calculado.
 - **Flujo alterno:** si no hay disponibilidad o no hay tarifa vigente, el procedimiento lanza `SIGNAL` con mensaje de error, que la interfaz debe mostrar tal cual (no debe intentar "adivinar" un precio).
 - **Postcondición:** reserva creada en estado `PENDIENTE`, sin habitación física asignada aún.
+- **Editar/quitar una línea (2026-07-13):** mientras la reserva no esté pagada ni en un estado
+  final, cada línea tiene botones "Editar" y "Quitar" (ventanas flotantes, `sp_editar_detalle_reserva`/
+  `sp_eliminar_detalle_reserva`). Ambos recalculan `monto_total` solo (los triggers
+  `trg_reserva_detalle_monto_au`/`_ad` ya lo mantenían sincronizado ante cualquier `UPDATE`/`DELETE`
+  sobre `reserva_detalle`, no hizo falta agregar nada para eso). Una línea con check-in ya
+  registrado no se puede tocar (ni editar ni quitar) — no aparecen los botones, y el procedimiento
+  lo rechaza igual si se intenta directo. Editar una línea que ya tiene huéspedes pre-asignados
+  (`detalle_huesped_reserva`) revalida que la nueva cantidad × capacidad del tipo elegido siga
+  alcanzando para todos ellos (rechaza si no); quitarla si tiene pre-asignados los arrastra consigo
+  (`fk_dhr_detalle_reserva ON DELETE CASCADE`), con aviso previo en el diálogo de confirmación. No
+  se puede editar las fechas de check-in/check-out de la reserva en sí (viven en la cabecera, no en
+  la línea, y afectarían el precio de todas las líneas a la vez) — solo tipo de habitación, plan y
+  cantidad de cada línea.
 - **Consulta MVP relacionada:** `09_Consultas_MVP.sql` #1b, #1c, #2.
 
 ### UC-01b: Cancelar reserva o marcarla como no-show
