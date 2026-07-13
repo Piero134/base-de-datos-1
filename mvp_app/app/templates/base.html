@@ -165,10 +165,28 @@
       // de un <dialog> lo cierra sin enviar el formulario. Si el <dialog>
       // trae data-autoopen (el POST anterior fue inválido y hay que
       // mostrar de nuevo los datos tecleados), se abre solo al cargar.
+      //
+      // Al abrir, se enfoca el primer campo visible y habilitado (no el
+      // <select> oculto que dejó el buscador de selects, por eso se filtra
+      // por offsetParent) para poder empezar a teclear de inmediato, sin
+      // tener que hacer clic primero.
+      function enfocarPrimerCampo(dialog) {
+        var campos = dialog.querySelectorAll('input:not([type=hidden]), select, textarea');
+        for (var i = 0; i < campos.length; i++) {
+          var campo = campos[i];
+          if (!campo.disabled && campo.offsetParent !== null) {
+            campo.focus();
+            return;
+          }
+        }
+      }
       document.querySelectorAll('[data-open-modal]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var dialog = document.getElementById(btn.dataset.openModal);
-          if (dialog && typeof dialog.showModal === 'function') { dialog.showModal(); }
+          if (dialog && typeof dialog.showModal === 'function') {
+            dialog.showModal();
+            enfocarPrimerCampo(dialog);
+          }
         });
       });
       document.querySelectorAll('dialog [data-close-modal]').forEach(function (btn) {
@@ -178,7 +196,48 @@
         });
       });
       document.querySelectorAll('dialog[data-autoopen]').forEach(function (dialog) {
-        if (typeof dialog.showModal === 'function') { dialog.showModal(); }
+        if (typeof dialog.showModal === 'function') {
+          dialog.showModal();
+          enfocarPrimerCampo(dialog);
+        }
+      });
+
+      // Alertas flash: cerrables a mano con la × y las de éxito además se
+      // desvanecen solas a los 5s (las de error se quedan hasta que el
+      // usuario las cierre, porque suelen pedir corregir algo en pantalla).
+      document.querySelectorAll('.alert').forEach(function (alerta) {
+        function cerrar() {
+          alerta.classList.add('alert-closing');
+          alerta.addEventListener('transitionend', function () { alerta.remove(); }, { once: true });
+        }
+        var cerrarBtn = alerta.querySelector('.alert-close');
+        if (cerrarBtn) { cerrarBtn.addEventListener('click', cerrar); }
+        if (alerta.classList.contains('alert-success')) {
+          window.setTimeout(cerrar, 5000);
+        }
+      });
+
+      // Botón "Mostrar/Ocultar" en todo campo de contraseña: reduce errores
+      // de tipeo al crear usuarios o iniciar sesión, sin tocar el backend
+      // (el campo sigue siendo un <input type=password> normal al enviarse).
+      document.querySelectorAll('input[type="password"]').forEach(function (input) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'password-field';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'password-toggle';
+        toggle.textContent = 'Mostrar';
+        toggle.setAttribute('aria-label', 'Mostrar contraseña');
+        toggle.addEventListener('click', function () {
+          var visible = input.type === 'text';
+          input.type = visible ? 'password' : 'text';
+          toggle.textContent = visible ? 'Mostrar' : 'Ocultar';
+          toggle.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+        });
+        wrapper.appendChild(toggle);
       });
 
       // Menú compacto en pantallas angostas.
