@@ -100,8 +100,7 @@ JOIN hotel ht                ON ht.id_hotel           = h.id_hotel
 JOIN tipo_habitacion th      ON th.id_tipo_habitacion = h.id_tipo_habitacion
 JOIN huesped_alojamiento ha  ON ha.id_alojamiento     = a.id_alojamiento
                              AND ha.fecha_salida_real  IS NULL
-JOIN huesped hu              ON hu.id_huesped         = ha.id_huesped
-JOIN persona_natural pn      ON pn.id_persona         = hu.id_persona
+JOIN persona_natural pn      ON pn.id_persona         = ha.id_huesped
 JOIN reserva r                ON r.id_reserva          = a.id_reserva
 JOIN vw_reservante v          ON v.id_cliente          = r.id_cliente
 WHERE a.estado = 'ACTIVO'
@@ -117,7 +116,7 @@ GROUP BY a.id_alojamiento, ht.nombre, h.numero, h.piso, th.nombre, a.fecha_check
 -- huésped, no solo por el checkout general de la habitación.
 CREATE OR REPLACE VIEW vw_historial_estadias AS
 SELECT
-    hu.id_huesped,
+    ha.id_huesped,
     CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
     ht.nombre AS hotel,
     h.numero AS habitacion,
@@ -128,8 +127,7 @@ SELECT
     DATEDIFF(COALESCE(ha.fecha_salida_real, NOW()), a.fecha_checkin_real) AS noches,
     a.estado
 FROM huesped_alojamiento ha
-JOIN huesped hu          ON hu.id_huesped         = ha.id_huesped
-JOIN persona_natural pn  ON pn.id_persona         = hu.id_persona
+JOIN persona_natural pn  ON pn.id_persona         = ha.id_huesped
 JOIN alojamiento a       ON a.id_alojamiento      = ha.id_alojamiento
 JOIN habitacion h        ON h.id_habitacion       = a.id_habitacion
 JOIN hotel ht            ON ht.id_hotel           = h.id_hotel
@@ -268,8 +266,7 @@ FROM detalle_huesped_reserva dhr
 JOIN reserva_detalle  rd  ON rd.id_detalle_reserva = dhr.id_detalle_reserva
 JOIN reserva          r   ON r.id_reserva          = rd.id_reserva
 JOIN tipo_habitacion  th  ON th.id_tipo_habitacion = rd.id_tipo_habitacion
-LEFT JOIN huesped         hu  ON hu.id_huesped         = dhr.id_huesped
-LEFT JOIN persona_natural pn  ON pn.id_persona         = hu.id_persona
+LEFT JOIN persona_natural pn  ON pn.id_persona         = dhr.id_huesped
 JOIN cliente          c   ON c.id_cliente          = r.id_cliente
 JOIN persona          p   ON p.id_persona          = c.id_persona
 JOIN persona_juridica pj  ON pj.id_persona         = p.id_persona;
@@ -296,11 +293,9 @@ FROM detalle_huesped_reserva dhr
 JOIN reserva_detalle rd ON rd.id_detalle_reserva = dhr.id_detalle_reserva
 JOIN reserva r          ON r.id_reserva          = rd.id_reserva
 JOIN tipo_habitacion th ON th.id_tipo_habitacion = rd.id_tipo_habitacion
-LEFT JOIN huesped hu_pre          ON hu_pre.id_huesped     = dhr.id_huesped
-LEFT JOIN persona_natural pn_pre  ON pn_pre.id_persona     = hu_pre.id_persona
+LEFT JOIN persona_natural pn_pre  ON pn_pre.id_persona     = dhr.id_huesped
 LEFT JOIN huesped_alojamiento ha  ON ha.id_detalle_huesped = dhr.id_detalle_huesped
-LEFT JOIN huesped hu_real         ON hu_real.id_huesped    = ha.id_huesped
-LEFT JOIN persona_natural pn_real ON pn_real.id_persona    = hu_real.id_persona;
+LEFT JOIN persona_natural pn_real ON pn_real.id_persona    = ha.id_huesped;
 
 -- -------------------------------------------------------------
 -- V13. vw_checkouts_pendientes

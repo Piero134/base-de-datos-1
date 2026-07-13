@@ -48,8 +48,7 @@ def construir_grid_reserva(id_reserva, con_estado_estadia=False):
         SELECT dhr.id_detalle_huesped, dhr.id_detalle_reserva, dhr.id_huesped, dhr.es_titular,
                pn.nombres, pn.apellidos, pn.numero_documento
         FROM detalle_huesped_reserva dhr
-        LEFT JOIN huesped h ON h.id_huesped = dhr.id_huesped
-        LEFT JOIN persona_natural pn ON pn.id_persona = h.id_persona
+        LEFT JOIN persona_natural pn ON pn.id_persona = dhr.id_huesped
         WHERE dhr.id_detalle_reserva IN ({marcadores})
         ORDER BY dhr.id_detalle_huesped ASC
         """,

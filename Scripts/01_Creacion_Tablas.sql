@@ -123,21 +123,28 @@ CREATE TABLE cliente (
 ) COMMENT = 'Entidad que reserva y/o paga (puede ser natural o jurídica)';
 
 -- -------------------------------------------------------------
---  4. HUESPED: rol de ocupación, no identidad propia.
---     "cliente = quien paga/factura; huésped = quien duerme".
---     La incertidumbre de "quién" en una reserva corporativa
---     (N habitaciones reservadas sin saber aún los nombres) vive
---     en DETALLE_HUESPED_RESERVA (id_huesped nulable = cupo sin
---     identificar), nunca aquí: por exigencia legal (registro de
---     una ocupación real nunca existe sin identidad completa)
+--  4. HUESPED: no es una tabla propia — "huésped" es un rol que
+--     cualquier persona_natural puede cumplir ("cliente = quien
+--     paga/factura; huésped = quien duerme"), no una identidad
+--     aparte. detalle_huesped_reserva.id_huesped y huesped_
+--     alojamiento.id_huesped apuntan directo a persona_natural.
+--     id_persona (mismo nombre de columna, por continuidad con el
+--     resto del código, pero ya no hay tabla intermedia).
+--     Antes existía una tabla huesped(id_huesped, id_persona,
+--     activo) puramente de redirección, sin ninguna columna propia:
+--     además de no aportar nada, permitía que la misma persona
+--     tuviera varias filas de "huésped" simultáneas, lo que rompía
+--     en la práctica la regla de "un huésped no puede estar en dos
+--     alojamientos activos a la vez" (esa regla compara por id de
+--     huésped, y con dos filas para la misma persona el chequeo no
+--     detectaba el choque). Se eliminó para cerrar ese hueco.
+--     La incertidumbre de "quién" en una reserva corporativa (N
+--     habitaciones reservadas sin saber aún los nombres) sigue
+--     viviendo en DETALLE_HUESPED_RESERVA (id_huesped nulable = cupo
+--     sin identificar): por exigencia legal, un registro de
+--     ocupación real (huesped_alojamiento) nunca existe sin
+--     identidad completa, así que ahí id_huesped es NOT NULL.
 -- -------------------------------------------------------------
-CREATE TABLE huesped (
-    id_huesped   INT           NOT NULL AUTO_INCREMENT,
-    id_persona   INT           NOT NULL
-        COMMENT 'FK a persona_natural. Identidad vive en persona_natural.',
-    activo       TINYINT(1)    NOT NULL DEFAULT 1,
-    CONSTRAINT pk_huesped PRIMARY KEY (id_huesped)
-) COMMENT = 'Rol: persona física identificada que ocupa una habitación.';
 
 -- -------------------------------------------------------------
 --  5. HABITACIONES
@@ -237,7 +244,8 @@ CREATE TABLE reserva_detalle (
 CREATE TABLE detalle_huesped_reserva (
     id_detalle_huesped  INT           NOT NULL AUTO_INCREMENT,
     id_detalle_reserva  INT           NOT NULL,
-    id_huesped          INT           NULL COMMENT 'NULL = cupo reservado sin identificar todavía',
+    id_huesped          INT           NULL
+        COMMENT 'FK a persona_natural.id_persona. NULL = cupo reservado sin identificar todavía',
     es_titular          TINYINT(1)    NOT NULL DEFAULT 0,
     CONSTRAINT pk_detalle_huesped_reserva PRIMARY KEY (id_detalle_huesped)
 ) COMMENT = 'Pre-asignación de huéspedes a líneas de reserva.';
@@ -260,7 +268,7 @@ CREATE TABLE alojamiento (
 
 CREATE TABLE huesped_alojamiento (
     id_alojamiento     INT           NOT NULL,
-    id_huesped         INT           NOT NULL,
+    id_huesped         INT           NOT NULL COMMENT 'FK a persona_natural.id_persona',
     id_detalle_huesped INT           NULL
         COMMENT 'Trazabilidad opcional hacia la pre-asignación corporativa (detalle_huesped_reserva).',
     es_titular         TINYINT(1)    NOT NULL DEFAULT 0,

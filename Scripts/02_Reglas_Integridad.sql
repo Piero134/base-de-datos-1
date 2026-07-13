@@ -68,18 +68,6 @@ ALTER TABLE cliente
         FOREIGN KEY (id_persona)         REFERENCES persona (id_persona)
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
--- ── huesped ───────────────────────────────────────────────────
--- id_persona referencia persona_natural (no persona): la propia FK
--- garantiza a nivel de esquema que el ocupante sea siempre una persona
--- natural, sin necesitar un trigger de validación. ON DELETE RESTRICT
--- porque la columna es NOT NULL (mismo patrón que fk_cliente_persona).
--- No es UNIQUE: la misma persona puede volver a hospedarse y generar
--- otra fila de huésped en otra estadía distinta.
-ALTER TABLE huesped
-    ADD CONSTRAINT fk_huesped_persona
-        FOREIGN KEY (id_persona)         REFERENCES persona_natural (id_persona)
-        ON UPDATE CASCADE ON DELETE RESTRICT;
-
 -- ── habitacion ────────────────────────────────────────────────
 ALTER TABLE habitacion
     ADD CONSTRAINT fk_habitacion_hotel
@@ -126,12 +114,15 @@ ALTER TABLE reserva_detalle
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
 -- ── detalle_huesped_reserva ───────────────────────────────────
+-- id_huesped referencia persona_natural directo (no hay tabla huesped
+-- intermedia): "huésped" es un rol que cualquier persona_natural puede
+-- cumplir, no una identidad aparte. Ver comentario en 01_Creacion_Tablas.
 ALTER TABLE detalle_huesped_reserva
     ADD CONSTRAINT fk_dhr_detalle_reserva
         FOREIGN KEY (id_detalle_reserva) REFERENCES reserva_detalle (id_detalle_reserva)
         ON UPDATE CASCADE ON DELETE CASCADE,
     ADD CONSTRAINT fk_dhr_huesped
-        FOREIGN KEY (id_huesped)         REFERENCES huesped         (id_huesped)
+        FOREIGN KEY (id_huesped)         REFERENCES persona_natural (id_persona)
         ON UPDATE CASCADE ON DELETE RESTRICT;
 
 -- ── alojamiento ───────────────────────────────────────────────
@@ -158,7 +149,7 @@ ALTER TABLE huesped_alojamiento
         FOREIGN KEY (id_alojamiento)     REFERENCES alojamiento (id_alojamiento)
         ON UPDATE CASCADE ON DELETE CASCADE,
     ADD CONSTRAINT fk_haloj_huesped
-        FOREIGN KEY (id_huesped)         REFERENCES huesped     (id_huesped)
+        FOREIGN KEY (id_huesped)         REFERENCES persona_natural (id_persona)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     ADD CONSTRAINT fk_haloj_detalle_huesped
         FOREIGN KEY (id_detalle_huesped) REFERENCES detalle_huesped_reserva (id_detalle_huesped)

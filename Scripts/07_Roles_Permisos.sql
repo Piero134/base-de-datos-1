@@ -35,7 +35,6 @@ GRANT INSERT, UPDATE ON hotel_db.cliente               TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.persona               TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.persona_natural        TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.persona_juridica       TO rol_recepcion;
-GRANT INSERT, UPDATE ON hotel_db.huesped                TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.reserva                TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.reserva_detalle        TO rol_recepcion;
 GRANT INSERT, UPDATE ON hotel_db.detalle_huesped_reserva TO rol_recepcion;

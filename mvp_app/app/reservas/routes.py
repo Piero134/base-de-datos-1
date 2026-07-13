@@ -373,10 +373,10 @@ def _contexto_preasignar(id_reserva):
         "lineas": construir_grid_reserva(id_reserva, con_estado_estadia=True),
         "huespedes": query(
             """
-            SELECT h.id_huesped, pn.nombres, pn.apellidos
-            FROM huesped h
-            JOIN persona_natural pn ON pn.id_persona = h.id_persona
-            WHERE h.activo = 1
+            SELECT pn.id_persona AS id_huesped, pn.nombres, pn.apellidos
+            FROM persona_natural pn
+            JOIN persona p ON p.id_persona = pn.id_persona
+            WHERE p.activo = 1
             ORDER BY pn.nombres
             """
         ),

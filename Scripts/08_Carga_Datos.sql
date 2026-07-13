@@ -119,9 +119,9 @@ INSERT INTO persona (id_persona, tipo, telefono, email, id_ubigeo, activo) VALUE
 (11, 'JURIDICA', '01-7003000', 'reservas@mineraaltiplano.pe',  9, 1),
 -- Personas naturales que solo son HUESPED (nunca reservan/pagan, por
 -- eso no tienen fila en cliente): empleados de empresas con convenio
--- corporativo y el acompañante de Pedro Villar. huesped.id_persona es
--- NOT NULL, así que toda persona que se aloja necesita su propia fila
--- aquí, aunque nunca actúe como cliente.
+-- corporativo y el acompañante de Pedro Villar. huesped_alojamiento.
+-- id_huesped es NOT NULL, así que toda persona que se aloja necesita
+-- su propia fila en persona_natural, aunque nunca actúe como cliente.
 (12, 'NATURAL',  '999111222',  'rsalas@corporacionabc.pe',     2, 1),
 (13, 'NATURAL',  '999333444',  'pnunez@corporacionabc.pe',     2, 1),
 (14, 'NATURAL',  '999555666',  'equispe@tecnoandes.com',       2, 1),
@@ -182,36 +182,6 @@ INSERT INTO cliente (id_cliente, id_persona, observaciones) VALUES
 (9,  9,  'Empresa con convenio corporativo'),
 (10, 10, 'Empresa tecnológica, reservas grupales frecuentes'),
 (11, 11, 'Reservas para personal de campamento minero');
-
--- =============================================================
---  10. HUESPED
---      Rol de ocupación (nunca datos propios): toda persona que se
---      aloja ya tiene su fila en persona/persona_natural, creada más
---      arriba. Pueden coincidir o no con los clientes.
--- =============================================================
-INSERT INTO huesped (id_huesped, id_persona, activo) VALUES
--- Huéspedes individuales (corresponden a clientes 1..8) — la misma
--- persona física reservó y se aloja.
-(1,  1,  1),
-(2,  2,  1),
-(3,  3,  1),
-(4,  4,  1),
-(5,  5,  1),
-(6,  7,  1),
--- Huéspedes corporativos (empleados de Corporación ABC / TecnoAndes):
--- personas naturales sin fila en cliente (la empresa es la que
--- factura, ver comentario en PERSONA) — caso normal y esperado, no
--- todo huésped corresponde a un cliente.
-(7,  12, 1),
-(8,  13, 1),
-(9,  14, 1),
--- Huéspedes para el caso H (salida individual): Sofía viaja con su
--- hermano Diego a una doble en Ica; Diego se retira dos días antes
--- que Sofía, quien continúa hospedada.
-(10, 15, 1),
-(11, 16, 1),
--- Acompañante de Pedro Villar (antes modelado como huésped GENÉRICO).
-(12, 17, 1);
 
 -- =============================================================
 --  11. TIPO_HABITACION
@@ -417,11 +387,14 @@ INSERT INTO reserva_detalle
 -- espacio para un acompañante de Eduardo, pero aún no envió el
 -- nombre — se resuelve más adelante con un UPDATE (ver
 -- Scripts/10_Ejemplo_Flujo_Huespedes.sql para el flujo completo).
+-- id_huesped referencia directo a persona_natural.id_persona (ya no hay
+-- tabla huesped intermedia): 12=Ricardo Salas, 13=Patricia Nuñez,
+-- 14=Eduardo Quispe.
 INSERT INTO detalle_huesped_reserva
     (id_detalle_huesped, id_detalle_reserva, id_huesped, es_titular) VALUES
-(1, 2, 7,    1),   -- Ricardo Salas → titular (una de las 2 simples)
-(2, 2, 8,    0),   -- Patricia Nuñez (otra simple)
-(3, 3, 9,    1),   -- Eduardo Quispe → titular de la doble
+(1, 2, 12,   1),   -- Ricardo Salas → titular (una de las 2 simples)
+(2, 2, 13,   0),   -- Patricia Nuñez (otra simple)
+(3, 3, 14,   1),   -- Eduardo Quispe → titular de la doble
 (4, 3, NULL, 0);   -- cupo sin identificar (acompañante de Eduardo)
 
 -- =============================================================
@@ -461,22 +434,23 @@ INSERT INTO alojamiento
 -- fecha_checkout_real de la habitación, ya que Carlos viajó solo.
 -- En el alojamiento 3 (activo) ambos huéspedes siguen presentes
 -- (fecha_salida_real = NULL).
+-- id_huesped referencia directo a persona_natural.id_persona.
 INSERT INTO huesped_alojamiento
     (id_alojamiento, id_huesped, id_detalle_huesped, es_titular, fecha_registro, fecha_salida_real) VALUES
 (1, 1,  NULL, 1, '2026-06-10 14:30:00', NULL),                    -- José García, solo, en la doble (activo)
 (2, 3,  NULL, 1, '2026-04-10 13:00:00', '2026-04-13 11:00:00'),   -- Carlos Mendoza, estadía finalizada
 (3, 5,  NULL, 1, '2026-06-20 15:30:00', NULL),                    -- Pedro Villar, titular (aún presente)
-(3, 12, NULL, 0, '2026-06-20 15:30:00', NULL),                    -- Rosa Elena Bravo, acompañante identificada, aún presente
-(4, 10, NULL, 1, '2026-06-19 15:00:00', NULL),                    -- Sofía, titular, continúa hospedada
-(4, 11, NULL, 0, '2026-06-19 15:00:00', '2026-06-21 09:30:00'),   -- Diego, se retiró antes; la habitación NO se libera todavía
+(3, 17, NULL, 0, '2026-06-20 15:30:00', NULL),                    -- Rosa Elena Bravo, acompañante identificada, aún presente
+(4, 15, NULL, 1, '2026-06-19 15:00:00', NULL),                    -- Sofía, titular, continúa hospedada
+(4, 16, NULL, 0, '2026-06-19 15:00:00', '2026-06-21 09:30:00'),   -- Diego, se retiró antes; la habitación NO se libera todavía
 -- Escenario I: check-in real de la reserva corporativa. Ricardo y
 -- Patricia hacen check-in tal como fueron pre-asignados
 -- (COINCIDE); en la doble, en cambio, llega Patricia y no Eduardo
 -- como se había pre-asignado (DIFERENTE) — el descuadre operativo
 -- real que el profesor mencionó como riesgo en eventos corporativos.
-(5, 7, 1, 1, '2026-06-15 14:00:00', NULL),   -- Ricardo Salas, coincide con dhr 1 (simple #1)
-(7, 8, 2, 0, '2026-06-15 14:05:00', NULL),   -- Patricia Nuñez, coincide con dhr 2 (simple #2)
-(6, 8, 3, 1, '2026-06-15 14:10:00', NULL);   -- Patricia hace check-in en la doble; dhr 3 pre-asignó a Eduardo → DIFERENTE
+(5, 12, 1, 1, '2026-06-15 14:00:00', NULL),   -- Ricardo Salas, coincide con dhr 1 (simple #1)
+(7, 13, 2, 0, '2026-06-15 14:05:00', NULL),   -- Patricia Nuñez, coincide con dhr 2 (simple #2)
+(6, 13, 3, 1, '2026-06-15 14:10:00', NULL);   -- Patricia hace check-in en la doble; dhr 3 pre-asignó a Eduardo → DIFERENTE
 
 -- =============================================================
 --  22. CONSUMO_SERVICIO

@@ -303,8 +303,7 @@ def _contexto_ver(id_alojamiento):
         SELECT ha.id_huesped, CONCAT(pn.nombres, ' ', pn.apellidos) AS huesped,
                ha.es_titular, ha.fecha_registro, ha.fecha_salida_real
         FROM huesped_alojamiento ha
-        JOIN huesped h ON h.id_huesped = ha.id_huesped
-        JOIN persona_natural pn ON pn.id_persona = h.id_persona
+        JOIN persona_natural pn ON pn.id_persona = ha.id_huesped
         WHERE ha.id_alojamiento = %s
         ORDER BY ha.fecha_salida_real IS NOT NULL, ha.fecha_registro
         """,

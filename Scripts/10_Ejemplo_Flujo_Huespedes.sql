@@ -68,22 +68,20 @@ SELECT * FROM vw_reservas_corporativas WHERE id_reserva = @id_reserva;
 -- Paso 2: llega la lista de la empresa con 2 de los 3 nombres, antes
 -- del check-in. Cada persona nueva primero necesita su fila en
 -- persona/persona_natural (igual que hace la app en
--- huespedes.py::crear_huesped_desde_formulario), y luego su fila en
--- huesped — recién ahí se resuelve el cupo, con un UPDATE simple.
+-- huespedes.py::crear_huesped_desde_formulario) — recién ahí se
+-- resuelve el cupo, con un UPDATE simple (id_huesped referencia
+-- persona_natural.id_persona directo, no hay tabla huesped
+-- intermedia).
 -- -------------------------------------------------------------
 INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', '955001122', 'jhilario@construnorte.pe');
 SET @id_persona_1 = LAST_INSERT_ID();
 INSERT INTO persona_natural (id_persona, id_tipo_documento, numero_documento, nombres, apellidos, fecha_nacimiento, genero, nacionalidad)
 VALUES (@id_persona_1, 1, '70011223', 'Jorge', 'Hilario Campos', '1989-04-12', 'M', 'Peruana');
-INSERT INTO huesped (id_persona) VALUES (@id_persona_1);
-SET @id_huesped_1 = LAST_INSERT_ID();
 
 INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', '955003344', 'mvargas@construnorte.pe');
 SET @id_persona_2 = LAST_INSERT_ID();
 INSERT INTO persona_natural (id_persona, id_tipo_documento, numero_documento, nombres, apellidos, fecha_nacimiento, genero, nacionalidad)
 VALUES (@id_persona_2, 1, '70022334', 'Milagros', 'Vargas Solano', '1993-08-30', 'F', 'Peruana');
-INSERT INTO huesped (id_persona) VALUES (@id_persona_2);
-SET @id_huesped_2 = LAST_INSERT_ID();
 
 -- Se resuelven 2 de los 3 cupos (el titular y uno de los
 -- acompañantes). El tercero se deja sin resolver a propósito, para
@@ -93,8 +91,8 @@ SET @id_dhr_titular = (SELECT id_detalle_huesped FROM detalle_huesped_reserva
 SET @id_dhr_acomp1  = (SELECT MIN(id_detalle_huesped) FROM detalle_huesped_reserva
                         WHERE id_detalle_reserva = @id_detalle_reserva AND es_titular = 0);
 
-UPDATE detalle_huesped_reserva SET id_huesped = @id_huesped_1 WHERE id_detalle_huesped = @id_dhr_titular;
-UPDATE detalle_huesped_reserva SET id_huesped = @id_huesped_2 WHERE id_detalle_huesped = @id_dhr_acomp1;
+UPDATE detalle_huesped_reserva SET id_huesped = @id_persona_1 WHERE id_detalle_huesped = @id_dhr_titular;
+UPDATE detalle_huesped_reserva SET id_huesped = @id_persona_2 WHERE id_detalle_huesped = @id_dhr_acomp1;
 
 -- 2 de 3 cupos ya muestran nombre; el tercero sigue "Sin identificar".
 SELECT * FROM vw_reservas_corporativas WHERE id_reserva = @id_reserva;
@@ -109,14 +107,12 @@ INSERT INTO persona (tipo, telefono, email) VALUES ('NATURAL', '955005566', 'rqu
 SET @id_persona_3 = LAST_INSERT_ID();
 INSERT INTO persona_natural (id_persona, id_tipo_documento, numero_documento, nombres, apellidos, fecha_nacimiento, genero, nacionalidad)
 VALUES (@id_persona_3, 1, '70033445', 'Renzo', 'Quiroz Bellido', '1991-11-02', 'M', 'Peruana');
-INSERT INTO huesped (id_persona) VALUES (@id_persona_3);
-SET @id_huesped_3 = LAST_INSERT_ID();
 
-UPDATE detalle_huesped_reserva SET id_huesped = @id_huesped_3 WHERE id_detalle_huesped = @id_dhr_titular;
+UPDATE detalle_huesped_reserva SET id_huesped = @id_persona_3 WHERE id_detalle_huesped = @id_dhr_titular;
 
 -- El titular ahora es Renzo Quiroz, no Jorge Hilario — Jorge sigue
--- existiendo como huésped (podría usarse en otra reserva), solo dejó
--- de estar asociado a este cupo.
+-- existiendo como persona_natural (podría usarse en otra reserva),
+-- solo dejó de estar asociado a este cupo.
 SELECT * FROM vw_reservas_corporativas WHERE id_reserva = @id_reserva;
 
 -- -------------------------------------------------------------
@@ -138,7 +134,7 @@ SET @id_habitacion_checkin = (
 );
 SET @id_alojamiento = NULL;
 CALL sp_realizar_checkin_con_huesped(@id_reserva, @id_detalle_reserva, @id_habitacion_checkin,
-                                      1, @id_huesped_3, @id_dhr_titular, @id_alojamiento);
+                                      1, @id_persona_3, @id_dhr_titular, @id_alojamiento);
 
 -- Renzo Quiroz aparece con identidad completa; el check-in nunca
 -- pudo haberse hecho con un cupo sin resolver.
