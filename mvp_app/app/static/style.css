@@ -126,6 +126,45 @@ h2 { font-size: 1.1rem; margin: 32px 0 14px; font-weight: 700; }
 .page-header .breadcrumb a:hover { text-decoration: underline; }
 .page-header .breadcrumb .current { color: var(--color-text); font-weight: 600; }
 
+/* Pantalla de login: centrada como carta de presentación del producto,
+   en vez de quedar arriba a la izquierda con todo el resto en blanco. */
+.auth-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 220px);
+  padding: 40px 16px;
+  text-align: center;
+}
+.auth-brand {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+.auth-shell .page-header { border-bottom: none; margin-bottom: 22px; }
+.auth-shell form.card { width: 100%; max-width: 360px; text-align: left; }
+
+/* Cabecera con la accion principal de la pantalla a la derecha del
+   titulo, en vez de un boton/link suelto mas abajo compitiendo con la
+   tabla. Mismo .page-header de siempre, solo en fila. */
+.page-header--actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-header--actions > div:first-child { flex: 1 1 auto; min-width: 220px; }
+.page-header--actions > .btn-primary-link,
+.page-header--actions > button {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .table-scroll { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; }
 .table-scroll table { box-shadow: none; margin-bottom: 0; }
 
@@ -314,7 +353,7 @@ button:disabled, input[type=submit]:disabled { opacity: .6; cursor: not-allowed;
 .filter-bar select, .filter-bar input { width: 100%; }
 .filter-bar button { margin-top: 0; flex-shrink: 0; }
 
-.actions a.btn-primary-link {
+a.btn-primary-link {
   display: inline-block;
   margin-top: 4px;
   padding: 9px 18px;
@@ -326,7 +365,7 @@ button:disabled, input[type=submit]:disabled { opacity: .6; cursor: not-allowed;
   text-decoration: none;
   transition: background var(--transition);
 }
-.actions a.btn-primary-link:hover { background: var(--color-primary-dark); color: white; text-decoration: none; }
+a.btn-primary-link:hover { background: var(--color-primary-dark); color: white; text-decoration: none; }
 
 .btn-secondary {
   background: var(--color-surface);

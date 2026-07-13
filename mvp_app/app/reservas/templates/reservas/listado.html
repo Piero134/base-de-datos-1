@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Reservas{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Reservas</h1>
-  <p class="subtitle">{{ reservas|length }} reserva{{ 's' if reservas|length != 1 }} {{ 'pendiente(s) de pago' if filtros is none else 'encontrada(s)' }}.</p>
+<div class="page-header page-header--actions">
+  <div>
+    <h1>Reservas</h1>
+    <p class="subtitle">{{ reservas|length }} reserva{{ 's' if reservas|length != 1 }} {{ 'pendiente(s) de pago' if filtros is none else 'encontrada(s)' }}.</p>
+  </div>
+  {% if filtros is not none %}
+  <a href="{{ url_for('reservas.nuevo') }}" class="btn-primary-link">+ Nueva reserva</a>
+  {% endif %}
 </div>
 {% if filtros is none %}
 <p class="subtitle">Solo se muestran las reservas pendientes de pago.</p>
 {% else %}
-<p class="actions"><a href="{{ url_for('reservas.nuevo') }}" class="btn-primary-link">+ Nueva reserva</a></p>
 <form method="get" class="card card--wide filter-bar">
   <div>
     <label for="filtro_tipo_persona">Tipo de reservante</label>
