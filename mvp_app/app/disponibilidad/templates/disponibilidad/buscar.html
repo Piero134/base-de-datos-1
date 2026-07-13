@@ -28,8 +28,9 @@
 </form>
 
 {% if resultado is not none %}
-  <div class="card" role="status">
-    <strong>Habitaciones disponibles en el rango solicitado:</strong> {{ resultado }}
+  <div class="kpi-card kpi-card--solo" role="status">
+    <div class="kpi-value">{{ resultado }}</div>
+    <div class="kpi-label">Habitaciones disponibles en el rango solicitado</div>
   </div>
 {% endif %}
 

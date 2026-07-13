@@ -423,6 +423,9 @@ button.btn-abrir-modal { margin-bottom: 16px; }
 .kpi-card .kpi-delta.up { color: var(--color-success-border); }
 .kpi-card .kpi-delta.down { color: var(--color-danger-border); }
 .kpi-card .kpi-delta.flat { color: var(--color-text-muted); }
+/* Variante para un único KPI fuera de un .kpi-grid (ej. resultado de una
+   consulta puntual, como disponibilidad de habitaciones). */
+.kpi-card--solo { max-width: 320px; margin-bottom: 24px; }
 
 /* Barra de ocupación (dashboard de Gerencia): sin librería de gráficos,
    solo un div con el ancho en % — consistente con el resto del proyecto,
