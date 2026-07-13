@@ -8,6 +8,9 @@
 '  índices adicionales (más allá de PK/FK) y estrategia de
 '  particionamiento. Corresponde a 01_Creacion_Tablas.sql +
 '  02_Reglas_Integridad.sql ya ejecutados en el SGBD.
+'  Las tablas sin particularidad física (solo PK/FK, sin índice
+'  extra ni nota) se muestran con sus columnas simples nada más;
+'  el detalle completo de atributos está en 02_Modelo_Logico.
 ' =============================================================
 
 hide circle
@@ -32,6 +35,12 @@ note as N_GLOBAL
   sobre la columna referenciada (comportamiento de InnoDB).
 end note
 
+entity "ubigeo" as ubigeo {
+  * id_ubigeo : INT <<PK>> [AUTO_INCREMENT]
+  --
+  codigo : VARCHAR(6) <<UNIQUE>>
+}
+
 entity "hotel" as hotel {
   * id_hotel : INT <<PK>> [AUTO_INCREMENT]
   --
@@ -41,6 +50,12 @@ entity "hotel" as hotel {
   email : VARCHAR(100) <<UNIQUE>>
   # id_ubigeo : INT <<FK>>
   activo : TINYINT(1)
+}
+
+entity "cargo_empleado" as cargo_empleado {
+  * id_cargo : INT <<PK>> [AUTO_INCREMENT]
+  --
+  nombre : VARCHAR(80) <<UNIQUE>>
 }
 
 entity "empleado" as empleado {
@@ -63,6 +78,19 @@ entity "usuario" as usuario {
   activo : TINYINT(1)
 }
 
+entity "tipo_documento" as tipo_documento {
+  * id_tipo_documento : INT <<PK>> [AUTO_INCREMENT]
+  --
+  nombre : VARCHAR(60) <<UNIQUE>>
+}
+
+entity "persona" as persona {
+  * id_persona : INT <<PK>> [AUTO_INCREMENT]
+  --
+  tipo : ENUM('NATURAL','JURIDICA')
+  # id_ubigeo : INT <<FK>> (NULL)
+}
+
 entity "persona_natural" as persona_natural {
   * id_persona : INT <<PK,FK>>
   --
@@ -78,21 +106,23 @@ entity "persona_juridica" as persona_juridica {
   ruc : VARCHAR(11) <<UNIQUE>>
 }
 
-entity "huesped" as huesped {
-  * id_huesped : INT <<PK>> [AUTO_INCREMENT]
+entity "cliente" as cliente {
+  * id_cliente : INT <<PK>> [AUTO_INCREMENT]
   --
-  # id_persona : INT <<FK>>
-  activo : TINYINT(1)
+  # id_persona : INT <<FK>> <<UNIQUE>>
 }
-note right of huesped
-  Rol de ocupación, no identidad propia: sin columnas de
-  nombre/documento/nacionalidad — todas viven en
-  persona/persona_natural. id_persona referencia
-  persona_natural (no persona) para que el propio FK
-  garantice que el ocupante sea siempre una persona natural.
-  No es 1:1 con persona_natural — la misma persona puede
-  volver a hospedarse y generar otra fila en otra estadía.
-end note
+
+' "huesped" no existe como tabla propia: es un rol que cualquier
+' persona_natural puede cumplir, no una identidad aparte.
+' detalle_huesped_reserva.id_huesped y huesped_alojamiento.id_huesped
+' son FK directas a persona_natural.id_persona (mismo nombre de
+' columna, sin tabla intermedia). Antes existía huesped(id_huesped,
+' id_persona, activo) puramente de redirección: permitía que la misma
+' persona tuviera varias filas de "huésped" simultáneas, lo que rompía
+' en la práctica la regla de "no en dos alojamientos activos a la vez"
+' (esa regla compara por id de huésped, y con dos filas para la misma
+' persona el chequeo no detectaba el choque). Se eliminó para cerrar
+' ese hueco. Ver comentario completo en 01_Creacion_Tablas.sql.
 
 entity "tipo_habitacion" as tipo_habitacion {
   * id_tipo_habitacion : INT <<PK>> [AUTO_INCREMENT]
@@ -119,6 +149,13 @@ note right of habitacion
   usada por fn_disponibilidad_tipo_habitacion() y
   vw_habitaciones_disponibles.
 end note
+
+entity "plan_tarifa" as plan_tarifa {
+  * id_plan : INT <<PK>> [AUTO_INCREMENT]
+  --
+  es_publico : TINYINT(1)
+  activo : TINYINT(1)
+}
 
 entity "tarifa_habitacion" as tarifa_habitacion {
   * id_tarifa : INT <<PK>> [AUTO_INCREMENT]
@@ -176,7 +213,9 @@ entity "detalle_huesped_reserva" as detalle_huesped_reserva {
   * id_detalle_huesped : INT <<PK>> [AUTO_INCREMENT]
   --
   # id_detalle_reserva : INT <<FK>>
-  # id_huesped : INT <<FK>> (NULL)
+  # id_huesped : INT <<FK>> (NULL) [→ persona_natural.id_persona]
+  ..
+  <<UNIQUE>> uq_detalle_huesped_reserva (id_detalle_reserva, id_huesped)
 }
 note right of detalle_huesped_reserva
   id_huesped NULL = cupo reservado sin identificar todavía
@@ -206,7 +245,7 @@ end note
 
 entity "huesped_alojamiento" as huesped_alojamiento {
   * id_alojamiento : INT <<PK,FK>>
-  * id_huesped : INT <<PK,FK>>
+  * id_huesped : INT <<PK,FK>> [→ persona_natural.id_persona]
   --
   # id_detalle_huesped : INT <<FK>> (NULL)
   fecha_salida_real : DATETIME (NULL)
@@ -243,7 +282,7 @@ entity "danio" as danio {
 entity "cuenta_cobrar" as cuenta_cobrar {
   * id_cuenta : INT <<PK>> [AUTO_INCREMENT]
   --
-  # id_alojamiento : INT <<FK>>
+  # id_alojamiento : INT <<FK>> <<UNIQUE>>
   saldo : DECIMAL(12,2)
 }
 
@@ -262,25 +301,67 @@ entity "pago_cuenta_cobrar" as pago_cuenta_cobrar {
   <<INDEX>> idx_pago_cuenta (id_cuenta, fecha_pago)
 }
 
+entity "auditoria" as auditoria {
+  * id_auditoria : INT <<PK>> [AUTO_INCREMENT]
+  --
+  tabla : VARCHAR(40)
+  id_registro : INT
+  # id_hotel : INT <<FK>> (NULL)
+  operacion : ENUM('UPDATE','DELETE')
+  valores_antes : JSON
+  valores_despues : JSON (NULL)
+  # id_empleado : INT <<FK>> (NULL)
+  fecha_cambio : DATETIME
+}
+note right of auditoria
+  Sin FK hacia reserva/cuenta_cobrar a propósito: id_registro es
+  polimórfico según "tabla", así que no puede apuntar a una sola
+  tabla con una FK normal, y debe sobrevivir aunque el registro
+  auditado ya no exista (ej. una fila borrada). id_hotel se captura
+  en el propio trigger al momento del cambio (OLD.id_hotel, o vía
+  subconsulta para cuenta_cobrar), no por JOIN posterior -- un
+  DELETE ya no tiene fila origen con la que hacer ese JOIN.
+  id_empleado se llena desde la variable de sesión
+  @auditoria_id_empleado que fija la aplicación antes de cada
+  operación; queda NULL si el cambio lo hizo un proceso automático
+  (ej. el EVENT de reservas vencidas).
+end note
+
 ' =============================================================
 '  RELACIONES (abreviadas; ver 02_Modelo_Logico para el detalle
 '  completo de cardinalidad de cada FK)
 ' =============================================================
+ubigeo          ||--o{ hotel
+ubigeo          |o--o{ persona
 hotel           ||--o{ empleado
+cargo_empleado  ||--o{ empleado
 empleado        |o--o| usuario
 hotel           |o--o{ usuario
+persona         ||--o{ persona_natural
+persona         ||--o{ persona_juridica
+tipo_documento  ||--o{ persona_natural
+persona         ||--o{ cliente
 hotel           ||--o{ habitacion
 tipo_habitacion ||--o{ habitacion
 tipo_habitacion ||--o{ tarifa_habitacion
-persona_natural ||--o{ huesped                 : id_persona (siempre NATURAL)
+plan_tarifa     ||--o{ tarifa_habitacion
 hotel           ||--o{ reserva
+cliente         ||--o{ reserva
+cliente         ||--o{ reserva                  : id_cliente_contacto (nulable)
+empleado        |o--o{ reserva                  : id_empleado (nulable)
 reserva         ||--o{ reserva_detalle
+tipo_habitacion ||--o{ reserva_detalle
+plan_tarifa     ||--o{ reserva_detalle
 reserva_detalle ||--o{ detalle_huesped_reserva
-huesped         |o--o{ detalle_huesped_reserva  : id_huesped (nulable)
+persona_natural |o--o{ detalle_huesped_reserva  : id_huesped (nulable)
 reserva         ||--o{ alojamiento
+reserva_detalle ||--o{ alojamiento
 habitacion      ||--o{ alojamiento
+empleado        ||--o{ alojamiento              : id_empleado_checkin
+empleado        |o--o{ alojamiento              : id_empleado_checkout (nulable)
 alojamiento     ||--o{ huesped_alojamiento
-detalle_huesped_reserva ||..o{ huesped_alojamiento
+persona_natural ||--o{ huesped_alojamiento
+detalle_huesped_reserva ||..o{ huesped_alojamiento : id_detalle_huesped (opcional)
 alojamiento     ||--o{ consumo_servicio
 servicio        ||--o{ consumo_servicio
 categoria_servicio ||--o{ servicio
@@ -288,6 +369,9 @@ alojamiento     ||--o{ danio
 alojamiento     ||--o{ cuenta_cobrar
 cuenta_cobrar   ||--o{ cuenta_cobrar_detalle
 cuenta_cobrar   ||--o{ pago_cuenta_cobrar
+empleado        |o--o{ pago_cuenta_cobrar       : id_empleado (nulable)
+empleado        |o--o{ auditoria                : id_empleado (nulable)
+hotel           |o--o{ auditoria                : id_hotel (nulable)
 
 note bottom
   <b>Optimizaciones aplicadas (ver 02_Reglas_Integridad.sql):</b>

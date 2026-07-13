@@ -72,12 +72,13 @@ entity Cliente {
 }
 
 ' ---------- Huésped (rol de ocupación, no identidad propia) ----------
-' La incertidumbre de "quién" ocupará una habitación vive en
-' DetalleHuespedReserva (cupo reservado sin nombre todavía, típico en
-' una reserva corporativa); Huesped nunca es "genérico" — solo existe
-' cuando ya se conoce a la persona natural que ocupa la habitación.
-entity Huesped {
-}
+' "Huésped" no es una entidad con identidad propia: es un ROL que
+' cualquier PersonaNatural puede cumplir ("cliente = quien paga/
+' factura; huésped = quien duerme"). Por eso no hay entidad Huesped:
+' DetalleHuespedReserva y HuespedAlojamiento se relacionan directo con
+' PersonaNatural. La incertidumbre de "quién" ocupará una habitación
+' (reserva corporativa con cupos aún sin nombre) vive en
+' DetalleHuespedReserva, cuyo huésped es opcional hasta identificarlo.
 
 ' ---------- Habitaciones y tarifas ----------
 entity TipoHabitacion {
@@ -168,6 +169,18 @@ entity PagoCuentaCobrar {
   * metodo_pago
 }
 
+' ---------- Auditoría ----------
+' Bitácora de cambios (edición/eliminación) sobre Reserva y
+' CuentaCobrar: quién, cuándo y qué cambió. No se relaciona
+' directamente con Reserva/CuentaCobrar porque el registro afectado
+' es polimórfico (según de cuál de las dos tablas se trate) y debe
+' sobrevivir aunque esa fila ya no exista (ej. una reserva eliminada).
+entity Auditoria {
+  * tabla
+  * operacion (edición / eliminación)
+  * fecha_cambio
+}
+
 ' =============================================================
 '  RELACIONES
 ' =============================================================
@@ -202,7 +215,7 @@ TipoHabitacion ||--o{ ReservaDetalle : especifica
 PlanTarifa ||--o{ ReservaDetalle  : aplica a
 
 ReservaDetalle ||--o{ DetalleHuespedReserva : preasigna
-Huesped |o--o{ DetalleHuespedReserva        : es preasignado en (opcional — el cupo puede no tener huésped identificado todavía)
+PersonaNatural |o--o{ DetalleHuespedReserva : es preasignado en (opcional — el cupo puede no tener huésped identificado todavía)
 
 Reserva ||--o{ Alojamiento        : origina
 ReservaDetalle ||--o{ Alojamiento : concreta
@@ -210,9 +223,8 @@ Habitacion ||--o{ Alojamiento     : es ocupada en
 Empleado ||--o{ Alojamiento       : hace check-in / check-out
 
 Alojamiento ||--o{ HuespedAlojamiento : hospeda
-Huesped ||--o{ HuespedAlojamiento     : ocupa
+PersonaNatural ||--o{ HuespedAlojamiento : se aloja como (siempre persona natural — nunca una empresa)
 DetalleHuespedReserva |o..o{ HuespedAlojamiento : trazabilidad (opcional)
-PersonaNatural ||--o{ Huesped : se aloja como (siempre persona natural — nunca una empresa)
 
 Alojamiento ||--o{ ConsumoServicio : genera
 Servicio ||--o{ ConsumoServicio    : es consumido en
@@ -224,5 +236,8 @@ Alojamiento ||--o{ CuentaCobrar   : genera
 CuentaCobrar ||--o{ CuentaCobrarDetalle : detalla
 CuentaCobrar ||--o{ PagoCuentaCobrar    : recibe
 Empleado ||--o{ PagoCuentaCobrar        : registra (caja)
+
+Empleado |o--o{ Auditoria         : registra el cambio (opcional — puede ser un proceso automático)
+Hotel ||--o{ Auditoria            : referente (capturado por el trigger al momento del cambio)
 
 @enduml

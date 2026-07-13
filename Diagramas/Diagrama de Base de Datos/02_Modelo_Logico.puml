@@ -75,7 +75,7 @@ entity "persona" as persona {
   tipo : ENUM('NATURAL','JURIDICA')
   telefono : VARCHAR(20)
   email : VARCHAR(100)
-  # id_ubigeo : INT <<FK>>
+  # id_ubigeo : INT <<FK>> (NULL)
   activo : TINYINT(1)
 }
 
@@ -108,12 +108,11 @@ entity "cliente" as cliente {
   observaciones : TEXT
 }
 
-entity "huesped" as huesped {
-  * id_huesped : INT <<PK>>
-  --
-  # id_persona : INT <<FK>>
-  activo : TINYINT(1)
-}
+' "huesped" no existe como tabla propia: es un rol que cualquier
+' persona_natural puede cumplir. detalle_huesped_reserva.id_huesped y
+' huesped_alojamiento.id_huesped son FK directas a
+' persona_natural.id_persona (mismo nombre de columna, sin tabla
+' intermedia). Ver comentario completo en 01_Creacion_Tablas.sql.
 
 entity "tipo_habitacion" as tipo_habitacion {
   * id_tipo_habitacion : INT <<PK>>
@@ -282,6 +281,25 @@ entity "pago_cuenta_cobrar" as pago_cuenta_cobrar {
   # id_empleado : INT <<FK>> (NULL)
 }
 
+entity "auditoria" as auditoria {
+  * id_auditoria : INT <<PK>>
+  --
+  tabla : VARCHAR(40)
+  id_registro : INT
+  # id_hotel : INT <<FK>> (NULL)
+  operacion : ENUM('UPDATE','DELETE')
+  valores_antes : JSON
+  valores_despues : JSON (NULL)
+  # id_empleado : INT <<FK>> (NULL)
+  fecha_cambio : DATETIME
+}
+note right of auditoria
+  id_registro es polimórfico (según "tabla"): apunta a reserva.id_reserva
+  o cuenta_cobrar.id_cuenta, sin FK real (el registro auditado puede ya
+  no existir tras un DELETE). id_hotel se captura en el propio trigger al
+  momento del cambio, no por JOIN posterior.
+end note
+
 ' =============================================================
 '  RELACIONES (con cardinalidad y FK)
 ' =============================================================
@@ -302,7 +320,6 @@ plan_tarifa     ||--o{ tarifa_habitacion        : id_plan
 persona         ||--o{ persona_natural          : id_persona (1:1)
 persona         ||--o{ persona_juridica         : id_persona (1:1)
 tipo_documento  ||--o{ persona_natural          : id_tipo_documento
-persona_natural ||--o{ huesped                  : id_persona (siempre NATURAL)
 persona         ||--o{ cliente                  : id_persona
 
 hotel           ||--o{ reserva                  : id_hotel
@@ -315,7 +332,7 @@ tipo_habitacion ||--o{ reserva_detalle          : id_tipo_habitacion
 plan_tarifa     ||--o{ reserva_detalle          : id_plan
 
 reserva_detalle ||--o{ detalle_huesped_reserva  : id_detalle_reserva
-huesped         |o--o{ detalle_huesped_reserva  : id_huesped (nulable)
+persona_natural |o--o{ detalle_huesped_reserva  : id_huesped (nulable, → persona_natural.id_persona)
 
 reserva         ||--o{ alojamiento              : id_reserva
 reserva_detalle ||--o{ alojamiento              : id_detalle_reserva
@@ -324,7 +341,7 @@ empleado        ||--o{ alojamiento              : id_empleado_checkin
 empleado        ||--o{ alojamiento              : id_empleado_checkout
 
 alojamiento     ||--o{ huesped_alojamiento      : id_alojamiento
-huesped         ||--o{ huesped_alojamiento      : id_huesped
+persona_natural ||--o{ huesped_alojamiento      : id_huesped (→ persona_natural.id_persona)
 detalle_huesped_reserva ||..o{ huesped_alojamiento : id_detalle_huesped (opcional)
 
 alojamiento     ||--o{ consumo_servicio         : id_alojamiento
@@ -337,5 +354,8 @@ alojamiento     ||--o{ cuenta_cobrar            : id_alojamiento
 cuenta_cobrar   ||--o{ cuenta_cobrar_detalle    : id_cuenta
 cuenta_cobrar   ||--o{ pago_cuenta_cobrar       : id_cuenta
 empleado        ||--o{ pago_cuenta_cobrar       : id_empleado
+
+empleado        |o--o{ auditoria                : id_empleado (nulable)
+hotel           |o--o{ auditoria                : id_hotel (nulable)
 
 @enduml
