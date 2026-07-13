@@ -28,8 +28,9 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       `fecha_salida_real` en `sp_agregar_huesped_alojamiento`, y una
       decimosexta el mismo día tras agregar edición (+ activar/desactivar
       donde aplica) a hoteles, tipos de habitación, categorías de
-      servicio, servicios, planes tarifarios, tarifas y empleados. Marcar
-      de nuevo tras cambios importantes.
+      servicio, servicios, planes tarifarios, tarifas y empleados, y una
+      decimoséptima tras convertir "Agregar línea" (detalle de reserva) en
+      ventana flotante. Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -347,6 +348,20 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       sin botón de baja. Verificado que la base quedó exactamente en su
       estado original al terminar (todas las filas de prueba comparadas
       antes/después).
+- [x] **"Agregar línea" como ventana flotante (UC-01, 2026-07-13):**
+      `reservas/detalle.html` reemplazó el formulario fijo bajo "Agregar
+      línea" por un botón "+ Agregar línea" que abre un `<dialog>` (mismo
+      patrón que "Cliente nuevo"/"Huésped nuevo"). Probado con Playwright
+      contra una reserva `PENDIENTE` sin pagar creada para la prueba: el
+      diálogo abre vacío, se completó y envió una línea real (Simple, 1
+      habitación) que quedó reflejada en la tabla con el flash de éxito;
+      un segundo intento con una cantidad exagerada (99 habitaciones) fue
+      rechazado por `fn_disponibilidad_tipo_habitacion` vía
+      `sp_agregar_detalle_reserva` con *"No hay disponibilidad suficiente
+      de ese tipo de habitación en las fechas solicitadas"*, y el diálogo
+      se reabrió solo (`data-autoopen`) con la cantidad "99" todavía
+      tecleada en el campo, igual que ya pasaba con cliente/huésped nuevo.
+      La reserva de prueba se borró al terminar.
 
 ## Cómo volver a correr esta verificación
 
