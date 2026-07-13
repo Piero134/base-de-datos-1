@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <div class="breadcrumb"><a href="{{ url_for('estadia.activos') }}">Estadía</a> &rsaquo; <span class="current">Alojamiento #{{ aloj.id_alojamiento }}</span></div>
-  <h1>{{ aloj.hotel }} — habitación {{ aloj.habitacion }}</h1>
+  <h1>{{ aloj.hotel }} · Habitación {{ aloj.habitacion }}</h1>
   <p class="subtitle">
     <a href="#seccion-huespedes">Huéspedes</a> ·
     <a href="#seccion-consumos">Consumos</a> ·
@@ -23,7 +23,7 @@
   <p><strong>Resumen antes de check-out:</strong> consumos S/ {{ '%.2f'|format(total_consumos) }}
      + daños pendientes S/ {{ '%.2f'|format(total_danios) }} (se cobran juntos al generar la cuenta por cobrar).</p>
   <form method="post" action="{{ url_for('estadia.checkout', id_alojamiento=aloj.id_alojamiento) }}"
-        data-confirm="¿Confirmar el check-out completo? Se cerrará la salida de cualquier huésped pendiente. Consumos: S/ {{ '%.2f'|format(total_consumos) }} — Daños pendientes: S/ {{ '%.2f'|format(total_danios) }}.">
+        data-confirm="¿Confirmar el check-out completo? Se cerrará la salida de cualquier huésped pendiente. Consumos: S/ {{ '%.2f'|format(total_consumos) }}. Daños pendientes: S/ {{ '%.2f'|format(total_danios) }}.">
     {# invoca sp_realizar_checkout #}
     <button type="submit" class="btn-danger">Realizar check-out completo</button>
   </form>
@@ -88,7 +88,7 @@
     <label for="cons_id_servicio">Servicio</label>
     <select name="id_servicio" id="cons_id_servicio" required data-searchable="Buscar servicio…">
       {% for s in servicios %}
-        <option value="{{ s.id_servicio }}" {% if seleccion_consumo and seleccion_consumo.id_servicio|string == s.id_servicio|string %}selected{% endif %}>{{ s.categoria }} — {{ s.nombre }} (S/ {{ s.precio_unitario }})</option>
+        <option value="{{ s.id_servicio }}" {% if seleccion_consumo and seleccion_consumo.id_servicio|string == s.id_servicio|string %}selected{% endif %}>{{ s.categoria }} · {{ s.nombre }} (S/ {{ s.precio_unitario }})</option>
       {% endfor %}
     </select>
     <label for="cons_cantidad">Cantidad</label>

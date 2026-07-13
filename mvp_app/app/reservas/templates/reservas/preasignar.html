@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "partials/breadcrumb.html" as crumbs %}
-{% block title %}Asignación de huéspedes — reserva #{{ reserva.id_reserva }}{% endblock %}
+{% block title %}Asignación de huéspedes · Reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
   {{ crumbs.breadcrumb([
@@ -9,7 +9,7 @@
     {"label": "Asignación de huéspedes", "url": None},
   ]) }}
   <h1>Asignación de huéspedes</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — indica quién ocupará cada habitación (o deja el cupo sin nombre por ahora). Cada habitación con huéspedes necesita un titular.</p>
+  <p class="subtitle">{{ reserva.nombre_reservante }}: indica quién ocupará cada habitación o deja el cupo sin nombre. Cada habitación con huéspedes necesita un titular.</p>
 </div>
 
 {% if es_terminal %}
@@ -20,7 +20,7 @@
 
 {% for l in lineas %}
 <div class="card card--wide">
-  <h2>{{ l.tipo_habitacion }} — {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
+  <h2>{{ l.tipo_habitacion }} · {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
   <form method="post" action="{{ url_for('reservas.guardar_asignacion_linea', id_reserva=reserva.id_reserva, id_detalle_reserva=l.id_detalle_reserva) }}">
     <div class="table-scroll">
     <table>

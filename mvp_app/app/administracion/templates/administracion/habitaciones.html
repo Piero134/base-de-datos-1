@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header page-header--actions">
   <div>
-    <h1>Habitaciones{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
+    <h1>Habitaciones{% if not es_general %} · {{ session.get('nombre_hotel') }}{% endif %}</h1>
     <p class="subtitle">{{ filas|length }} habitación{{ 'es' if filas|length != 1 }} registrada{{ 's' if filas|length != 1 }}.</p>
   </div>
   {% if puede_crear %}
@@ -35,7 +35,7 @@
     <td>{{ f.descripcion or '—' }}</td>
     <td>
       {% if f.estado == 'OCUPADA' %}
-      <span class="optional">Ocupada — se libera sola al hacer checkout.</span>
+      <span class="optional">Se libera automáticamente al hacer checkout.</span>
       {% else %}
       <form method="post" action="{{ url_for('administracion.habitacion_estado', id_habitacion=f.id_habitacion) }}"
             class="inline-form" data-confirm="¿Cambiar el estado de la habitación {{ f.numero }}?">

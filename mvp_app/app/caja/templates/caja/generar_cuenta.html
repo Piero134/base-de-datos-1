@@ -4,20 +4,20 @@
 <div class="page-header">
   <div class="breadcrumb"><a href="{{ url_for('caja.cuentas') }}">Cuentas por cobrar</a> &rsaquo; <span class="current">Generar</span></div>
   <h1>Generar cuenta por cobrar</h1>
-  <p class="subtitle">Alojamientos finalizados (checkout hecho) con consumos o daños pendientes que aún no tienen cuenta generada.</p>
+  <p class="subtitle">Alojamientos con checkout hecho y consumos o daños sin facturar.</p>
 </div>
 {% if alojamientos %}
 <form class="card card--center" method="post">
   <label for="gc_id_alojamiento">Alojamiento</label>
   <select name="id_alojamiento" id="gc_id_alojamiento" required data-searchable="Buscar alojamiento por hotel o habitación…">
     {% for a in alojamientos %}
-      <option value="{{ a.id_alojamiento }}">#{{ a.id_alojamiento }} — {{ a.hotel }}, hab. {{ a.habitacion }} (checkout {{ a.fecha_checkout_real }})</option>
+      <option value="{{ a.id_alojamiento }}">#{{ a.id_alojamiento }} · {{ a.hotel }}, hab. {{ a.habitacion }} (checkout {{ a.fecha_checkout_real }})</option>
     {% endfor %}
   </select>
   {# invoca sp_generar_cuenta_cobrar #}
   <button type="submit">Generar cuenta</button>
 </form>
 {% else %}
-<p class="empty-state">No hay alojamientos finalizados con consumos o daños pendientes de facturar.</p>
+<p class="empty-state">No hay alojamientos pendientes de facturar.</p>
 {% endif %}
 {% endblock %}

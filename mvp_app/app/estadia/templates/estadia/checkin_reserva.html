@@ -8,8 +8,8 @@
     {"label": "Reserva #" ~ reserva.id_reserva, "url": url_for('reservas.detalle', id_reserva=reserva.id_reserva)},
     {"label": "Check-in", "url": None},
   ]) }}
-  <h1>Check-in — Reserva #{{ reserva.id_reserva }}</h1>
-  <p class="subtitle">{{ reserva.nombre_reservante }} — {{ reserva.hotel }}. El check-in es individual: el titular se registra primero eligiendo el número físico de habitación; después, sus compañeros se suman de a uno. <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Editar asignación de huéspedes →</a></p>
+  <h1>Check-in · Reserva #{{ reserva.id_reserva }}</h1>
+  <p class="subtitle">{{ reserva.nombre_reservante }} · {{ reserva.hotel }}. El titular hace check-in primero y elige el número de habitación; sus compañeros se suman después. <a href="{{ url_for('reservas.preasignar', id_reserva=reserva.id_reserva) }}">Editar asignación de huéspedes →</a></p>
 </div>
 
 {% if es_terminal %}
@@ -20,7 +20,7 @@
 
 {% for l in lineas %}
 <div class="card card--wide">
-  <h2>{{ l.tipo_habitacion }} — {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
+  <h2>{{ l.tipo_habitacion }} · {{ l.cantidad_habitaciones }} habitación(es) x {{ l.capacidad_base }} cupo(s)</h2>
 
   {% for hab in l.habitaciones %}
   {% set primer_ocupado = hab.slots | selectattr('estadia') | first %}
@@ -29,7 +29,7 @@
   <div class="table-scroll">
   <table>
     <thead>
-      <tr><th colspan="3">{{ l.tipo_habitacion }} {{ hab.n }}{% if primer_ocupado %} — N° {{ primer_ocupado.estadia.numero_habitacion }}{% endif %}</th></tr>
+      <tr><th colspan="3">{{ l.tipo_habitacion }} {{ hab.n }}{% if primer_ocupado %} · N° {{ primer_ocupado.estadia.numero_habitacion }}{% endif %}</th></tr>
     </thead>
     <tbody>
     {% for slot in hab.slots %}

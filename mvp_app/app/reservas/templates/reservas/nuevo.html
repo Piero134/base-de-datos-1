@@ -8,7 +8,7 @@
     {"label": "Nueva reserva", "url": None},
   ]) }}
   <h1>Nueva reserva</h1>
-  <p class="subtitle">Cabecera de la reserva. Luego de crearla agregarás las líneas de detalle, confirmarás el pago y, si es una reserva corporativa, pre-asignarás huéspedes.</p>
+  <p class="subtitle">Después de crearla podrás agregar habitaciones, confirmar el pago y asignar huéspedes.</p>
 </div>
 
 <form class="card" method="post" action="{{ url_for('reservas.crear') }}">
@@ -26,7 +26,7 @@
           data-filter-placeholder="Primero elige el tipo de cliente arriba…">
     <option value="">-- Selecciona un cliente --</option>
     {% for c in clientes %}
-      <option value="{{ c.id_cliente }}" data-filter-value="{{ c.tipo_persona }}" {% if seleccion_reserva and seleccion_reserva.id_cliente|string == c.id_cliente|string %}selected{% endif %}>{{ c.nombre_reservante }} ({{ c.tipo_persona }}) — {{ c.documento }}</option>
+      <option value="{{ c.id_cliente }}" data-filter-value="{{ c.tipo_persona }}" {% if seleccion_reserva and seleccion_reserva.id_cliente|string == c.id_cliente|string %}selected{% endif %}>{{ c.nombre_reservante }} ({{ c.tipo_persona }}) · {{ c.documento }}</option>
     {% endfor %}
   </select>
 

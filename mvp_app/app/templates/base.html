@@ -21,7 +21,7 @@
   <a class="skip-link" href="#main">Saltar al contenido</a>
 
   <header class="topbar">
-    <div class="brand">Hotel San Marcos — MVP</div>
+    <div class="brand">{{ session.get('nombre_hotel') or 'Administración general' }}</div>
     <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="mainNav">
       <span class="sr-only">Abrir menú</span>&#9776;
     </button>
@@ -60,7 +60,7 @@
     </nav>
     <div class="session-info">
       {% if session.get('rol') %}
-        <span>{{ session.get('nombre_empleado') }} — {{ session.get('nombre_hotel') or 'Administración general' }}</span>
+        <span>{{ session.get('nombre_empleado') }}</span>
         <a href="{{ url_for('auth.logout') }}">Salir</a>
       {% else %}
         <a href="{{ url_for('auth.login') }}">Ingresar</a>

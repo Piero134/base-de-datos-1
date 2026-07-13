@@ -2,8 +2,8 @@
 {% block title %}Auditoría{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Auditoría{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
-  <p class="subtitle">Cambios (edición o eliminación) sobre reservas y cuentas por cobrar, con quién y cuándo. Últimos 200 registros.</p>
+  <h1>Auditoría{% if not es_general %} · {{ session.get('nombre_hotel') }}{% endif %}</h1>
+  <p class="subtitle">Ediciones y eliminaciones en reservas y cuentas por cobrar, con quién y cuándo. Últimos 200 registros.</p>
 </div>
 
 <form class="card" method="get">

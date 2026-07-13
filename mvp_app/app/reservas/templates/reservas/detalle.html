@@ -8,7 +8,7 @@
     {"label": "Reservas", "url": url_for('reservas.listado')},
     {"label": "Reserva #" ~ reserva.id_reserva, "url": None},
   ]) }}
-  <h1>Reserva #{{ reserva.id_reserva }} — {{ reserva.hotel }}</h1>
+  <h1>Reserva #{{ reserva.id_reserva }} · {{ reserva.hotel }}</h1>
   <p class="subtitle">Agrega una o más líneas (tipo de habitación) antes de confirmar el pago.</p>
 </div>
 

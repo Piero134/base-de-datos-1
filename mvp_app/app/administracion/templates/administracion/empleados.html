@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header page-header--actions">
   <div>
-    <h1>Empleados{% if not es_general %} — {{ session.get('nombre_hotel') }}{% endif %}</h1>
+    <h1>Empleados{% if not es_general %} · {{ session.get('nombre_hotel') }}{% endif %}</h1>
     <p class="subtitle">{{ filas|length }} empleado{{ 's' if filas|length != 1 }} registrado{{ 's' if filas|length != 1 }}.</p>
   </div>
   <button type="button" data-open-modal="dlgNuevoEmpleado">+ Nuevo empleado</button>
