@@ -82,49 +82,85 @@
       <option value="JURIDICA" {% if seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA' %}selected{% endif %}>Persona jurídica (empresa)</option>
     </select>
 
-    <label for="cliente_telefono">Teléfono <span class="optional">(opcional)</span></label>
-    <input type="text" name="telefono" id="cliente_telefono" placeholder="987654321" value="{{ seleccion_cliente.telefono if seleccion_cliente else '' }}">
-    <label for="cliente_email">Email <span class="optional">(opcional)</span></label>
-    <input type="email" name="email" id="cliente_email" placeholder="correo@ejemplo.com" value="{{ seleccion_cliente.email if seleccion_cliente else '' }}">
+    <div class="form-row">
+      <div>
+        <label for="cliente_telefono">Teléfono <span class="optional">(opcional)</span></label>
+        <input type="text" name="telefono" id="cliente_telefono" placeholder="987654321" value="{{ seleccion_cliente.telefono if seleccion_cliente else '' }}">
+      </div>
+      <div>
+        <label for="cliente_email">Email <span class="optional">(opcional)</span></label>
+        <input type="email" name="email" id="cliente_email" placeholder="correo@ejemplo.com" value="{{ seleccion_cliente.email if seleccion_cliente else '' }}">
+      </div>
+    </div>
 
     <fieldset id="bloque-natural" {% if seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA' %}style="display:none" disabled{% endif %}>
       <legend>Persona natural</legend>
-      <label for="cliente_id_tipo_documento">Tipo de documento</label>
-      <select name="id_tipo_documento" id="cliente_id_tipo_documento" required>
-        {% for td in tipos_documento %}
-          <option value="{{ td.id_tipo_documento }}" {% if seleccion_cliente and seleccion_cliente.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
-        {% endfor %}
-      </select>
-      <label for="cliente_numero_documento">Número de documento</label>
-      <input type="text" name="numero_documento" id="cliente_numero_documento" required placeholder="12345678" value="{{ seleccion_cliente.numero_documento if seleccion_cliente else '' }}">
-      <label for="cliente_nombres">Nombres</label>
-      <input type="text" name="nombres" id="cliente_nombres" required value="{{ seleccion_cliente.nombres if seleccion_cliente else '' }}">
-      <label for="cliente_apellidos">Apellidos</label>
-      <input type="text" name="apellidos" id="cliente_apellidos" required value="{{ seleccion_cliente.apellidos if seleccion_cliente else '' }}">
-      <label for="cliente_fecha_nacimiento">Fecha de nacimiento</label>
-      <input type="date" name="fecha_nacimiento" id="cliente_fecha_nacimiento" required value="{{ seleccion_cliente.fecha_nacimiento if seleccion_cliente else '' }}">
-      <label for="cliente_genero">Género</label>
-      <select name="genero" id="cliente_genero" required>
-        <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>Masculino</option>
-        <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>Femenino</option>
-        <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
-      </select>
+      <div class="form-row">
+        <div>
+          <label for="cliente_id_tipo_documento">Tipo de documento</label>
+          <select name="id_tipo_documento" id="cliente_id_tipo_documento" required>
+            {% for td in tipos_documento %}
+              <option value="{{ td.id_tipo_documento }}" {% if seleccion_cliente and seleccion_cliente.id_tipo_documento|string == td.id_tipo_documento|string %}selected{% endif %}>{{ td.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="cliente_numero_documento">Número de documento</label>
+          <input type="text" name="numero_documento" id="cliente_numero_documento" required placeholder="12345678" value="{{ seleccion_cliente.numero_documento if seleccion_cliente else '' }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label for="cliente_nombres">Nombres</label>
+          <input type="text" name="nombres" id="cliente_nombres" required value="{{ seleccion_cliente.nombres if seleccion_cliente else '' }}">
+        </div>
+        <div>
+          <label for="cliente_apellidos">Apellidos</label>
+          <input type="text" name="apellidos" id="cliente_apellidos" required value="{{ seleccion_cliente.apellidos if seleccion_cliente else '' }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label for="cliente_fecha_nacimiento">Fecha de nacimiento</label>
+          <input type="date" name="fecha_nacimiento" id="cliente_fecha_nacimiento" required value="{{ seleccion_cliente.fecha_nacimiento if seleccion_cliente else '' }}">
+        </div>
+        <div>
+          <label for="cliente_genero">Género</label>
+          <select name="genero" id="cliente_genero" required>
+            <option value="M" {% if seleccion_cliente and seleccion_cliente.genero == 'M' %}selected{% endif %}>Masculino</option>
+            <option value="F" {% if seleccion_cliente and seleccion_cliente.genero == 'F' %}selected{% endif %}>Femenino</option>
+            <option value="OTRO" {% if seleccion_cliente and seleccion_cliente.genero == 'OTRO' %}selected{% endif %}>Otro / prefiero no decirlo</option>
+          </select>
+        </div>
+      </div>
       <label for="cliente_nacionalidad">Nacionalidad</label>
       <input type="text" name="nacionalidad" id="cliente_nacionalidad" required placeholder="Peruana" value="{{ seleccion_cliente.nacionalidad if seleccion_cliente else '' }}">
     </fieldset>
 
     <fieldset id="bloque-juridica" {% if not (seleccion_cliente and seleccion_cliente.tipo == 'JURIDICA') %}style="display:none" disabled{% endif %}>
       <legend>Persona jurídica</legend>
-      <label for="cliente_ruc">RUC</label>
-      <input type="text" name="ruc" id="cliente_ruc" required placeholder="20123456789" pattern="[0-9]{11}" value="{{ seleccion_cliente.ruc if seleccion_cliente else '' }}">
+      <div class="form-row">
+        <div>
+          <label for="cliente_ruc">RUC</label>
+          <input type="text" name="ruc" id="cliente_ruc" required placeholder="20123456789" pattern="[0-9]{11}" value="{{ seleccion_cliente.ruc if seleccion_cliente else '' }}">
+        </div>
+        <div>
+          <label for="cliente_representante_legal">Representante legal</label>
+          <input type="text" name="representante_legal" id="cliente_representante_legal" required value="{{ seleccion_cliente.representante_legal if seleccion_cliente else '' }}">
+        </div>
+      </div>
       <label for="cliente_razon_social">Razón social</label>
       <input type="text" name="razon_social" id="cliente_razon_social" required value="{{ seleccion_cliente.razon_social if seleccion_cliente else '' }}">
-      <label for="cliente_nombre_comercial">Nombre comercial <span class="optional">(opcional)</span></label>
-      <input type="text" name="nombre_comercial" id="cliente_nombre_comercial" value="{{ seleccion_cliente.nombre_comercial if seleccion_cliente else '' }}">
-      <label for="cliente_representante_legal">Representante legal</label>
-      <input type="text" name="representante_legal" id="cliente_representante_legal" required value="{{ seleccion_cliente.representante_legal if seleccion_cliente else '' }}">
-      <label for="cliente_giro_negocio">Giro de negocio <span class="optional">(opcional)</span></label>
-      <input type="text" name="giro_negocio" id="cliente_giro_negocio" value="{{ seleccion_cliente.giro_negocio if seleccion_cliente else '' }}">
+      <div class="form-row">
+        <div>
+          <label for="cliente_nombre_comercial">Nombre comercial <span class="optional">(opcional)</span></label>
+          <input type="text" name="nombre_comercial" id="cliente_nombre_comercial" value="{{ seleccion_cliente.nombre_comercial if seleccion_cliente else '' }}">
+        </div>
+        <div>
+          <label for="cliente_giro_negocio">Giro de negocio <span class="optional">(opcional)</span></label>
+          <input type="text" name="giro_negocio" id="cliente_giro_negocio" value="{{ seleccion_cliente.giro_negocio if seleccion_cliente else '' }}">
+        </div>
+      </div>
     </fieldset>
 
     <label for="cliente_observaciones">Observaciones del cliente <span class="optional">(opcional)</span></label>
