@@ -1,25 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Confirmar pago{% endblock %}
+{% import "partials/breadcrumb.html" as crumbs %}
+{% block title %}Confirmar pago — Reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
 <div class="page-header">
+  {{ crumbs.breadcrumb([
+    {"label": "Reservas", "url": url_for('reservas.listado')},
+    {"label": "Reserva #" ~ reserva.id_reserva, "url": url_for('reservas.detalle', id_reserva=reserva.id_reserva)},
+    {"label": "Confirmar pago", "url": None},
+  ]) }}
   <h1>Confirmar pago</h1>
+  <p class="subtitle">Reserva #{{ reserva.id_reserva }} · {{ reserva.nombre_reservante }}</p>
 </div>
 <div class="card card--readonly card--center">
   <dl class="kv-list">
     <dt>Reservante</dt><dd>{{ reserva.nombre_reservante }}</dd>
     <dt>Monto total</dt><dd class="highlight">S/ {{ reserva.monto_total }}</dd>
     <dt>Estado actual</dt><dd><span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span></dd>
-    <dt>Pagado</dt><dd><span class="badge badge-warning">No</span></dd>
   </dl>
 
-  {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
+  {# Esta pantalla solo se sirve a CAJA/ADMINISTRADOR (@requiere_rol en la
+     ruta GET); no existe un caso real en el que otro rol la vea. #}
   <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"
         data-confirm="¿Confirmar el pago de S/ {{ reserva.monto_total }} para la reserva #{{ reserva.id_reserva }}?">
     {# invoca sp_confirmar_pago #}
     <button type="submit">Confirmar pago</button>
   </form>
-  {% else %}
-  <p class="empty-state">La confirmación del pago es responsabilidad de caja. Envía al cliente a caja para completar el pago.</p>
-  {% endif %}
 </div>
 {% endblock %}
