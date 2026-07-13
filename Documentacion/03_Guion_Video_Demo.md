@@ -22,10 +22,10 @@ efecto en la base de datos cuando se mencione un trigger.
 
 - Mostrar `Diagramas/Diagrama de Base de Datos/01_Modelo_Conceptual.png`: explicar brevemente
   persona (natural/jurídica), cliente vs. huésped, y por qué están separados. **Pendiente:** este
-  PNG (y `02_Modelo_Logico.png`/`03_Modelo_Fisico.png`) todavía muestra `huesped` como tabla propia;
-  se eliminó del esquema (ver `01_Entregable1_Diseno_BD.md` sección 4) y hay que regenerar los
-  diagramas antes de grabar.
-- Mostrar `02_Modelo_Logico.png` → `03_Modelo_Fisico.png`: mencionar 26 tablas, tipos ENUM para
+  PNG (y `02_Modelo_Logico.png`/`03_Modelo_Fisico.png`) todavía muestra `huesped` como tabla propia
+  y no muestra `auditoria`; se eliminó `huesped` del esquema y se agregó `auditoria` (ver
+  `01_Entregable1_Diseno_BD.md` sección 4) y hay que regenerar los diagramas antes de grabar.
+- Mostrar `02_Modelo_Logico.png` → `03_Modelo_Fisico.png`: mencionar 27 tablas, tipos ENUM para
   estados, cupos sin identificar en reservas corporativas, plan público vs. corporativo.
 - Un vistazo rápido a `Scripts/01_Creacion_Tablas.sql` y `02_Reglas_Integridad.sql` en el editor
   (no leer todo, solo mostrar que existe y está versionado).
@@ -62,6 +62,11 @@ trigger se dispara en cada paso:
   después entrar a "Ingresos mensuales"/"Ocupación mensual" y señalar en pantalla las columnas
   `SUM() OVER`/`LAG() OVER` (acumulado del año, variación contra el mes anterior). Después
   `vw_ocupacion_hotel`, `vw_ingresos_por_hotel`, `vw_ranking_clientes` (esta última con `RANK()`).
+- Desde Gerencia, entrar a "Auditoría" y mostrar el antes/después de un cambio real (ej. la
+  cancelación de reserva o el pago hechos minutos antes en la demo) — señalar la columna Empleado
+  (quién lo hizo) y explicar que sale de una variable de sesión MySQL que fija la app, no de adivinar
+  el usuario de conexión. Entrar como Caja y mostrar que ahí la misma pantalla ya no ofrece el
+  selector de tabla ni ninguna fila de reservas — solo cuentas por cobrar.
 - Mostrar brevemente que un rol sin permiso (ej. Gerencia intentando entrar a Administración) es
   bloqueado — conecta con los roles de MySQL de `07_Roles_Permisos.sql`.
 - **(Opcional, si hay tiempo)** Mostrar el `EVENT ev_procesar_reservas_vencidas` en MySQL Workbench
@@ -83,6 +88,10 @@ Mencionar 2–3 decisiones de diseño no obviamente triviales, como aporte propi
 - Mantenimiento automático de reservas vencidas con `EVENT SCHEDULER` + un procedimiento con
   `CURSOR`/`HANDLER` (único del proyecto que itera fila por fila), en vez de depender de que alguien
   se acuerde de cancelar/marcar no-show a mano.
+- Auditoría de cambios (`reserva`/`cuenta_cobrar`) con triggers + `JSON_OBJECT`, acotada por rol de
+  forma distinta según a quién le sirve (Administrador/Gerencia ven todo, Caja solo lo que le toca
+  conciliar) — y quién hizo el cambio sale de una variable de sesión MySQL que fija la app, no de
+  adivinar el usuario de conexión (la app usa una sola cuenta de servicio para todos).
 
 Cerrar indicando que la Fase III (migración a un segundo SGBD) fue excluida del alcance de este
 proyecto por indicación expresa del profesor (ver `Documentacion/04_Nota_Alcance_Fase3.md`), para

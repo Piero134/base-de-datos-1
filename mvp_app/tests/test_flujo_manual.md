@@ -35,11 +35,14 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       una decimonovena tras agregar editar/quitar línea de reserva, y una
       vigésima tras agregar el `EVENT` diario de reservas vencidas, los
       reportes mensuales con funciones de ventana y la analítica del
-      dashboard de Gerencia. Marcar de nuevo tras cambios importantes.
+      dashboard de Gerencia, y una vigesimoprimera el mismo 2026-07-13 tras
+      agregar la tabla `auditoria` (triggers sobre `reserva`/
+      `cuenta_cobrar`, acotada por rol). Marcar de nuevo tras cambios
+      importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
-      `hotel_db` (19 procedimientos, 6 funciones, 16 vistas, 1 evento
-      programado, datos de `08_Carga_Datos.sql`).
+      `hotel_db` (27 tablas, 19 procedimientos, 6 funciones, 16 vistas, 29
+      triggers, 1 evento programado, datos de `08_Carga_Datos.sql`).
 - [x] **Login:** `POST /login` con empleado + rol guarda la sesión y
       redirige según el rol (`auth.landing`).
 - [x] **Disponibilidad (UC-11):** `fn_disponibilidad_tipo_habitacion` para
@@ -439,6 +442,38 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       limpió un residuo propio (una reserva `PENDIENTE` sin líneas, de un
       intento fallido anterior del mismo script de prueba por un plan
       tarifario sin vigencia en esas fechas).
+- [x] **Auditoría de cambios con triggers, acotada por rol (UC-14,
+      2026-07-13):** nueva tabla `auditoria` (27ª tabla del esquema) +
+      4 triggers (`trg_auditoria_reserva_au/_ad`,
+      `trg_auditoria_cuenta_cobrar_au/_ad`) que capturan el antes/después
+      completo (`JSON_OBJECT`) de cada `UPDATE`/`DELETE` sobre `reserva` y
+      `cuenta_cobrar`, con `id_hotel` capturado directo por el trigger (no
+      por `JOIN` posterior, que fallaría tras un `DELETE`). `id_empleado`
+      se lee de `@auditoria_id_empleado`, fijada por
+      `mvp_app/app/db.py:_marcar_empleado_actual` con el empleado de la
+      sesión Flask antes de cada operación que muta datos. Probado
+      end-to-end contra `hotel_db` real: `mtorres` (RECEPCION) canceló una
+      reserva de prueba → quedó auditada con su nombre real y el diff
+      `estado: PENDIENTE → CANCELADA`; `grojas` (CAJA) registró un pago
+      parcial (S/20 sobre una cuenta de S/59) → quedó auditado con su
+      nombre y el diff `saldo: 59.0 → 39.0`. Como contraste, todo lo que mi
+      propio script de preparación de datos hizo por conexión directa
+      (fuera de la app) quedó correctamente marcado "Automático / sistema"
+      (`id_empleado NULL`) — confirma que la atribución depende
+      genuinamente de pasar por la sesión Flask, no de una casualidad.
+      Alcance por rol verificado: Administrador general ve ambas tablas
+      con selector de hotel; Gerencia (hotel 1) ve ambas tablas, fija a su
+      hotel, sin selector; Caja ve *solo* `cuenta_cobrar`, sin selector de
+      tabla ni ninguna fila de `reserva`; Recepción, redirigida sin acceso
+      (`GET /admin/auditoria` fuera de su `requiere_rol`). Se descubrió de
+      paso que `trg_cuenta_detalle_total_ai` (recalcula `cuenta_cobrar` al
+      insertar detalle) también dispara el trigger de auditoría nuevo,
+      generando una entrada "sin cambios detectados" cuando el recálculo
+      coincide con el valor ya insertado — comportamiento correcto, no un
+      bug (el `UPDATE` sí ocurrió, solo que fue un no-op). Todos los datos
+      de prueba (reservas, alojamiento, cuenta, pago) y las filas de
+      `auditoria` generadas se borraron al terminar, dejando la tabla
+      vacía y lista para uso real.
 
 ## Cómo volver a correr esta verificación
 

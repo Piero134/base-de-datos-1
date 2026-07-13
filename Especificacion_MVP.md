@@ -4,7 +4,7 @@
 
 Según lo indicado por el profesor en la asesoría: **"el proyecto final no va a ser la aplicación al 100% desarrollada, sino centrarnos en cómo hacer un MVP que use todas las consultas que estamos viendo"**, y su exigencia explícita fue: *"la aplicación tiene que ser la interfase... puede no estar construida en un milímetro, no tan fino, pero sí tiene que haber conectividad a la base de datos, tiene que haber usado una serie de instrucciones SQL"*.
 
-Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 26 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
+Esto fija el criterio de éxito del MVP: **no es una app pulida visualmente, es una interfaz mínima pero funcional que demuestre, con datos reales, el uso de las 27 tablas, funciones, procedimientos, vistas, triggers y roles ya construidos** (`01_Creacion_Tablas.sql` → `09_Consultas_MVP.sql`).
 
 ### Qué SÍ entra en el MVP
 - Una interfaz (web, escritorio o incluso consola con menú) con conectividad real a `hotel_db`.
@@ -330,6 +330,34 @@ asignado a ese empleado:
   los triggers `trg_usuario_validar_alcance_bi`/`_bu` para cualquier rol que no sea
   `ADMINISTRADOR`. La contraseña se hashea con `generate_password_hash` (mismo mecanismo que el
   login), nunca se guarda en texto plano.
+
+### UC-14: Ver auditoría de cambios (2026-07-13)
+- **Actor:** Administrador, Gerencia o Caja (`GET /admin/auditoria`, `requiere_rol("ADMINISTRADOR",
+  "GERENCIA", "CAJA")`).
+- **Flujo principal:** tabla `auditoria` (nueva), llenada por triggers `AFTER UPDATE`/`AFTER DELETE`
+  sobre `reserva` y `cuenta_cobrar` — cada cambio queda con el valor completo de la fila antes y
+  después (`JSON`), la operación, el hotel, y quién lo hizo. `pago_cuenta_cobrar` quedó fuera a
+  propósito: en este proyecto un pago nunca se edita ni se borra (siempre `INSERT`), así que un
+  trigger de `UPDATE`/`DELETE` ahí no tendría nada que capturar; `cuenta_cobrar` sí cambia de verdad
+  (`saldo`/`estado`) cada vez que se registra un pago, vía `trg_cuenta_actualizar_saldo` — el
+  trigger de auditoría se dispara en cascada desde ese `UPDATE`, sin que la app tenga que hacer nada
+  extra.
+- **Quién hizo el cambio:** los triggers leen la variable de sesión MySQL `@auditoria_id_empleado`,
+  que `mvp_app/app/db.py` fija (con el `id_empleado` de la sesión Flask) antes de cada operación que
+  muta datos. Queda `NULL` ("Automático / sistema" en la pantalla) cuando el cambio lo dispara un
+  proceso sin sesión Flask — por ejemplo el `EVENT` de reservas vencidas (UC-01b) — o una conexión
+  directa a la base de datos que nunca fijó la variable.
+- **Alcance por rol:** Administrador y Gerencia ven ambas tablas auditadas, acotado a su hotel salvo
+  el administrador general (que además elige el hotel). Caja solo ve auditoría de `cuenta_cobrar` —
+  es su ámbito real de trabajo (conciliar pagos), no le corresponde revisar cambios de reservas.
+  Recepción no tiene acceso: es quien genera la mayoría de los cambios auditados en `reserva`
+  (cancelaciones, no-show), no quien los revisa — coincide con cómo ya está separado el resto del
+  sistema (los datos sensibles de personal ya estaban acotados solo a Administrador).
+- **Nota de diseño:** `auditoria.id_registro` es polimórfico (según `auditoria.tabla`), así que no
+  tiene una FK normal hacia `reserva`/`cuenta_cobrar` — además debe sobrevivir aunque el registro
+  auditado ya no exista (un `DELETE`). Por eso `auditoria.id_hotel` se captura directo en el propio
+  trigger al momento del cambio, no por un `JOIN` posterior contra la tabla origen (que ya no
+  tendría fila que unir después de un `DELETE`).
 
 ---
 

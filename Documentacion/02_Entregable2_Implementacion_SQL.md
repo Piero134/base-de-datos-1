@@ -15,12 +15,12 @@ ejecución obligatorio (cada script depende del anterior):
 
 | Orden | Script | Contenido |
 |---|---|---|
-| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
+| 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 27 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
 | 4 | `04_Procedimientos.sql` | 19 procedimientos (`CREATE PROCEDURE`) + 1 evento programado (`CREATE EVENT`) |
 | 5 | `05_Vistas.sql` | 16 vistas (`CREATE OR REPLACE VIEW`) |
-| 6 | `06_Triggers.sql` | 23 triggers (`CREATE TRIGGER`) |
+| 6 | `06_Triggers.sql` | 29 triggers (`CREATE TRIGGER`) |
 | 7 | `07_Roles_Permisos.sql` | 4 roles MySQL (`CREATE ROLE` + `GRANT`) |
 | 8 | `08_Carga_Datos.sql` | Datos de prueba (`INSERT`) que recorren todos los escenarios |
 | 9 | `09_Consultas_MVP.sql` | Consultas de demostración sobre vistas/funciones/procedimientos |
@@ -65,6 +65,8 @@ los scripts, sin inventar cobertura):
 | Fechas: `DATEDIFF`, `BETWEEN`, `TIMESTAMPDIFF` | `fn_calcular_noches`, `fn_plan_vigente`, `fn_calcular_edad`, `vw_historial_estadias` |
 | `DECLARE ... CURSOR` + `DECLARE ... HANDLER FOR NOT FOUND`/`SQLEXCEPTION` | `sp_procesar_reservas_vencidas` (`04_Procedimientos.sql`, SP 15) — único procedimiento del proyecto que itera fila por fila en vez de trabajar en conjunto; cada `CALL` a `sp_cancelar_reserva`/`sp_marcar_no_show` va envuelto en su propio `HANDLER FOR SQLEXCEPTION` para que una fila problemática no aborte el resto del lote |
 | `CREATE EVENT` (MySQL Event Scheduler) | `ev_procesar_reservas_vencidas`, corre `sp_procesar_reservas_vencidas` una vez al día sin depender de que la aplicación lo dispare — requiere `event_scheduler = ON` (`SHOW VARIABLES LIKE 'event_scheduler'`) |
+| `JSON_OBJECT` + tipo de columna `JSON` | `trg_auditoria_reserva_au/_ad`, `trg_auditoria_cuenta_cobrar_au/_ad` (`06_Triggers.sql`), guardan el antes/después completo de la fila en `auditoria.valores_antes`/`valores_despues` |
+| Variable de sesión (`SET @var = ...` / `@var` dentro de un trigger) | `@auditoria_id_empleado`, fijada por `mvp_app/app/db.py` antes de cada operación que muta datos y leída por los 4 triggers de auditoría para saber qué empleado hizo el cambio — sin esto, un trigger no tiene forma de saber "quién" más allá del usuario de conexión a MySQL (que siempre es el mismo, la app usa una sola cuenta de servicio) |
 
 > Nota de transparencia: no se usa `HAVING` en el proyecto actual (los filtros de agregación que se
 > necesitaron se resolvieron con `WHERE` antes de agrupar, ej. `WHERE d.estado = 'PENDIENTE'` en
@@ -122,7 +124,7 @@ temporal (mes a mes) y funciones de ventana (`SUM() OVER`, `LAG() OVER`); el res
 "agregadas" (`vw_ingresos_por_hotel`, `vw_ocupacion_hotel`) son snapshots acumulados o del estado
 actual, sin ninguna dimensión de fecha.
 
-## 7. Triggers (23) y roles (4)
+## 7. Triggers (29) y roles (4)
 
 - **Triggers** (`Scripts/06_Triggers.sql`): sincronizan el estado de la habitación con el ciclo de
   vida del alojamiento (`trg_alojamiento_checkin/checkout/cancelar`), validan que no se finalice un
@@ -136,7 +138,15 @@ actual, sin ninguna dimensión de fecha.
   de su `empleado`. Un rediseño posterior de `huesped` (ver `01_Entregable1_Diseno_BD.md` sección 4)
   eliminó dos triggers de sincronización que ya no hacían falta (`huesped` dejó de duplicar columnas
   de `persona_natural`) y agregó `trg_valida_cupos_reserva`, que limita el total de cupos —
-  identificados o no — de una línea de reserva a `cantidad_habitaciones × capacidad_base`.
+  identificados o no — de una línea de reserva a `cantidad_habitaciones × capacidad_base`. Los 4 más
+  recientes (`trg_auditoria_reserva_au/_ad`, `trg_auditoria_cuenta_cobrar_au/_ad`) llenan la tabla
+  `auditoria` con el antes/después completo (JSON) de cada `UPDATE`/`DELETE` sobre `reserva` y
+  `cuenta_cobrar`, incluido quién lo hizo: `id_empleado` se lee de la variable de sesión
+  `@auditoria_id_empleado`, que `mvp_app/app/db.py` fija con el empleado de la sesión Flask antes de
+  cada operación que muta datos — queda `NULL` ("Automático / sistema" en la pantalla) cuando el
+  cambio lo hizo un proceso sin sesión, como el `EVENT` de reservas vencidas. Pantalla:
+  `GET /admin/auditoria`, visible para Administrador y Gerencia (ambas tablas, acotado a su hotel) y
+  para Caja (solo `cuenta_cobrar`, su ámbito real de conciliación de pagos).
 - **Roles MySQL** (`Scripts/07_Roles_Permisos.sql`): `rol_administrador` (control total),
   `rol_recepcion`, `rol_caja` (cada uno con `GRANT` de `SELECT` global + `INSERT`/`UPDATE` y
   `EXECUTE` solo sobre las tablas/procedimientos que su función requiere) y `rol_gerencia`

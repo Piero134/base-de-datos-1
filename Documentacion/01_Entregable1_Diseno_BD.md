@@ -97,7 +97,7 @@ Entidades principales y su razón de ser:
 Ver `Diagramas/Diagrama de Base de Datos/02_Modelo_Logico.png` (fuente: `02_Modelo_Logico.puml`),
 que corresponde 1:1 con `Scripts/01_Creacion_Tablas.sql` + `Scripts/02_Reglas_Integridad.sql`.
 
-26 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
+27 tablas, con tipos de dato, PK/FK y cardinalidades ya resueltas a nivel relacional. Puntos
 destacables del esquema relacional:
 
 - Todas las claves primarias son `INT AUTO_INCREMENT`, excepto `huesped_alojamiento` que usa clave
