@@ -7,7 +7,7 @@
   <p class="subtitle">Alojamientos finalizados (checkout hecho) con consumos o daños pendientes que aún no tienen cuenta generada.</p>
 </div>
 {% if alojamientos %}
-<form class="card" method="post">
+<form class="card card--center" method="post">
   <label for="gc_id_alojamiento">Alojamiento</label>
   <select name="id_alojamiento" id="gc_id_alojamiento" required data-searchable="Buscar alojamiento por hotel o habitación…">
     {% for a in alojamientos %}

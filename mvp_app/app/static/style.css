@@ -247,6 +247,10 @@ form.card, .card {
 form.card.card--wide, .card--wide {
   max-width: none;
 }
+/* Centra la tarjeta en pantallas de una sola accion (confirmar pago,
+   generar cuenta): sin esto queda pegada a la izquierda con medio
+   viewport vacio a la derecha en pantallas anchas. */
+form.card.card--center, .card--center { margin-left: auto; margin-right: auto; }
 
 /* Panel de resumen etiqueta/valor (reserva, cuenta, alojamiento): unifica
    los bloques que antes eran <p><strong>Etiqueta:</strong> valor</p>
