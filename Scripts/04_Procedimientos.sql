@@ -139,6 +139,164 @@ BEGIN
 END$$
 
 -- -------------------------------------------------------------
+-- SP 2b: sp_editar_detalle_reserva
+-- Cambia el tipo de habitación, plan y/o cantidad de una línea ya
+-- creada, recalculando su precio/subtotal con la misma lógica que
+-- sp_agregar_detalle_reserva (fn_plan_vigente/fn_precio_vigente
+-- sobre las fechas de la reserva, que no cambian aquí — solo se
+-- edita "qué" se reservó, no "cuándo"). reserva.monto_total se
+-- recalcula solo vía trg_reserva_detalle_monto_au.
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_editar_detalle_reserva$$
+CREATE PROCEDURE sp_editar_detalle_reserva(
+    IN p_id_detalle_reserva INT,
+    IN p_id_tipo_habitacion INT,
+    IN p_id_plan INT,
+    IN p_cantidad_habitaciones TINYINT
+)
+BEGIN
+    DECLARE v_id_reserva INT;
+    DECLARE v_id_hotel INT;
+    DECLARE v_checkin DATE;
+    DECLARE v_checkout DATE;
+    DECLARE v_pagado TINYINT;
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
+    DECLARE v_tiene_checkin INT;
+    DECLARE v_cupos_actuales INT;
+    DECLARE v_capacidad_nueva INT;
+    DECLARE v_disponibles INT;
+    DECLARE v_id_plan INT;
+    DECLARE v_precio DECIMAL(10,2);
+    DECLARE v_noches INT;
+    DECLARE v_subtotal DECIMAL(12,2);
+
+    SELECT id_reserva INTO v_id_reserva
+    FROM reserva_detalle WHERE id_detalle_reserva = p_id_detalle_reserva;
+
+    IF v_id_reserva IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La línea de reserva indicada no existe';
+    END IF;
+
+    SELECT id_hotel, fecha_checkin, fecha_checkout, pagado, estado
+        INTO v_id_hotel, v_checkin, v_checkout, v_pagado, v_estado
+    FROM reserva WHERE id_reserva = v_id_reserva;
+
+    IF v_pagado = 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva ya está pagada; no se pueden editar sus líneas.';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva está en un estado final; no se pueden editar sus líneas.';
+    END IF;
+
+    SELECT COUNT(*) INTO v_tiene_checkin
+    FROM alojamiento WHERE id_detalle_reserva = p_id_detalle_reserva;
+
+    IF v_tiene_checkin > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Esta línea ya tiene check-in registrado; no se puede editar.';
+    END IF;
+
+    -- Cupos ya usados por huéspedes pre-asignados a esta línea (ver
+    -- trg_valida_cupos_reserva): ese trigger solo valida al insertar un
+    -- cupo nuevo, no si la línea se achica después, así que hay que
+    -- repetir la misma cuenta aquí antes de aceptar el cambio.
+    SELECT COUNT(*) INTO v_cupos_actuales
+    FROM detalle_huesped_reserva WHERE id_detalle_reserva = p_id_detalle_reserva;
+
+    SELECT capacidad_base INTO v_capacidad_nueva
+    FROM tipo_habitacion WHERE id_tipo_habitacion = p_id_tipo_habitacion;
+
+    IF v_cupos_actuales > p_cantidad_habitaciones * v_capacidad_nueva THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Esta línea ya tiene huéspedes pre-asignados que no caben en la nueva cantidad/tipo de habitación; quita huéspedes primero.';
+    END IF;
+
+    SET v_disponibles = fn_disponibilidad_tipo_habitacion(
+        v_id_hotel, p_id_tipo_habitacion, v_checkin, v_checkout);
+
+    IF v_disponibles < p_cantidad_habitaciones THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'No hay disponibilidad suficiente de ese tipo de habitación en las fechas solicitadas';
+    END IF;
+
+    SET v_id_plan = p_id_plan;
+    IF v_id_plan IS NULL THEN
+        SET v_id_plan = fn_plan_vigente(p_id_tipo_habitacion, v_checkin);
+        IF v_id_plan IS NULL THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'No hay un plan tarifario público vigente para ese tipo de habitación en la fecha de check-in';
+        END IF;
+    END IF;
+
+    SET v_precio = fn_precio_vigente(p_id_tipo_habitacion, v_id_plan, v_checkin);
+    IF v_precio IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No existe tarifa vigente para ese tipo de habitación y plan en la fecha indicada';
+    END IF;
+
+    SET v_noches = fn_calcular_noches(v_checkin, v_checkout);
+    SET v_subtotal = v_precio * p_cantidad_habitaciones * v_noches;
+
+    UPDATE reserva_detalle
+    SET id_tipo_habitacion = p_id_tipo_habitacion,
+        id_plan = v_id_plan,
+        cantidad_habitaciones = p_cantidad_habitaciones,
+        precio_unitario = v_precio,
+        subtotal = v_subtotal
+    WHERE id_detalle_reserva = p_id_detalle_reserva;
+END$$
+
+-- -------------------------------------------------------------
+-- SP 2c: sp_eliminar_detalle_reserva
+-- Quita una línea de una reserva todavía no pagada. Si tenía
+-- huéspedes pre-asignados (detalle_huesped_reserva), se van con
+-- ella por fk_dhr_detalle_reserva (ON DELETE CASCADE) — la app
+-- avisa de esto antes de confirmar, ver reservas/detalle.html.
+-- reserva.monto_total se recalcula solo vía
+-- trg_reserva_detalle_monto_ad.
+-- -------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_eliminar_detalle_reserva$$
+CREATE PROCEDURE sp_eliminar_detalle_reserva(
+    IN p_id_detalle_reserva INT
+)
+BEGIN
+    DECLARE v_id_reserva INT;
+    DECLARE v_pagado TINYINT;
+    DECLARE v_estado ENUM('PENDIENTE','CONFIRMADA','CANCELADA','NO_SHOW','FINALIZADA');
+    DECLARE v_tiene_checkin INT;
+
+    SELECT id_reserva INTO v_id_reserva
+    FROM reserva_detalle WHERE id_detalle_reserva = p_id_detalle_reserva;
+
+    IF v_id_reserva IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La línea de reserva indicada no existe';
+    END IF;
+
+    SELECT pagado, estado INTO v_pagado, v_estado
+    FROM reserva WHERE id_reserva = v_id_reserva;
+
+    IF v_pagado = 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva ya está pagada; no se pueden quitar líneas.';
+    END IF;
+
+    IF v_estado IN ('CANCELADA','NO_SHOW','FINALIZADA') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva está en un estado final; no se pueden quitar líneas.';
+    END IF;
+
+    SELECT COUNT(*) INTO v_tiene_checkin
+    FROM alojamiento WHERE id_detalle_reserva = p_id_detalle_reserva;
+
+    IF v_tiene_checkin > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Esta línea ya tiene check-in registrado; no se puede quitar.';
+    END IF;
+
+    DELETE FROM reserva_detalle WHERE id_detalle_reserva = p_id_detalle_reserva;
+END$$
+
+-- -------------------------------------------------------------
 -- SP 3: sp_confirmar_pago
 -- Confirma el pago total de una reserva y cambia su estado a
 -- CONFIRMADA

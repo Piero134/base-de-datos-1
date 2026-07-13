@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Detalle reserva #{{ reserva.id_reserva }}{% endblock %}
 {% block content %}
+{% set puede_editar_lineas = session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') and not es_terminal and not reserva.pagado %}
 <div class="page-header">
   <h1>Reserva #{{ reserva.id_reserva }} — {{ reserva.hotel }}</h1>
   <p class="subtitle">Agrega una o más líneas (tipo de habitación) antes de confirmar el pago.</p>
@@ -18,7 +19,7 @@
 {% if lineas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Tipo habitación</th><th>Plan</th><th>Cantidad</th><th>Precio/noche</th><th>Subtotal</th></tr></thead>
+  <thead><tr><th>Tipo habitación</th><th>Plan</th><th>Cantidad</th><th>Precio/noche</th><th>Subtotal</th>{% if puede_editar_lineas %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for l in lineas %}
   <tr>
@@ -27,11 +28,64 @@
     <td>{{ l.cantidad_habitaciones }}</td>
     <td class="money">S/ {{ l.precio_unitario }}</td>
     <td class="money">S/ {{ l.subtotal }}</td>
+    {% if puede_editar_lineas %}
+    <td class="actions">
+      {% if l.tiene_checkin %}
+      <span class="optional">Con check-in</span>
+      {% else %}
+      <button type="button" class="btn-secondary" data-open-modal="dlgEditarLinea{{ l.id_detalle_reserva }}">Editar</button>
+      <form class="inline-form" method="post" action="{{ url_for('reservas.eliminar_detalle', id_reserva=reserva.id_reserva, id_detalle_reserva=l.id_detalle_reserva) }}"
+            data-confirm="¿Quitar esta línea ({{ l.tipo_habitacion }} × {{ l.cantidad_habitaciones }})?{% if l.cupos_asignados %} Tiene {{ l.cupos_asignados }} huésped{{ 'es' if l.cupos_asignados != 1 }} pre-asignado{{ 's' if l.cupos_asignados != 1 }} que se quitará{{ 'n' if l.cupos_asignados != 1 }} también.{% endif %}">
+        <button type="submit" class="btn-secondary">Quitar</button>
+      </form>
+      {% endif %}
+    </td>
+    {% endif %}
   </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% if puede_editar_lineas %}
+{% for l in lineas %}
+{% if not l.tiene_checkin %}
+<dialog id="dlgEditarLinea{{ l.id_detalle_reserva }}" class="form-dialog" {% if seleccion_editar and seleccion_editar.get(l.id_detalle_reserva) %}data-autoopen{% endif %}>
+  <h2>Editar línea</h2>
+  <form method="post" action="{{ url_for('reservas.editar_detalle', id_reserva=reserva.id_reserva, id_detalle_reserva=l.id_detalle_reserva) }}">
+    {% set valores = seleccion_editar.get(l.id_detalle_reserva) if seleccion_editar else None %}
+    <label for="det_edit_id_tipo_habitacion_{{ l.id_detalle_reserva }}">Tipo de habitación</label>
+    <select name="id_tipo_habitacion" id="det_edit_id_tipo_habitacion_{{ l.id_detalle_reserva }}" required>
+      {% for t in tipos %}
+        <option value="{{ t.id_tipo_habitacion }}" {% if (valores.id_tipo_habitacion|string if valores else l.id_tipo_habitacion|string) == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="det_edit_id_plan_{{ l.id_detalle_reserva }}">Plan tarifario <span class="optional">(deja vacío para autodetectar por fecha)</span></label>
+    <select name="id_plan" id="det_edit_id_plan_{{ l.id_detalle_reserva }}">
+      <option value="">-- Autodetectar (solo planes públicos) --</option>
+      {% for p in planes %}
+        <option value="{{ p.id_plan }}" {% if (valores.id_plan|string if valores else l.id_plan|string) == p.id_plan|string %}selected{% endif %}>{{ p.nombre }}{{ ' (corporativo)' if not p.es_publico else '' }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="det_edit_cantidad_{{ l.id_detalle_reserva }}">Cantidad de habitaciones</label>
+    <input type="number" name="cantidad_habitaciones" id="det_edit_cantidad_{{ l.id_detalle_reserva }}" min="1"
+           value="{{ valores.cantidad_habitaciones if valores else l.cantidad_habitaciones }}" required>
+
+    {% if l.cupos_asignados %}
+    <p class="optional">Esta línea ya tiene {{ l.cupos_asignados }} huésped{{ 'es' if l.cupos_asignados != 1 }} pre-asignado{{ 's' if l.cupos_asignados != 1 }}; la nueva cantidad × capacidad del tipo debe seguir alcanzando para todos.</p>
+    {% endif %}
+
+    {# invoca sp_editar_detalle_reserva #}
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Guardar cambios</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+{% endfor %}
+{% endif %}
 {% endif %}
 
 {% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}

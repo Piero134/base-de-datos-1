@@ -242,8 +242,10 @@ def _contexto_detalle(id_reserva):
 
     lineas = query(
         """
-        SELECT rd.id_detalle_reserva, th.nombre AS tipo_habitacion, pt.nombre AS plan,
-               rd.cantidad_habitaciones, rd.precio_unitario, rd.subtotal
+        SELECT rd.id_detalle_reserva, rd.id_tipo_habitacion, th.nombre AS tipo_habitacion,
+               rd.id_plan, pt.nombre AS plan, rd.cantidad_habitaciones, rd.precio_unitario, rd.subtotal,
+               EXISTS(SELECT 1 FROM alojamiento a WHERE a.id_detalle_reserva = rd.id_detalle_reserva) AS tiene_checkin,
+               (SELECT COUNT(*) FROM detalle_huesped_reserva dhr WHERE dhr.id_detalle_reserva = rd.id_detalle_reserva) AS cupos_asignados
         FROM reserva_detalle rd
         JOIN tipo_habitacion th ON th.id_tipo_habitacion = rd.id_tipo_habitacion
         JOIN plan_tarifa pt ON pt.id_plan = rd.id_plan
@@ -291,6 +293,47 @@ def agregar_detalle(id_reserva):
         if contexto is None:
             return redirect(url_for("reservas.listado"))
         return render_template("reservas/detalle.html", seleccion=request.form, **contexto)
+    return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
+
+
+@bp.route("/<int:id_reserva>/detalle/<int:id_detalle_reserva>/editar", methods=["POST"])
+@requiere_rol("RECEPCION", "ADMINISTRADOR")
+def editar_detalle(id_reserva, id_detalle_reserva):
+    if not _reserva_de_mi_hotel(id_reserva):
+        flash("Reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.listado"))
+    id_tipo_habitacion = request.form["id_tipo_habitacion"]
+    id_plan = request.form.get("id_plan") or None
+    cantidad = request.form["cantidad_habitaciones"]
+
+    ok, _ = ejecutar_con_flash(
+        call_procedure,
+        "sp_editar_detalle_reserva",
+        (id_detalle_reserva, id_tipo_habitacion, id_plan, cantidad),
+        on_success_msg="Línea de detalle actualizada.",
+    )
+    if not ok:
+        contexto = _contexto_detalle(id_reserva)
+        if contexto is None:
+            return redirect(url_for("reservas.listado"))
+        return render_template(
+            "reservas/detalle.html", seleccion_editar={id_detalle_reserva: request.form}, **contexto
+        )
+    return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
+
+
+@bp.route("/<int:id_reserva>/detalle/<int:id_detalle_reserva>/eliminar", methods=["POST"])
+@requiere_rol("RECEPCION", "ADMINISTRADOR")
+def eliminar_detalle(id_reserva, id_detalle_reserva):
+    if not _reserva_de_mi_hotel(id_reserva):
+        flash("Reserva no encontrada.", "danger")
+        return redirect(url_for("reservas.listado"))
+    ejecutar_con_flash(
+        call_procedure,
+        "sp_eliminar_detalle_reserva",
+        (id_detalle_reserva,),
+        on_success_msg="Línea de detalle eliminada.",
+    )
     return redirect(url_for("reservas.detalle", id_reserva=id_reserva))
 
 
