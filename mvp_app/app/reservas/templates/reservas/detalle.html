@@ -33,6 +33,46 @@
 </table>
 </div>
 {% endif %}
+
+{% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
+  {% if es_terminal %}
+  <p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; no se pueden agregar más líneas.</p>
+  {% elif reserva.pagado %}
+  <p class="empty-state">Esta reserva ya está pagada; no se pueden agregar más líneas.</p>
+  {% else %}
+  <button type="button" class="btn-secondary btn-abrir-modal" data-open-modal="dlgAgregarLinea">+ Agregar línea</button>
+
+  <dialog id="dlgAgregarLinea" class="form-dialog" {% if seleccion %}data-autoopen{% endif %}>
+    <h2>Agregar línea</h2>
+    <form method="post" action="{{ url_for('reservas.agregar_detalle', id_reserva=reserva.id_reserva) }}">
+      <label for="det_id_tipo_habitacion">Tipo de habitación</label>
+      <select name="id_tipo_habitacion" id="det_id_tipo_habitacion" required>
+        {% for t in tipos %}
+          <option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="det_id_plan">Plan tarifario <span class="optional">(deja vacío para autodetectar por fecha)</span></label>
+      <select name="id_plan" id="det_id_plan">
+        <option value="">-- Autodetectar (solo planes públicos) --</option>
+        {% for p in planes %}
+          <option value="{{ p.id_plan }}" {% if seleccion and seleccion.id_plan|string == p.id_plan|string %}selected{% endif %}>{{ p.nombre }}{{ ' (corporativo)' if not p.es_publico else '' }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="det_cantidad_habitaciones">Cantidad de habitaciones</label>
+      <input type="number" name="cantidad_habitaciones" id="det_cantidad_habitaciones" min="1" value="{{ seleccion.cantidad_habitaciones if seleccion else 1 }}" required>
+
+      {# invoca sp_agregar_detalle_reserva #}
+      <div class="dialog-actions">
+        <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+        <button type="submit">Agregar línea</button>
+      </div>
+    </form>
+  </dialog>
+  {% endif %}
+{% endif %}
+
 {% if es_terminal %}
 <p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; ya no admite ninguna acción (agregar líneas, pagar, asignar huéspedes o hacer check-in).</p>
 {% elif lineas %}
@@ -48,7 +88,7 @@
   {% endif %}
 </p>
 {% else %}
-<p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa el formulario de abajo para agregar la primera antes de poder continuar a pago.</p>
+<p class="empty-state">Todavía no agregaste ninguna línea a esta reserva. Usa "+ Agregar línea" arriba para agregar la primera antes de poder continuar a pago.</p>
 {% endif %}
 
 <p class="actions"><a href="{{ url_for('reservas.listado') }}">Volver al listado</a></p>
@@ -64,37 +104,5 @@
     <button type="submit" class="btn-secondary">Marcar como no-show</button>
   </form>
 </div>
-{% endif %}
-
-{% if session.get('rol') in ('RECEPCION', 'ADMINISTRADOR') %}
-<h2>Agregar línea</h2>
-{% if es_terminal %}
-<p class="empty-state">Esta reserva está en estado {{ reserva.estado }}; no se pueden agregar más líneas.</p>
-{% elif reserva.pagado %}
-<p class="empty-state">Esta reserva ya está pagada; no se pueden agregar más líneas.</p>
-{% else %}
-<form class="card" method="post" action="{{ url_for('reservas.agregar_detalle', id_reserva=reserva.id_reserva) }}">
-  <label for="det_id_tipo_habitacion">Tipo de habitación</label>
-  <select name="id_tipo_habitacion" id="det_id_tipo_habitacion" required>
-    {% for t in tipos %}
-      <option value="{{ t.id_tipo_habitacion }}" {% if seleccion and seleccion.id_tipo_habitacion|string == t.id_tipo_habitacion|string %}selected{% endif %}>{{ t.nombre }}</option>
-    {% endfor %}
-  </select>
-
-  <label for="det_id_plan">Plan tarifario <span class="optional">(deja vacío para autodetectar por fecha)</span></label>
-  <select name="id_plan" id="det_id_plan">
-    <option value="">-- Autodetectar (solo planes públicos) --</option>
-    {% for p in planes %}
-      <option value="{{ p.id_plan }}" {% if seleccion and seleccion.id_plan|string == p.id_plan|string %}selected{% endif %}>{{ p.nombre }}{{ ' (corporativo)' if not p.es_publico else '' }}</option>
-    {% endfor %}
-  </select>
-
-  <label for="det_cantidad_habitaciones">Cantidad de habitaciones</label>
-  <input type="number" name="cantidad_habitaciones" id="det_cantidad_habitaciones" min="1" value="{{ seleccion.cantidad_habitaciones if seleccion else 1 }}" required>
-
-  {# invoca sp_agregar_detalle_reserva #}
-  <button type="submit">Agregar línea</button>
-</form>
-{% endif %}
 {% endif %}
 {% endblock %}
