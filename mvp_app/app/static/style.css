@@ -188,6 +188,37 @@ form.card.card--wide, .card--wide {
   max-width: none;
 }
 
+/* Panel de resumen etiqueta/valor (reserva, cuenta, alojamiento): unifica
+   los bloques que antes eran <p><strong>Etiqueta:</strong> valor</p>
+   sueltos en una grilla de 2 columnas, más fácil de escanear. */
+.kv-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 18px;
+  row-gap: 11px;
+  margin: 0;
+}
+.kv-list dt {
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  align-self: center;
+}
+.kv-list dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  align-self: center;
+}
+.kv-list dd.highlight { font-weight: 700; color: var(--color-primary-dark); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .kv-list { grid-template-columns: 1fr; row-gap: 3px; }
+  .kv-list dt { margin-top: 10px; }
+}
+
 fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); margin: 16px 0 0; padding: 4px 16px 16px; }
 legend { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); padding: 0 6px; }
 

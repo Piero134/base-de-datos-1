@@ -8,11 +8,14 @@
 </div>
 
 <div class="card card--readonly">
-  <p><strong>Reservante:</strong> {{ reserva.nombre_reservante }} ({{ reserva.tipo_persona }})</p>
-  <p><strong>Estado:</strong> <span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span>
-     — <strong>Pagado:</strong> <span class="badge {{ 'badge-good' if reserva.pagado else 'badge-warning' }}">{{ 'Sí' if reserva.pagado else 'No' }}</span></p>
-  <p><strong>Check-in:</strong> {{ reserva.fecha_checkin }} — <strong>Check-out:</strong> {{ reserva.fecha_checkout }} ({{ reserva.noches }} noches)</p>
-  <p><strong>Monto total:</strong> S/ {{ reserva.monto_total }}</p>
+  <dl class="kv-list">
+    <dt>Reservante</dt><dd>{{ reserva.nombre_reservante }} ({{ reserva.tipo_persona }})</dd>
+    <dt>Estado</dt><dd><span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span></dd>
+    <dt>Pagado</dt><dd><span class="badge {{ 'badge-good' if reserva.pagado else 'badge-warning' }}">{{ 'Sí' if reserva.pagado else 'No' }}</span></dd>
+    <dt>Check-in</dt><dd>{{ reserva.fecha_checkin }}</dd>
+    <dt>Check-out</dt><dd>{{ reserva.fecha_checkout }} ({{ reserva.noches }} noches)</dd>
+    <dt>Monto total</dt><dd class="highlight">S/ {{ reserva.monto_total }}</dd>
+  </dl>
 </div>
 
 <h2>Líneas de la reserva</h2>

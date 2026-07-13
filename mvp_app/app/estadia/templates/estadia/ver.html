@@ -13,10 +13,12 @@
 </div>
 
 <div class="card card--readonly" id="seccion-salida">
-  <p><strong>Tipo:</strong> {{ aloj.tipo }} (capacidad base {{ aloj.capacidad_base }})</p>
-  <p><strong>Estado:</strong> <span class="badge {{ aloj.estado|badge_class }}">{{ aloj.estado }}</span></p>
-  <p><strong>Check-in real:</strong> {{ aloj.fecha_checkin_real }}</p>
-  <p><strong>Check-out real:</strong> {{ aloj.fecha_checkout_real or '—' }}</p>
+  <dl class="kv-list">
+    <dt>Tipo</dt><dd>{{ aloj.tipo }} (capacidad base {{ aloj.capacidad_base }})</dd>
+    <dt>Estado</dt><dd><span class="badge {{ aloj.estado|badge_class }}">{{ aloj.estado }}</span></dd>
+    <dt>Check-in real</dt><dd>{{ aloj.fecha_checkin_real }}</dd>
+    <dt>Check-out real</dt><dd>{{ aloj.fecha_checkout_real or '—' }}</dd>
+  </dl>
   {% if aloj.estado == 'ACTIVO' %}
   <p><strong>Resumen antes de check-out:</strong> consumos S/ {{ '%.2f'|format(total_consumos) }}
      + daños pendientes S/ {{ '%.2f'|format(total_danios) }} (se cobran juntos al generar la cuenta por cobrar).</p>

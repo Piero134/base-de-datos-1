@@ -5,10 +5,12 @@
   <h1>Confirmar pago</h1>
 </div>
 <div class="card card--readonly">
-  <p><strong>Reservante:</strong> {{ reserva.nombre_reservante }}</p>
-  <p><strong>Monto total:</strong> S/ {{ reserva.monto_total }}</p>
-  <p><strong>Estado actual:</strong> <span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span>
-     — <strong>Pagado:</strong> <span class="badge badge-warning">No</span></p>
+  <dl class="kv-list">
+    <dt>Reservante</dt><dd>{{ reserva.nombre_reservante }}</dd>
+    <dt>Monto total</dt><dd class="highlight">S/ {{ reserva.monto_total }}</dd>
+    <dt>Estado actual</dt><dd><span class="badge {{ reserva.estado|badge_class }}">{{ reserva.estado }}</span></dd>
+    <dt>Pagado</dt><dd><span class="badge badge-warning">No</span></dd>
+  </dl>
 
   {% if session.get('rol') in ('CAJA', 'ADMINISTRADOR') %}
   <form method="post" action="{{ url_for('reservas.confirmar_pago', id_reserva=reserva.id_reserva) }}"

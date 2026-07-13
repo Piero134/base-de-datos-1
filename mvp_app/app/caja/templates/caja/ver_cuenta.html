@@ -6,10 +6,15 @@
   <h1>Cuenta por cobrar #{{ cuenta.id_cuenta }}</h1>
 </div>
 <div class="card card--readonly">
-  <p><strong>Alojamiento:</strong> #{{ cuenta.id_alojamiento }}</p>
-  <p><strong>Estado:</strong> <span class="badge {{ cuenta.estado_cuenta|badge_class }}">{{ cuenta.estado_cuenta }}</span></p>
-  <p><strong>Subtotal:</strong> S/ {{ cuenta.subtotal }} — <strong>IGV (18%):</strong> S/ {{ cuenta.impuestos }} — <strong>Total:</strong> S/ {{ cuenta.total }}</p>
-  <p><strong>Ya pagado:</strong> S/ {{ cuenta.ya_pagado }} — <strong>Saldo pendiente:</strong> S/ {{ cuenta.saldo_pendiente }}</p>
+  <dl class="kv-list">
+    <dt>Alojamiento</dt><dd>#{{ cuenta.id_alojamiento }}</dd>
+    <dt>Estado</dt><dd><span class="badge {{ cuenta.estado_cuenta|badge_class }}">{{ cuenta.estado_cuenta }}</span></dd>
+    <dt>Subtotal</dt><dd>S/ {{ cuenta.subtotal }}</dd>
+    <dt>IGV (18%)</dt><dd>S/ {{ cuenta.impuestos }}</dd>
+    <dt>Total</dt><dd class="highlight">S/ {{ cuenta.total }}</dd>
+    <dt>Ya pagado</dt><dd>S/ {{ cuenta.ya_pagado }}</dd>
+    <dt>Saldo pendiente</dt><dd class="highlight">S/ {{ cuenta.saldo_pendiente }}</dd>
+  </dl>
 </div>
 
 <h2>Detalle</h2>
