@@ -32,12 +32,14 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       decimoséptima tras convertir "Agregar línea" (detalle de reserva) en
       ventana flotante, y una decimoctava tras convertir "Registrar
       consumo" y "Registrar daño" (alojamiento) en ventanas flotantes, y
-      una decimonovena tras agregar editar/quitar línea de reserva.
-      Marcar de nuevo tras cambios importantes.
+      una decimonovena tras agregar editar/quitar línea de reserva, y una
+      vigésima tras agregar el `EVENT` diario de reservas vencidas, los
+      reportes mensuales con funciones de ventana y la analítica del
+      dashboard de Gerencia. Marcar de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
-      `hotel_db` (18 procedimientos, 6 funciones, 14 vistas, datos de
-      `08_Carga_Datos.sql`).
+      `hotel_db` (19 procedimientos, 6 funciones, 16 vistas, 1 evento
+      programado, datos de `08_Carga_Datos.sql`).
 - [x] **Login:** `POST /login` con empleado + rol guarda la sesión y
       redirige según el rol (`auth.landing`).
 - [x] **Disponibilidad (UC-11):** `fn_disponibilidad_tipo_habitacion` para
@@ -403,6 +405,40 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       prueba que ya existía en `hotel_db` de antes y cuyo origen no se
       pudo determinar con certeza — queda pendiente de que alguien lo
       revise o lo limpie a propósito.
+- [x] **EVENT diario de reservas vencidas (UC-01b, 2026-07-13):** nuevo
+      `sp_procesar_reservas_vencidas` (con `CURSOR` + `HANDLER FOR NOT
+      FOUND`/`SQLEXCEPTION`, el único procedimiento del proyecto que itera
+      fila por fila) y el `EVENT ev_procesar_reservas_vencidas`
+      (`ON SCHEDULE EVERY 1 DAY`), aplicados en vivo contra `hotel_db`
+      real. `SHOW VARIABLES LIKE 'event_scheduler'` confirmó `ON` en la
+      instancia. Verificado `information_schema.EVENTS`: el evento quedó
+      `ENABLED`, próxima corrida `2026-07-14 01:00`. Como esperar un día
+      no es práctico para probarlo, se llamó al procedimiento a mano con 3
+      reservas de prueba: una `PENDIENTE` sin pagar con `fecha_limite_pago`
+      vencida (pasó a `CANCELADA`), una `CONFIRMADA` con `fecha_checkin`
+      vencido y sin ningún check-in (pasó a `NO_SHOW`), y una de control
+      con `fecha_limite_pago` futura (no se tocó, siguió `PENDIENTE`) — el
+      procedimiento devolvió `canceladas=1, no_show=1`, coincidiendo
+      exactamente. Las 3 reservas de prueba se borraron al terminar.
+- [x] **Reportes mensuales con funciones de ventana + dashboard de
+      Gerencia (UC-12, 2026-07-13):** nuevas `vw_ingresos_mensuales`
+      (`SUM() OVER`/`LAG() OVER` sobre una subconsulta agregada por mes) y
+      `vw_ocupacion_mensual` (mismo patrón, sobre estadías iniciadas por
+      mes), aplicadas en vivo. Verificado con 2 reservas de prueba en
+      meses distintos (mayo S/320, junio S/640, sobre datos ya existentes
+      de julio S/3615): la vista devolvió acumulado 320 → 960 → 4575 y
+      variación 100.0% → 464.8%, matemáticamente correcto. Nuevas
+      pantallas `/reportes/ingresos-mensuales` y `/reportes/ocupacion-
+      mensual`, con links de nav para Gerencia. El dashboard de Gerencia
+      (`GET /`) ahora también muestra una barra de ocupación (CSS puro,
+      sin librería de gráficos), el ingreso del mes actual con su
+      variación (badge verde/rojo según suba o baje) y el top 3 de
+      clientes de toda la cadena — verificado visualmente con Playwright
+      (capturas revisadas) como `rhuanca` (GERENCIA, hotel 1). Las 2
+      reservas de prueba se borraron al terminar; de paso se encontró y
+      limpió un residuo propio (una reserva `PENDIENTE` sin líneas, de un
+      intento fallido anterior del mismo script de prueba por un plan
+      tarifario sin vigencia en esas fechas).
 
 ## Cómo volver a correr esta verificación
 

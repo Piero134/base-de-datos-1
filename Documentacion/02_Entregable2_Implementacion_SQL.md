@@ -18,8 +18,8 @@ ejecución obligatorio (cada script depende del anterior):
 | 1 | `01_Creacion_Tablas.sql` | `CREATE DATABASE`, `CREATE TABLE` de las 26 tablas (sin FK) |
 | 2 | `02_Reglas_Integridad.sql` | `ALTER TABLE ... ADD CONSTRAINT` (FK, `CHECK`, `UNIQUE`) |
 | 3 | `03_Funciones.sql` | 6 funciones (`CREATE FUNCTION`) |
-| 4 | `04_Procedimientos.sql` | 18 procedimientos (`CREATE PROCEDURE`) |
-| 5 | `05_Vistas.sql` | 14 vistas (`CREATE OR REPLACE VIEW`) |
+| 4 | `04_Procedimientos.sql` | 19 procedimientos (`CREATE PROCEDURE`) + 1 evento programado (`CREATE EVENT`) |
+| 5 | `05_Vistas.sql` | 16 vistas (`CREATE OR REPLACE VIEW`) |
 | 6 | `06_Triggers.sql` | 23 triggers (`CREATE TRIGGER`) |
 | 7 | `07_Roles_Permisos.sql` | 4 roles MySQL (`CREATE ROLE` + `GRANT`) |
 | 8 | `08_Carga_Datos.sql` | Datos de prueba (`INSERT`) que recorren todos los escenarios |
@@ -36,10 +36,10 @@ ejecución obligatorio (cada script depende del anterior):
 |---|---|---|
 | **Create** con reglas de negocio | Procedimientos almacenados | `sp_registrar_reserva`, `sp_realizar_checkin`, `sp_generar_cuenta_cobrar` |
 | **Create** de datos maestros (sin reglas de negocio) | `INSERT` directo desde la app, parametrizado | Alta de cliente/huésped (`mvp_app/app/reservas/routes.py`), catálogos (`mvp_app/app/administracion/routes.py`) |
-| **Read** | Vistas (`SELECT * FROM vw_...`) y `SELECT` directos sobre catálogos | 14 vistas en `05_Vistas.sql` |
-| **Update** con reglas de negocio | Procedimientos almacenados | `sp_confirmar_pago`, `sp_registrar_pago_cuenta`, `sp_cambiar_estado_habitacion` |
+| **Read** | Vistas (`SELECT * FROM vw_...`) y `SELECT` directos sobre catálogos | 16 vistas en `05_Vistas.sql` |
+| **Update** con reglas de negocio | Procedimientos almacenados | `sp_confirmar_pago`, `sp_registrar_pago_cuenta`, `sp_cambiar_estado_habitacion`, `sp_editar_detalle_reserva` |
 | **Update** de mantenimiento | `UPDATE` directo parametrizado | Edición de catálogos en `administracion/routes.py` |
-| **Delete** | No se expone borrado físico en el MVP (los estados `CANCELADA`/`DISPENSADO`/`activo=0` modelan las "bajas lógicas") | `danio.estado = 'DISPENSADO'`, `hotel.activo`, `empleado.activo`, `huesped.activo` |
+| **Delete** | Casi no se expone borrado físico en el MVP (los estados `CANCELADA`/`DISPENSADO`/`activo=0` modelan las "bajas lógicas"); la única excepción real es quitar una línea de reserva no pagada | `danio.estado = 'DISPENSADO'`, `hotel.activo`, `empleado.activo`, `servicio.activo`; `DELETE` real en `sp_eliminar_detalle_reserva` |
 
 Toda operación que involucra una regla de negocio (cálculo de precio, IGV, validación de
 disponibilidad/capacidad, actualización de saldo) pasa por un procedimiento o trigger — nunca se
@@ -52,17 +52,19 @@ los scripts, sin inventar cobertura):
 
 | Cláusula/función | Dónde se usa (ejemplo real) |
 |---|---|
-| `JOIN` (múltiples por consulta) | Casi todas las 14 vistas de `05_Vistas.sql`; ej. `vw_alojamientos_activos` combina 6 tablas |
+| `JOIN` (múltiples por consulta) | Casi todas las 16 vistas de `05_Vistas.sql`; ej. `vw_alojamientos_activos` combina 6 tablas |
 | `LEFT JOIN` | `vw_alojamientos_activos`, `vw_preasignacion_vs_checkin`, `vw_ingresos_por_hotel` |
-| Subconsulta como tabla derivada (`LEFT JOIN (SELECT ...) x ON ...`) | `vw_ingresos_por_hotel` (`05_Vistas.sql:197`), para sumar consumos por reserva |
-| `GROUP BY` | `sp_resumen_ocupacion_hotel` (`04_Procedimientos.sql:503`), `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel` |
+| Subconsulta como tabla derivada (`LEFT JOIN (SELECT ...) x ON ...`) | `vw_ingresos_por_hotel` (`05_Vistas.sql:197`), para sumar consumos por reserva; también `vw_ingresos_mensuales`/`vw_ocupacion_mensual` (agregan por mes en la subconsulta antes de aplicar la función de ventana) |
+| `GROUP BY` | `sp_resumen_ocupacion_hotel` (`04_Procedimientos.sql:503`), `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel`, `vw_ingresos_mensuales`, `vw_ocupacion_mensual` |
 | `ORDER BY` (multi-columna) | `fn_plan_vigente` (para elegir el plan más específico) y en casi todas las consultas de `09_Consultas_MVP.sql` |
 | Funciones agregadas `SUM`, `COUNT`, `AVG`/`MAX`/`MIN` | `SUM` en `vw_ingresos_por_hotel`/`vw_ranking_clientes`/procedimientos de cuenta; `COUNT`/`COUNT(DISTINCT ...)` en `fn_disponibilidad_tipo_habitacion`, `vw_ingresos_por_hotel`, `sp_resumen_ocupacion_hotel` |
-| Función de ventana `RANK() OVER (ORDER BY ...)` | `vw_ranking_clientes` (`05_Vistas.sql:217`), ranking de clientes por monto gastado |
+| Funciones de ventana `RANK() OVER`, `SUM() OVER`, `LAG() OVER` | `vw_ranking_clientes` (`RANK`, ranking de clientes por monto gastado); `vw_ingresos_mensuales` (`SUM() OVER` para acumulado del año, `LAG() OVER` para comparar contra el mes anterior); `vw_ocupacion_mensual` (`LAG() OVER` para variación de estadías iniciadas mes a mes) |
 | `DISTINCT` / `COUNT(DISTINCT ...)` | `fn_disponibilidad_tipo_habitacion`, `vw_ingresos_por_hotel` |
 | `CASE`/`IF` condicional en `SELECT` | `IF(ha.es_titular, 'SÍ', 'NO')` en varias vistas; `IF(fn_saldo_cuenta(...) <= 0, 'PAGADA', 'PENDIENTE')` en `trg_cuenta_actualizar_saldo` |
-| `SIGNAL SQLSTATE` para errores de negocio | Los 18 procedimientos y varios triggers (ver sección 5) |
+| `SIGNAL SQLSTATE` para errores de negocio | Los 19 procedimientos y varios triggers (ver sección 5) |
 | Fechas: `DATEDIFF`, `BETWEEN`, `TIMESTAMPDIFF` | `fn_calcular_noches`, `fn_plan_vigente`, `fn_calcular_edad`, `vw_historial_estadias` |
+| `DECLARE ... CURSOR` + `DECLARE ... HANDLER FOR NOT FOUND`/`SQLEXCEPTION` | `sp_procesar_reservas_vencidas` (`04_Procedimientos.sql`, SP 15) — único procedimiento del proyecto que itera fila por fila en vez de trabajar en conjunto; cada `CALL` a `sp_cancelar_reserva`/`sp_marcar_no_show` va envuelto en su propio `HANDLER FOR SQLEXCEPTION` para que una fila problemática no aborte el resto del lote |
+| `CREATE EVENT` (MySQL Event Scheduler) | `ev_procesar_reservas_vencidas`, corre `sp_procesar_reservas_vencidas` una vez al día sin depender de que la aplicación lo dispare — requiere `event_scheduler = ON` (`SHOW VARIABLES LIKE 'event_scheduler'`) |
 
 > Nota de transparencia: no se usa `HAVING` en el proyecto actual (los filtros de agregación que se
 > necesitaron se resolvieron con `WHERE` antes de agrupar, ej. `WHERE d.estado = 'PENDIENTE'` en
@@ -79,7 +81,7 @@ los scripts, sin inventar cobertura):
 | `fn_precio_vigente(tipo, plan, fecha)` | Precio por noche de un plan ya determinado (público o corporativo) |
 | `fn_saldo_cuenta(id_cuenta)` | Saldo pendiente real (auditoría contra el campo `saldo` mantenido por trigger) |
 
-## 5. Catálogo de procedimientos almacenados (18)
+## 5. Catálogo de procedimientos almacenados (19)
 
 | Procedimiento | Propósito |
 |---|---|
@@ -101,19 +103,24 @@ los scripts, sin inventar cobertura):
 | `sp_resumen_ocupacion_hotel` | Resumen de habitaciones por estado para un hotel |
 | `sp_cancelar_reserva` | Cancela una reserva no finalizada sin huéspedes activos |
 | `sp_marcar_no_show` | Marca `NO_SHOW` una reserva confirmada que nunca llegó |
+| `sp_procesar_reservas_vencidas` | Recorre con `CURSOR` las reservas `PENDIENTE` vencidas sin pagar y las `CONFIRMADA` con `fecha_checkin` pasada sin check-in, aplicando `sp_cancelar_reserva`/`sp_marcar_no_show` a cada una; devuelve cuántas procesó de cada tipo (`OUT p_canceladas, p_no_show`). Lo dispara el `EVENT ev_procesar_reservas_vencidas` una vez al día, o se puede llamar a mano |
 
 Todos los procedimientos que representan una regla de negocio usan `SIGNAL SQLSTATE '45000'` con
 un `MESSAGE_TEXT` legible cuando la operación no es válida (ej. *"No hay disponibilidad suficiente
 de ese tipo de habitación en las fechas solicitadas"*); la aplicación captura esa excepción y la
 muestra tal cual, sin reinterpretarla (`mvp_app/app/errors.py`).
 
-## 6. Catálogo de vistas (14)
+## 6. Catálogo de vistas (16)
 
 `vw_reservante`, `vw_habitaciones_disponibles`, `vw_reservas_detalle`, `vw_alojamientos_activos`,
 `vw_historial_estadias`, `vw_consumos_alojamiento`, `vw_danios_pendientes`,
 `vw_cuenta_cobrar_resumen`, `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel`,
-`vw_reservas_corporativas`, `vw_preasignacion_vs_checkin`, `vw_checkouts_pendientes` — detalle de
-cada una y su propósito en `Scripts/05_Vistas.sql` (comentado línea por línea).
+`vw_reservas_corporativas`, `vw_preasignacion_vs_checkin`, `vw_checkouts_pendientes`,
+`vw_ingresos_mensuales`, `vw_ocupacion_mensual` — detalle de cada una y su propósito en
+`Scripts/05_Vistas.sql` (comentado línea por línea). Las últimas dos son las únicas con desglose
+temporal (mes a mes) y funciones de ventana (`SUM() OVER`, `LAG() OVER`); el resto de vistas
+"agregadas" (`vw_ingresos_por_hotel`, `vw_ocupacion_hotel`) son snapshots acumulados o del estado
+actual, sin ninguna dimensión de fecha.
 
 ## 7. Triggers (23) y roles (4)
 

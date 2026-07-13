@@ -103,6 +103,14 @@ asignado a ese empleado:
   bloqueo general de estados finales (ver nota al final de esta sección): ya no se pueden agregar
   líneas, confirmar pago, asignar huéspedes ni hacer check-in sobre esa reserva, y la interfaz deja
   de ofrecer esos botones.
+- **Automatización (2026-07-13):** hasta ahora, alguien de Recepción tenía que acordarse de cancelar
+  a mano una reserva vencida o marcarla no-show. `sp_procesar_reservas_vencidas` hace exactamente
+  eso mismo (llama a `sp_cancelar_reserva`/`sp_marcar_no_show` fila por fila, con `CURSOR`, sobre las
+  reservas candidatas), y el `EVENT ev_procesar_reservas_vencidas` lo corre una vez al día sin
+  intervención humana — vive enteramente en MySQL (`Scripts/04_Procedimientos.sql`), no en la app.
+  También se puede invocar a mano (`CALL sp_procesar_reservas_vencidas(@c, @n)`) para no depender de
+  esperar la corrida programada, por ejemplo en la sustentación. Requiere `event_scheduler = ON` en
+  el servidor MySQL (ya lo está en la instancia de desarrollo).
 
 ### UC-02: Confirmar pago de reserva
 - **Actor:** Caja (exclusivo). Recepción ya no accede a esta pantalla en absoluto: solo ve el
@@ -272,6 +280,13 @@ asignado a ese empleado:
 ### UC-12: Ver reportes gerenciales
 - **Actor:** Gerente
 - **Flujo principal:** pantallas de solo lectura sobre `vw_ingresos_por_hotel`, `vw_ranking_clientes`, `vw_ocupacion_hotel`, y `sp_resumen_ocupacion_hotel(id_hotel)`.
+- **Reportes mensuales con funciones de ventana (2026-07-13):** `vw_ingresos_mensuales` (ingreso de
+  hospedaje por mes, acumulado del año vía `SUM() OVER`, y variación % contra el mes anterior vía
+  `LAG() OVER`) y `vw_ocupacion_mensual` (estadías iniciadas por mes, con la misma comparación por
+  `LAG() OVER`) — a diferencia de las vistas anteriores (snapshots acumulados o del estado actual,
+  sin ninguna dimensión de tiempo), estas dos sí son series temporales. El dashboard de Gerencia
+  (`auth/dashboard.html`) también muestra el ingreso del mes actual con su variación, una barra de
+  ocupación (CSS, sin librería de gráficos) y el top 3 de clientes de toda la cadena.
 
 ### UC-13: Mantenimiento de catálogos
 - **Actor:** Administrador (general o por hotel, ver sección 2)

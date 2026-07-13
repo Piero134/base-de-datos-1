@@ -57,10 +57,18 @@ trigger se dispara en cada paso:
 
 ## 3. Reportes y roles (8:00–9:00)
 
-- Cerrar sesión, entrar como Gerencia: mostrar `vw_ocupacion_hotel`, `vw_ingresos_por_hotel`,
-  `vw_ranking_clientes`.
+- Cerrar sesión, entrar como Gerencia: el propio dashboard de inicio ya muestra la barra de
+  ocupación, el ingreso del mes con su variación % y el top 3 de clientes — mostrar eso primero,
+  después entrar a "Ingresos mensuales"/"Ocupación mensual" y señalar en pantalla las columnas
+  `SUM() OVER`/`LAG() OVER` (acumulado del año, variación contra el mes anterior). Después
+  `vw_ocupacion_hotel`, `vw_ingresos_por_hotel`, `vw_ranking_clientes` (esta última con `RANK()`).
 - Mostrar brevemente que un rol sin permiso (ej. Gerencia intentando entrar a Administración) es
   bloqueado — conecta con los roles de MySQL de `07_Roles_Permisos.sql`.
+- **(Opcional, si hay tiempo)** Mostrar el `EVENT ev_procesar_reservas_vencidas` en MySQL Workbench
+  (`SHOW EVENTS`) y explicar que cancela reservas vencidas / marca no-show una vez al día sin que la
+  app lo dispare. Como no se puede esperar a que corra solo durante la grabación, ejecutarlo a mano
+  (`CALL sp_procesar_reservas_vencidas(@c, @n); SELECT @c, @n;`) sobre una reserva de prueba vencida
+  creada momentos antes, para mostrar el efecto en vivo.
 
 ## 4. Cierre — aportes y decisiones (9:00–10:00)
 
@@ -72,6 +80,9 @@ Mencionar 2–3 decisiones de diseño no obviamente triviales, como aporte propi
   especificidad cuando dos planes públicos se solapan en fecha.
 - Salida individual por huésped vs. checkout conjunto de la habitación.
 - Abonos parciales con historial de pagos, en vez de solo un campo de saldo.
+- Mantenimiento automático de reservas vencidas con `EVENT SCHEDULER` + un procedimiento con
+  `CURSOR`/`HANDLER` (único del proyecto que itera fila por fila), en vez de depender de que alguien
+  se acuerde de cancelar/marcar no-show a mano.
 
 Cerrar indicando que la Fase III (migración a un segundo SGBD) fue excluida del alcance de este
 proyecto por indicación expresa del profesor (ver `Documentacion/04_Nota_Alcance_Fase3.md`), para
