@@ -18,7 +18,9 @@ check-in, una décima tras agregar el trigger de habitación única y
 rediseñar "alojamientos activos" como tabla por habitación, y una
 undécima tras eliminar la tabla `huesped` (rol puro sin datos propios,
 reemplazado por FK directa a `persona_natural`) (ver commits de esa
-fecha). Marcar de nuevo tras cambios importantes.
+fecha), y una duodécima el mismo 2026-07-12 tras agregar la pantalla
+      `/admin/usuarios` (alta de login para un empleado existente). Marcar
+      de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -238,6 +240,21 @@ fecha). Marcar de nuevo tras cambios importantes.
       `sp_resumen_ocupacion_hotel(1)` reflejaron los datos correctamente.
 - [x] **Administración (UC-13):** alta de un nuevo servicio (SPA — Masaje
       relajante) vía INSERT directo, visible de inmediato en el listado.
+- [x] **Alta de usuarios por el administrador (UC-13, 2026-07-12):** con
+      `lparedes` (administrador general) en `/admin/usuarios?id_hotel=1`, se
+      dio login RECEPCION a un empleado sin usuario (`jsoto`) — quedó con
+      `id_hotel=1` (igual al de su empleado, por el trigger de alcance) y
+      pudo loguearse de inmediato. Luego, sobre el hotel 2, se creó un
+      ADMINISTRADOR acotado a ese hotel (`cmendoza`, sin marcar "administrador
+      general") — quedó con `id_hotel=2`, no `NULL`. Al loguearse como
+      `cmendoza`, `/admin/usuarios` se mostró fijo a su propio hotel, sin
+      selector de hotel ni la sección "Administradores generales" (esa
+      sección, y la fila del propio `lparedes`, solo las ve el administrador
+      general). Una sesión GERENCIA (`rhuanca`) intentando `GET
+      /admin/usuarios` fue redirigida, igual que con el resto de rutas de
+      `/admin`. Verificado end-to-end con Playwright contra `hotel_db` real
+      (capturas de pantalla revisadas); usuarios de prueba borrados al
+      terminar.
 - [x] **Control de acceso por rol:** una sesión GERENCIA intentando entrar a
       `/admin/hoteles` fue redirigida a `/login` con mensaje de permiso
       denegado.

@@ -263,6 +263,15 @@ asignado a ese empleado:
   `id_hotel` = el nuevo hotel, username generado del nombre del hotel y contraseña temporal
   aleatoria mostrada una sola vez) — el hotel queda usable desde el día uno sin depender de que
   alguien le cree un empleado manualmente después.
+- **Alta de usuario para un empleado existente (`GET/POST /admin/usuarios`):** cualquier
+  administrador puede dar login (username + contraseña + rol) a un `empleado` de su alcance que
+  todavía no tenga uno; el rol puede ser cualquiera de los cuatro (`RECEPCION`, `CAJA`, `GERENCIA`,
+  `ADMINISTRADOR`). Solo el administrador general puede además marcar la casilla "Administrador
+  general", que deja `usuario.id_hotel = NULL` (alcance sobre toda la cadena); sin esa casilla, el
+  `id_hotel` del usuario nuevo siempre se deriva del hotel del empleado elegido — es lo que exigen
+  los triggers `trg_usuario_validar_alcance_bi`/`_bu` para cualquier rol que no sea
+  `ADMINISTRADOR`. La contraseña se hashea con `generate_password_hash` (mismo mecanismo que el
+  login), nunca se guarda en texto plano.
 
 ---
 
