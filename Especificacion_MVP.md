@@ -232,8 +232,13 @@ asignado a ese empleado:
 
 ### UC-09: Generar cuenta por cobrar
 - **Actor:** Cajero
-- **Precondición:** alojamiento `FINALIZADO`.
+- **Precondición:** alojamiento `FINALIZADO`, con al menos un consumo de servicio o un daño `PENDIENTE` (el
+  hospedaje en sí no cuenta: eso se paga por adelantado en la reserva, ver UC-02).
 - **Flujo principal:** `sp_generar_cuenta_cobrar(id_alojamiento, id_cuenta)` suma consumos + daños pendientes, aplica IGV 18%, genera detalle línea por línea.
+- **Rechazo:** el SP no genera una cuenta en S/ 0.00: si el alojamiento no tiene ningún consumo ni
+  daño pendiente, `SIGNAL` *"Este alojamiento no tiene consumos ni daños pendientes; no hay nada que
+  cobrar."* La pantalla `GET /caja/generar-cuenta` ya filtra por esto (`EXISTS` contra
+  `consumo_servicio`/`danio PENDIENTE`), así que ese alojamiento ni siquiera aparece como candidato.
 - **Consulta relacionada:** `vw_cuenta_cobrar_resumen`, `cuenta_cobrar_detalle`.
 
 ### UC-10: Registrar pago de cuenta

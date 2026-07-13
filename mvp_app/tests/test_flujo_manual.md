@@ -22,8 +22,9 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
       `/admin/usuarios` (alta de login para un empleado existente), y una
       decimotercera el mismo día tras dar a Recepción acceso a `/habitaciones`
       (ver estado + cambiarlo) y restringir las transiciones manuales de
-      `sp_cambiar_estado_habitacion`. Marcar de nuevo tras cambios
-      importantes.
+      `sp_cambiar_estado_habitacion`, y una decimocuarta tras rechazar
+      generar cuentas por cobrar sin consumos ni daños pendientes. Marcar
+      de nuevo tras cambios importantes.
 
 - [x] **Precondición:** los 9 scripts (`01`→`09`) ya estaban cargados en
       `hotel_db` (14 procedimientos, 6 funciones, 14 vistas, datos de
@@ -234,6 +235,21 @@ fecha), una duodécima el mismo 2026-07-12 tras agregar la pantalla
 - [x] **Cuenta por cobrar (UC-09):** `sp_generar_cuenta_cobrar` calculó
       subtotal 95.00 + IGV 18% (17.10) = total 112.10, con detalle línea
       por línea (consumo + daño).
+- [x] **No se genera cuenta sin gastos pendientes (2026-07-13):** de paso se
+      encontró y limpió un residuo real de pruebas anteriores: el
+      alojamiento #36 tenía una `cuenta_cobrar` en S/ 0.00 (sin detalle) de
+      una sesión previa. Aplicado el `SIGNAL` nuevo en
+      `sp_generar_cuenta_cobrar` (rechaza si `consumo_servicio` + `danio
+      PENDIENTE` suman 0) contra `hotel_db` real: llamar al SP para ese
+      mismo alojamiento (ya sin la cuenta vieja, sin consumos ni daños)
+      dio *"Este alojamiento no tiene consumos ni daños pendientes; no hay
+      nada que cobrar."*; insertando un consumo de prueba (Servicio de
+      cuarto, S/25.00) el mismo alojamiento generó la cuenta correctamente
+      (subtotal 25.00 + IGV 4.50 = total 29.50). `GET /caja/generar-cuenta`
+      (`grojas`, CAJA hotel 1) ya no listó el alojamiento #36 como
+      candidato mientras no tuvo gastos, y mostró el estado vacío
+      actualizado. Datos de prueba (consumo + cuenta) borrados al terminar,
+      dejando el alojamiento #36 finalizado y sin cuenta (su estado real).
 - [x] **Pago de cuenta (UC-10):** pago parcial de 50.00 dejó saldo 62.10
       (estado PENDIENTE); intento de pagar 999.00 mostró el SIGNAL *"El
       monto del pago excede el saldo pendiente"*; pago final de 62.10 dejó
