@@ -261,12 +261,18 @@ BEGIN
     -- (dos estadías simultáneas de la misma persona). Se excluye el
     -- propio p_id_alojamiento para no bloquear un reintento sobre el
     -- mismo alojamiento (esa duplicidad ya la impide la PK compuesta).
+    -- ha.fecha_salida_real IS NULL es imprescindible: sin este filtro,
+    -- un huésped que ya registró su salida individual de OTRA habitación
+    -- (pero esa habitación sigue ACTIVA porque quedan compañeros dentro)
+    -- quedaba bloqueado para un nuevo check-in aunque ya no esté
+    -- ocupando nada — bug detectado y corregido el 2026-07-13.
     IF EXISTS (
         SELECT 1
         FROM huesped_alojamiento ha
         JOIN alojamiento a ON a.id_alojamiento = ha.id_alojamiento
         WHERE ha.id_huesped = p_id_huesped
           AND a.estado = 'ACTIVO'
+          AND ha.fecha_salida_real IS NULL
           AND a.id_alojamiento <> p_id_alojamiento
     ) THEN
         SIGNAL SQLSTATE '45000'
