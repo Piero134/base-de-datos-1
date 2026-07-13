@@ -21,14 +21,42 @@
 {% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Nombres</th><th>Apellidos</th><th>Cargo</th><th>Hotel</th><th>Activo</th></tr></thead>
+  <thead><tr><th>Nombres</th><th>Apellidos</th><th>Cargo</th><th>Hotel</th><th>Activo</th><th></th></tr></thead>
   <tbody>
   {% for f in filas %}
-  <tr><td>{{ f.nombres }}</td><td>{{ f.apellidos }}</td><td>{{ f.cargo }}</td><td>{{ f.hotel }}</td><td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td></tr>
+  <tr>
+    <td>{{ f.nombres }}</td><td>{{ f.apellidos }}</td><td>{{ f.cargo }}</td><td>{{ f.hotel }}</td>
+    <td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td>
+    <td class="actions"><button type="button" class="btn-secondary" data-open-modal="dlgEditarEmpleado{{ f.id_empleado }}">Editar</button></td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% for f in filas %}
+<dialog id="dlgEditarEmpleado{{ f.id_empleado }}" class="form-dialog">
+  <h2>Editar empleado</h2>
+  <form method="post" action="{{ url_for('administracion.empleado_editar', id_empleado=f.id_empleado) }}">
+    <input type="hidden" name="id_hotel_filtro" value="{{ id_hotel_filtro }}">
+    <label for="emp_edit_nombres_{{ f.id_empleado }}">Nombres</label>
+    <input type="text" name="nombres" id="emp_edit_nombres_{{ f.id_empleado }}" required value="{{ f.nombres }}">
+    <label for="emp_edit_apellidos_{{ f.id_empleado }}">Apellidos</label>
+    <input type="text" name="apellidos" id="emp_edit_apellidos_{{ f.id_empleado }}" required value="{{ f.apellidos }}">
+    <label for="emp_edit_id_cargo_{{ f.id_empleado }}">Cargo</label>
+    <select name="id_cargo" id="emp_edit_id_cargo_{{ f.id_empleado }}" required>
+      {% for c in cargos %}<option value="{{ c.id_cargo }}" {% if c.id_cargo == f.id_cargo %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+    </select>
+    <label>
+      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+      Activo
+    </label>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Guardar cambios</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
 {% else %}
 <p class="empty-state">Todavía no hay empleados registrados.</p>
 {% endif %}

@@ -19,6 +19,9 @@ _MENSAJES_CHECK = {
     "chk_reserva_fechas": "La fecha de check-out debe ser posterior a la fecha de check-in.",
     "chk_reserva_limite_pago": "La fecha límite de pago no puede ser posterior a la fecha de check-in.",
     "chk_reserva_monto": "El monto total de la reserva no puede ser negativo.",
+    "chk_capacidad_base": "La capacidad debe ser mayor a 0.",
+    "chk_tarifa_precio": "El precio por noche debe ser mayor a 0.",
+    "chk_plan_fechas": "La fecha de fin no puede ser anterior a la fecha de inicio.",
 }
 _PATRON_CHECK = re.compile(r"Check constraint '([^']+)' is violated")
 
@@ -30,6 +33,7 @@ _MENSAJES_DUPLICADO = {
     "uq_cliente_persona": "Esta persona ya está registrada como cliente; selecciónala en vez de crearla de nuevo.",
     "uq_detalle_huesped_reserva": "Ese huésped ya está asignado a otra habitación de esta misma reserva.",
     "uq_usuario_username": "Ya existe un usuario con ese nombre de usuario.",
+    "uq_tarifa_plan_tipo": "Ya existe una tarifa para ese plan y tipo de habitación.",
 }
 _PATRON_DUPLICADO = re.compile(r"for key '(?:[\w]+\.)?([\w]+)'")
 

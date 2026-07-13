@@ -8,14 +8,34 @@
 {% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Nombre</th><th>Capacidad base</th><th>Descripción</th></tr></thead>
+  <thead><tr><th>Nombre</th><th>Capacidad base</th><th>Descripción</th><th></th></tr></thead>
   <tbody>
   {% for f in filas %}
-  <tr><td>{{ f.nombre }}</td><td>{{ f.capacidad_base }}</td><td>{{ f.descripcion or '—' }}</td></tr>
+  <tr>
+    <td>{{ f.nombre }}</td><td>{{ f.capacidad_base }}</td><td>{{ f.descripcion or '—' }}</td>
+    <td class="actions"><button type="button" class="btn-secondary" data-open-modal="dlgEditarTipo{{ f.id_tipo_habitacion }}">Editar</button></td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% for f in filas %}
+<dialog id="dlgEditarTipo{{ f.id_tipo_habitacion }}" class="form-dialog">
+  <h2>Editar tipo de habitación</h2>
+  <form method="post" action="{{ url_for('administracion.tipo_habitacion_editar', id_tipo_habitacion=f.id_tipo_habitacion) }}">
+    <label for="th_edit_nombre_{{ f.id_tipo_habitacion }}">Nombre</label>
+    <input type="text" name="nombre" id="th_edit_nombre_{{ f.id_tipo_habitacion }}" required value="{{ f.nombre }}">
+    <label for="th_edit_capacidad_{{ f.id_tipo_habitacion }}">Capacidad base</label>
+    <input type="number" name="capacidad_base" id="th_edit_capacidad_{{ f.id_tipo_habitacion }}" min="1" max="127" required value="{{ f.capacidad_base }}">
+    <label for="th_edit_descripcion_{{ f.id_tipo_habitacion }}">Descripción <span class="optional">(opcional)</span></label>
+    <textarea name="descripcion" id="th_edit_descripcion_{{ f.id_tipo_habitacion }}">{{ f.descripcion or '' }}</textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Guardar cambios</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
 {% else %}
 <p class="empty-state">Todavía no hay tipos de habitación registrados.</p>
 {% endif %}

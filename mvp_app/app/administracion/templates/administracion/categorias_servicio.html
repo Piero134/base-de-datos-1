@@ -8,14 +8,30 @@
 {% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Nombre</th></tr></thead>
+  <thead><tr><th>Nombre</th><th></th></tr></thead>
   <tbody>
   {% for f in filas %}
-  <tr><td>{{ f.nombre }}</td></tr>
+  <tr>
+    <td>{{ f.nombre }}</td>
+    <td class="actions"><button type="button" class="btn-secondary" data-open-modal="dlgEditarCategoria{{ f.id_categoria }}">Editar</button></td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% for f in filas %}
+<dialog id="dlgEditarCategoria{{ f.id_categoria }}" class="form-dialog">
+  <h2>Editar categoría</h2>
+  <form method="post" action="{{ url_for('administracion.categoria_servicio_editar', id_categoria=f.id_categoria) }}">
+    <label for="cs_edit_nombre_{{ f.id_categoria }}">Nombre</label>
+    <input type="text" name="nombre" id="cs_edit_nombre_{{ f.id_categoria }}" required value="{{ f.nombre }}">
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Guardar cambios</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
 {% else %}
 <p class="empty-state">Todavía no hay categorías de servicio registradas.</p>
 {% endif %}

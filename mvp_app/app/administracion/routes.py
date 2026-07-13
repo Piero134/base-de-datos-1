@@ -129,6 +129,21 @@ def tipos_habitacion():
     return render_template("administracion/tipos_habitacion.html", filas=filas, seleccion=seleccion)
 
 
+@bp.route("/tipos-habitacion/<int:id_tipo_habitacion>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def tipo_habitacion_editar(id_tipo_habitacion):
+    ejecutar_con_flash(
+        execute,
+        "UPDATE tipo_habitacion SET nombre=%s, capacidad_base=%s, descripcion=%s WHERE id_tipo_habitacion=%s",
+        (
+            request.form["nombre"], request.form["capacidad_base"],
+            request.form.get("descripcion") or None, id_tipo_habitacion,
+        ),
+        on_success_msg="Tipo de habitación actualizado.",
+    )
+    return redirect(url_for("administracion.tipos_habitacion"))
+
+
 # ---------------------------------------------------------------------
 # Habitaciones
 # ---------------------------------------------------------------------
@@ -235,6 +250,18 @@ def categorias_servicio():
     return render_template("administracion/categorias_servicio.html", filas=filas, seleccion=seleccion)
 
 
+@bp.route("/categorias-servicio/<int:id_categoria>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def categoria_servicio_editar(id_categoria):
+    ejecutar_con_flash(
+        execute,
+        "UPDATE categoria_servicio SET nombre=%s WHERE id_categoria=%s",
+        (request.form["nombre"], id_categoria),
+        on_success_msg="Categoría de servicio actualizada.",
+    )
+    return redirect(url_for("administracion.categorias_servicio"))
+
+
 # ---------------------------------------------------------------------
 # Servicios
 # ---------------------------------------------------------------------
@@ -255,7 +282,7 @@ def servicios():
 
     filas = query(
         """
-        SELECT s.id_servicio, s.nombre, cat.nombre AS categoria, s.precio_unitario, s.activo
+        SELECT s.id_servicio, s.id_categoria, s.nombre, cat.nombre AS categoria, s.precio_unitario, s.activo
         FROM servicio s
         JOIN categoria_servicio cat ON cat.id_categoria = s.id_categoria
         ORDER BY cat.nombre, s.nombre
@@ -263,6 +290,21 @@ def servicios():
     )
     categorias = query("SELECT id_categoria, nombre FROM categoria_servicio ORDER BY nombre")
     return render_template("administracion/servicios.html", filas=filas, categorias=categorias, seleccion=seleccion)
+
+
+@bp.route("/servicios/<int:id_servicio>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def servicio_editar(id_servicio):
+    ejecutar_con_flash(
+        execute,
+        "UPDATE servicio SET nombre=%s, id_categoria=%s, precio_unitario=%s, activo=%s WHERE id_servicio=%s",
+        (
+            request.form["nombre"], request.form["id_categoria"], request.form["precio_unitario"],
+            1 if request.form.get("activo") else 0, id_servicio,
+        ),
+        on_success_msg="Servicio actualizado.",
+    )
+    return redirect(url_for("administracion.servicios"))
 
 
 # ---------------------------------------------------------------------
@@ -294,6 +336,28 @@ def planes_tarifa():
     return render_template("administracion/planes_tarifa.html", filas=filas, seleccion=seleccion)
 
 
+@bp.route("/planes-tarifa/<int:id_plan>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def plan_tarifa_editar(id_plan):
+    ejecutar_con_flash(
+        execute,
+        """
+        UPDATE plan_tarifa
+        SET nombre=%s, descripcion=%s, fecha_inicio=%s, fecha_fin=%s, es_publico=%s, activo=%s
+        WHERE id_plan=%s
+        """,
+        (
+            request.form["nombre"], request.form.get("descripcion") or None,
+            request.form["fecha_inicio"], request.form["fecha_fin"],
+            1 if request.form.get("es_publico") else 0,
+            1 if request.form.get("activo") else 0,
+            id_plan,
+        ),
+        on_success_msg="Plan tarifario actualizado.",
+    )
+    return redirect(url_for("administracion.planes_tarifa"))
+
+
 # ---------------------------------------------------------------------
 # Tarifas por tipo de habitación y plan
 # ---------------------------------------------------------------------
@@ -320,7 +384,7 @@ def tarifas():
 
     filas = query(
         """
-        SELECT tr.id_tarifa, pt.nombre AS plan, th.nombre AS tipo_habitacion,
+        SELECT tr.id_tarifa, tr.id_plan, pt.nombre AS plan, tr.id_tipo_habitacion, th.nombre AS tipo_habitacion,
                tr.precio_por_noche, th.capacidad_base
         FROM tarifa_habitacion tr
         JOIN plan_tarifa pt ON pt.id_plan = tr.id_plan
@@ -333,6 +397,18 @@ def tarifas():
     return render_template(
         "administracion/tarifas.html", filas=filas, planes=planes, tipos=tipos, seleccion=seleccion
     )
+
+
+@bp.route("/tarifas/<int:id_tarifa>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def tarifa_editar(id_tarifa):
+    ejecutar_con_flash(
+        execute,
+        "UPDATE tarifa_habitacion SET id_plan=%s, id_tipo_habitacion=%s, precio_por_noche=%s WHERE id_tarifa=%s",
+        (request.form["id_plan"], request.form["id_tipo_habitacion"], request.form["precio_por_noche"], id_tarifa),
+        on_success_msg="Tarifa actualizada.",
+    )
+    return redirect(url_for("administracion.tarifas"))
 
 
 # ---------------------------------------------------------------------
@@ -368,7 +444,7 @@ def empleados():
 
     filas = query(
         """
-        SELECT e.id_empleado, e.nombres, e.apellidos, c.nombre AS cargo, h.nombre AS hotel, e.activo
+        SELECT e.id_empleado, e.id_cargo, e.nombres, e.apellidos, c.nombre AS cargo, h.nombre AS hotel, e.activo
         FROM empleado e
         JOIN cargo_empleado c ON c.id_cargo = e.id_cargo
         JOIN hotel h ON h.id_hotel = e.id_hotel
@@ -387,6 +463,28 @@ def empleados():
 
 def _empleado_en_alcance(id_empleado, id_hotel):
     return bool(query("SELECT 1 FROM empleado WHERE id_empleado = %s AND id_hotel = %s", (id_empleado, id_hotel)))
+
+
+@bp.route("/empleados/<int:id_empleado>/editar", methods=["POST"])
+@requiere_rol("ADMINISTRADOR")
+def empleado_editar(id_empleado):
+    # El hotel del empleado no se edita aquí (moverlo de hotel es un caso
+    # aparte, no pedido); solo se preserva el filtro de hotel que el admin
+    # general tenía abierto, para volver a la misma vista tras guardar.
+    id_hotel_filtro = request.form.get("id_hotel_filtro", type=int)
+    if session["id_hotel"] is not None and not _empleado_en_alcance(id_empleado, session["id_hotel"]):
+        flash("Empleado no encontrado en tu hotel.", "danger")
+        return redirect(url_for("administracion.empleados"))
+    ejecutar_con_flash(
+        execute,
+        "UPDATE empleado SET nombres=%s, apellidos=%s, id_cargo=%s, activo=%s WHERE id_empleado=%s",
+        (
+            request.form["nombres"], request.form["apellidos"], request.form["id_cargo"],
+            1 if request.form.get("activo") else 0, id_empleado,
+        ),
+        on_success_msg="Empleado actualizado.",
+    )
+    return redirect(url_for("administracion.empleados", id_hotel=id_hotel_filtro))
 
 
 # ---------------------------------------------------------------------

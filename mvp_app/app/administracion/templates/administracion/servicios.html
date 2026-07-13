@@ -8,14 +8,43 @@
 {% if filas %}
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Categoría</th><th>Nombre</th><th>Precio unit.</th><th>Activo</th></tr></thead>
+  <thead><tr><th>Categoría</th><th>Nombre</th><th>Precio unit.</th><th>Activo</th><th></th></tr></thead>
   <tbody>
   {% for f in filas %}
-  <tr><td>{{ f.categoria }}</td><td>{{ f.nombre }}</td><td class="money">S/ {{ f.precio_unitario }}</td><td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td></tr>
+  <tr>
+    <td>{{ f.categoria }}</td><td>{{ f.nombre }}</td><td class="money">S/ {{ f.precio_unitario }}</td>
+    <td><span class="badge {{ 'badge-good' if f.activo else 'badge-neutral' }}">{{ 'Sí' if f.activo else 'No' }}</span></td>
+    <td class="actions"><button type="button" class="btn-secondary" data-open-modal="dlgEditarServicio{{ f.id_servicio }}">Editar</button></td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% for f in filas %}
+<dialog id="dlgEditarServicio{{ f.id_servicio }}" class="form-dialog">
+  <h2>Editar servicio</h2>
+  <form method="post" action="{{ url_for('administracion.servicio_editar', id_servicio=f.id_servicio) }}">
+    <label for="serv_edit_id_categoria_{{ f.id_servicio }}">Categoría</label>
+    <select name="id_categoria" id="serv_edit_id_categoria_{{ f.id_servicio }}" required data-searchable="Buscar categoría…">
+      {% for c in categorias %}
+        <option value="{{ c.id_categoria }}" {% if c.id_categoria == f.id_categoria %}selected{% endif %}>{{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label for="serv_edit_nombre_{{ f.id_servicio }}">Nombre</label>
+    <input type="text" name="nombre" id="serv_edit_nombre_{{ f.id_servicio }}" required value="{{ f.nombre }}">
+    <label for="serv_edit_precio_{{ f.id_servicio }}">Precio unitario</label>
+    <input type="number" step="0.01" min="0" name="precio_unitario" id="serv_edit_precio_{{ f.id_servicio }}" required value="{{ f.precio_unitario }}">
+    <label>
+      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+      Activo (visible para registrar consumos nuevos)
+    </label>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="submit">Guardar cambios</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
 {% else %}
 <p class="empty-state">Todavía no hay servicios registrados.</p>
 {% endif %}
