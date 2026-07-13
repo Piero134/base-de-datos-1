@@ -41,8 +41,8 @@
     <input type="email" name="email" id="h_edit_email_{{ f.id_hotel }}"
            pattern="[^\s@]+@[^\s@]+\.[^\s@]+" title="Ingresa un email con dominio (ej: nombre@dominio.pe)."
            value="{{ f.email or '' }}">
-    <label>
-      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+    <label class="checkbox-label">
+      <input type="checkbox" name="activo" {% if f.activo %}checked{% endif %}>
       Activo
     </label>
     <div class="dialog-actions">

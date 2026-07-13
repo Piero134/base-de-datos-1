@@ -46,8 +46,8 @@
     <select name="id_cargo" id="emp_edit_id_cargo_{{ f.id_empleado }}" required>
       {% for c in cargos %}<option value="{{ c.id_cargo }}" {% if c.id_cargo == f.id_cargo %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
     </select>
-    <label>
-      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+    <label class="checkbox-label">
+      <input type="checkbox" name="activo" {% if f.activo %}checked{% endif %}>
       Activo
     </label>
     <div class="dialog-actions">

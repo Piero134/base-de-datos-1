@@ -34,8 +34,8 @@
     <input type="text" name="nombre" id="serv_edit_nombre_{{ f.id_servicio }}" required value="{{ f.nombre }}">
     <label for="serv_edit_precio_{{ f.id_servicio }}">Precio unitario</label>
     <input type="number" step="0.01" min="0" name="precio_unitario" id="serv_edit_precio_{{ f.id_servicio }}" required value="{{ f.precio_unitario }}">
-    <label>
-      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+    <label class="checkbox-label">
+      <input type="checkbox" name="activo" {% if f.activo %}checked{% endif %}>
       Activo (visible para registrar consumos nuevos)
     </label>
     <div class="dialog-actions">

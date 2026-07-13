@@ -34,12 +34,12 @@
     <input type="date" name="fecha_inicio" id="pt_edit_fecha_inicio_{{ f.id_plan }}" required value="{{ f.fecha_inicio }}">
     <label for="pt_edit_fecha_fin_{{ f.id_plan }}">Fecha fin</label>
     <input type="date" name="fecha_fin" id="pt_edit_fecha_fin_{{ f.id_plan }}" required value="{{ f.fecha_fin }}">
-    <label>
-      <input type="checkbox" name="es_publico" style="width:auto;display:inline" {% if f.es_publico %}checked{% endif %}>
+    <label class="checkbox-label">
+      <input type="checkbox" name="es_publico" {% if f.es_publico %}checked{% endif %}>
       Público (se autodetecta por fecha; desmarcar para plan corporativo/negociado)
     </label>
-    <label>
-      <input type="checkbox" name="activo" style="width:auto;display:inline" {% if f.activo %}checked{% endif %}>
+    <label class="checkbox-label">
+      <input type="checkbox" name="activo" {% if f.activo %}checked{% endif %}>
       Activo
     </label>
     <div class="dialog-actions">
@@ -63,8 +63,8 @@
   <input type="date" name="fecha_inicio" id="pt_fecha_inicio" required value="{{ seleccion.fecha_inicio if seleccion else '' }}">
   <label for="pt_fecha_fin">Fecha fin</label>
   <input type="date" name="fecha_fin" id="pt_fecha_fin" required value="{{ seleccion.fecha_fin if seleccion else '' }}">
-  <label>
-    <input type="checkbox" name="es_publico" id="pt_es_publico" style="width:auto;display:inline"
+  <label class="checkbox-label">
+    <input type="checkbox" name="es_publico" id="pt_es_publico"
       {% if not seleccion or seleccion.es_publico %}checked{% endif %}>
     Público (se autodetecta por fecha; desmarcar para plan corporativo/negociado)
   </label>

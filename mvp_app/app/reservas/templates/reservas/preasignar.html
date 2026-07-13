@@ -42,7 +42,7 @@
           </td>
           <td>
             {% if not titular_ya_fijado %}
-            <input type="radio" name="titular_{{ hab.n }}" value="{{ loop.index }}" {% if slot.es_titular %}checked{% endif %} style="width:auto">
+            <input type="radio" name="titular_{{ hab.n }}" value="{{ loop.index }}" {% if slot.es_titular %}checked{% endif %}>
             {% endif %}
           </td>
           {% endif %}

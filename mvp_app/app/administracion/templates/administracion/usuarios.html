@@ -77,8 +77,8 @@
     {% for r in roles %}<option value="{{ r }}" {% if seleccion and seleccion.rol == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
   </select>
   {% if es_general %}
-  <label>
-    <input type="checkbox" name="administrador_general" value="1" style="width:auto;display:inline"
+  <label class="checkbox-label">
+    <input type="checkbox" name="administrador_general" value="1"
       {% if seleccion and seleccion.administrador_general %}checked{% endif %}>
     Administrador general (todos los hoteles, no solo el elegido arriba). Solo aplica si el rol es ADMINISTRADOR.
   </label>
